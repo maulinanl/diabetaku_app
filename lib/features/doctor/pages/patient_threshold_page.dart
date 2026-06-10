@@ -10,11 +10,46 @@ class PatientThresholdPage extends StatefulWidget {
 
 class _PatientThresholdPageState extends State<PatientThresholdPage> {
   final List<_ThresholdItem> _items = [
-    _ThresholdItem(title: 'Glukosa Puasa', lower: '70', upper: '130', unit: 'mg/dL', defaultLower: '70', defaultUpper: '130'),
-    _ThresholdItem(title: 'Glukosa Postprandial', lower: '70', upper: '180', unit: 'mg/dL', defaultLower: '70', defaultUpper: '180'),
-    _ThresholdItem(title: 'Tekanan Darah Sistolik', lower: '90', upper: '140', unit: 'mmHg', defaultLower: '90', defaultUpper: '140'),
-    _ThresholdItem(title: 'Tekanan Darah Diastolik', lower: '60', upper: '85', unit: 'mmHg', defaultLower: '60', defaultUpper: '85'),
-    _ThresholdItem(title: 'BMI', lower: '18.5', upper: '25.0', unit: '', defaultLower: '18.5', defaultUpper: '25.0'),
+    _ThresholdItem(
+      title: 'Glukosa Puasa',
+      lower: '70',
+      upper: '130',
+      unit: 'mg/dL',
+      defaultLower: '70',
+      defaultUpper: '130',
+    ),
+    _ThresholdItem(
+      title: 'Glukosa Postprandial',
+      lower: '70',
+      upper: '180',
+      unit: 'mg/dL',
+      defaultLower: '70',
+      defaultUpper: '180',
+    ),
+    _ThresholdItem(
+      title: 'Tekanan Darah Sistolik',
+      lower: '90',
+      upper: '140',
+      unit: 'mmHg',
+      defaultLower: '90',
+      defaultUpper: '140',
+    ),
+    _ThresholdItem(
+      title: 'Tekanan Darah Diastolik',
+      lower: '60',
+      upper: '85',
+      unit: 'mmHg',
+      defaultLower: '60',
+      defaultUpper: '85',
+    ),
+    _ThresholdItem(
+      title: 'BMI',
+      lower: '18.5',
+      upper: '25.0',
+      unit: '',
+      defaultLower: '18.5',
+      defaultUpper: '25.0',
+    ),
   ];
 
   int? _editingIndex;
@@ -24,8 +59,12 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
 
   @override
   void dispose() {
-    for (final c in _lowerCtrls.values) c.dispose();
-    for (final c in _upperCtrls.values) c.dispose();
+    for (final c in _lowerCtrls.values) {
+      c.dispose();
+    }
+    for (final c in _upperCtrls.values) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -60,7 +99,9 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
       return;
     }
     if (upVal <= lowVal) {
-      setState(() => _errorText = 'Batas atas harus lebih besar dari batas bawah');
+      setState(
+        () => _errorText = 'Batas atas harus lebih besar dari batas bawah',
+      );
       return;
     }
 
@@ -85,18 +126,23 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
 
   @override
   Widget build(BuildContext context) {
-    final topPad = MediaQuery.of(context).padding.top;
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         top: false,
         child: Column(
           children: [
-            _buildHeader(topPad),
+            // header (same style as detail page header, without action button)
+            _buildHeader(),
+
             const SizedBox(height: 12),
+
             Expanded(
               child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 itemCount: _items.length,
                 itemBuilder: (context, i) {
                   final it = _items[i];
@@ -109,9 +155,13 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
                       border: Border.all(color: AppColors.light1),
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
+                      ),
                       child: Column(
                         children: [
+                          // header row title + edit button (or reset)
                           Row(
                             children: [
                               Row(
@@ -123,10 +173,19 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
                                       color: AppColors.veryLightBlue,
                                       borderRadius: BorderRadius.circular(8),
                                     ),
-                                    child: const Icon(Icons.opacity, color: AppColors.primaryBlue, size: 18),
+                                    child: const Icon(
+                                      Icons.opacity,
+                                      color: AppColors.primaryBlue,
+                                      size: 18,
+                                    ),
                                   ),
                                   const SizedBox(width: 10),
-                                  Text(it.title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                  Text(
+                                    it.title,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ],
                               ),
                               const Spacer(),
@@ -136,45 +195,99 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
                                   icon: const Icon(Icons.edit, size: 16),
                                   label: const Text('Ubah'),
                                   style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                    side: BorderSide(color: AppColors.primaryBlue),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
+                                    side: BorderSide(
+                                      color: AppColors.primaryBlue,
+                                    ),
                                     foregroundColor: AppColors.primaryBlue,
                                     backgroundColor: Colors.white,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
                                   ),
                                 )
                               else
                                 TextButton(
                                   onPressed: () => _resetToDefault(i),
-                                  child: const Text('Reset default', style: TextStyle(color: AppColors.primaryBlue)),
+                                  child: const Text(
+                                    'Reset default',
+                                    style: TextStyle(
+                                      color: AppColors.primaryBlue,
+                                    ),
+                                  ),
                                 ),
                             ],
                           ),
                           const SizedBox(height: 12),
+
+                          // display or editor
                           if (!editing)
                             Row(
                               children: [
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      const Text('Batas bawah', style: TextStyle(fontSize: 12, color: AppColors.dark2)),
+                                      const Text(
+                                        'Batas bawah',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.dark2,
+                                        ),
+                                      ),
                                       const SizedBox(height: 6),
-                                      Text('${it.lower} ${it.unit}', style: const TextStyle(fontSize: 14, color: AppColors.primaryBlue, fontWeight: FontWeight.w600)),
+                                      Text(
+                                        '${it.lower} ${it.unit}',
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          color: AppColors.primaryBlue,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
                                       const SizedBox(height: 6),
-                                      Text('Default: ${it.defaultLower}', style: const TextStyle(fontSize: 11, color: AppColors.dark2)),
+                                      Text(
+                                        'Default: ${it.defaultLower}',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: AppColors.dark2,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      const Text('Batas atas', style: TextStyle(fontSize: 12, color: AppColors.dark2)),
+                                      const Text(
+                                        'Batas atas',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.dark2,
+                                        ),
+                                      ),
                                       const SizedBox(height: 6),
-                                      Text('${it.upper} ${it.unit}', style: const TextStyle(fontSize: 14, color: AppColors.primaryBlue, fontWeight: FontWeight.w600)),
+                                      Text(
+                                        '${it.upper} ${it.unit}',
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          color: AppColors.primaryBlue,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
                                       const SizedBox(height: 6),
-                                      Text('Default: ${it.defaultUpper}', style: const TextStyle(fontSize: 11, color: AppColors.dark2)),
+                                      Text(
+                                        'Default: ${it.defaultUpper}',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: AppColors.dark2,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -188,22 +301,38 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
                                     Expanded(
                                       child: TextFormField(
                                         controller: _lowerCtrls[i],
-                                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                        keyboardType:
+                                            const TextInputType.numberWithOptions(
+                                              decimal: true,
+                                            ),
                                         decoration: InputDecoration(
                                           labelText: 'Batas bawah',
                                           suffixText: it.unit,
                                           filled: true,
                                           fillColor: Colors.white,
                                           enabledBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(6),
-                                            borderSide: BorderSide(color: AppColors.light1),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                            borderSide: BorderSide(
+                                              color: AppColors.light1,
+                                            ),
                                           ),
                                           focusedBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(6),
-                                            borderSide: BorderSide(color: AppColors.primaryBlue, width: 1.6),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                            borderSide: BorderSide(
+                                              color: AppColors.primaryBlue,
+                                              width: 1.6,
+                                            ),
                                           ),
                                           isDense: true,
-                                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                horizontal: 12,
+                                                vertical: 12,
+                                              ),
                                         ),
                                       ),
                                     ),
@@ -211,22 +340,38 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
                                     Expanded(
                                       child: TextFormField(
                                         controller: _upperCtrls[i],
-                                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                        keyboardType:
+                                            const TextInputType.numberWithOptions(
+                                              decimal: true,
+                                            ),
                                         decoration: InputDecoration(
                                           labelText: 'Batas atas',
                                           suffixText: it.unit,
                                           filled: true,
                                           fillColor: Colors.white,
                                           enabledBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(6),
-                                            borderSide: BorderSide(color: AppColors.light1),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                            borderSide: BorderSide(
+                                              color: AppColors.light1,
+                                            ),
                                           ),
                                           focusedBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(6),
-                                            borderSide: BorderSide(color: AppColors.primaryBlue, width: 1.6),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                            borderSide: BorderSide(
+                                              color: AppColors.primaryBlue,
+                                              width: 1.6,
+                                            ),
                                           ),
                                           isDense: true,
-                                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                horizontal: 12,
+                                                vertical: 12,
+                                              ),
                                         ),
                                       ),
                                     ),
@@ -236,9 +381,20 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
                                   const SizedBox(height: 8),
                                   Row(
                                     children: [
-                                      const Icon(Icons.error_outline, color: Colors.red, size: 18),
+                                      const Icon(
+                                        Icons.error_outline,
+                                        color: Colors.red,
+                                        size: 18,
+                                      ),
                                       const SizedBox(width: 8),
-                                      Expanded(child: Text(_errorText!, style: const TextStyle(color: Colors.red))),
+                                      Expanded(
+                                        child: Text(
+                                          _errorText!,
+                                          style: const TextStyle(
+                                            color: Colors.red,
+                                          ),
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ],
@@ -253,8 +409,13 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
                                           style: OutlinedButton.styleFrom(
                                             backgroundColor: Colors.white,
                                             foregroundColor: AppColors.dark2,
-                                            side: BorderSide(color: AppColors.light1),
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                            side: BorderSide(
+                                              color: AppColors.light1,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                            ),
                                           ),
                                           child: const Text('Batal'),
                                         ),
@@ -267,11 +428,20 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
                                         child: ElevatedButton(
                                           onPressed: () => _saveEdit(i),
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor: AppColors.primaryBlue,
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                            backgroundColor:
+                                                AppColors.primaryBlue,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                            ),
                                             elevation: 0,
                                           ),
-                                          child: const Text('Simpan', style: TextStyle(color: Colors.white)),
+                                          child: const Text(
+                                            'Simpan',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -292,59 +462,137 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
     );
   }
 
-  Widget _buildHeader(double topPad) {
+  // header same style as patient detail but without the action button
+  // ...existing code...
+  // header same style as patient detail but without the action button
+  Widget _buildHeader() {
     return Container(
-      padding: EdgeInsets.fromLTRB(20, topPad + 12, 20, 18),
+      height: 210,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       decoration: BoxDecoration(
         color: AppColors.primaryBlue,
-        borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(28), bottomRight: Radius.circular(28)),
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(28),
+          bottomRight: Radius.circular(28),
+        ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // top row: back icon + centered title
           Row(
             children: [
-              IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.arrow_back, color: Colors.white)),
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+              ),
               const Expanded(
                 child: Center(
-                  child: Text('Batas Normal Pasien', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700)),
+                  child: Text(
+                    'Batas Normal Pasien',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(width: 48),
+              const SizedBox(width: 48), // spacer supaya title tetap centered
             ],
           ),
           const SizedBox(height: 12),
+          // white card (contains avatar, info, and the blue button)
           Container(
-            margin: const EdgeInsets.only(top: 6),
+            width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: const [
-              BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 6)),
-            ]),
-            child: Row(
-              children: [
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: AppColors.lightBlue,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.veryLightBlue, width: 4),
-                    boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3))],
-                  ),
-                  child: const Center(child: Text('AS', style: TextStyle(color: AppColors.primaryBlue, fontWeight: FontWeight.bold, fontSize: 18))),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 10,
+                  offset: Offset(0, 6),
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Text('Angelica Sabi Gita', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-                      SizedBox(height: 6),
-                      Text('32 tahun • Perempuan', style: TextStyle(fontSize: 13, color: AppColors.dark2)),
-                      SizedBox(height: 8),
-                      SizedBox(height: 28, child: Chip(label: Text('DM Tipe 2'), backgroundColor: AppColors.veryLightBlue)),
-                    ],
-                  ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 64,
+                      height: 90,
+                      decoration: BoxDecoration(
+                        color: AppColors.lightBlue,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppColors.veryLightBlue,
+                          width: 4,
+                        ),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 6,
+                            offset: Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: const Center(
+                        child: Text(
+                          'AS',
+                          style: TextStyle(
+                            color: AppColors.primaryBlue,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Angelica Sabi Gita',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            '32 tahun • Perempuan',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.dark2,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.veryLightBlue,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Text(
+                              'DM Tipe 2',
+                              style: TextStyle(
+                                color: AppColors.primaryBlue,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

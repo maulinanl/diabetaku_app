@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import 'patient_detail_page.dart';
+import '../widgets/doctor_bottom_nav.dart';
 
-class DoctorHomePage extends StatelessWidget {
-  const DoctorHomePage({super.key});
+class DoctorHomePage extends StatefulWidget {
+  const DoctorHomePage({Key? key}) : super(key: key);
+
+  @override
+  _DoctorHomePageState createState() => _DoctorHomePageState();
+}
+
+class _DoctorHomePageState extends State<DoctorHomePage> {
+  int _currentIndex = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -160,29 +168,9 @@ class DoctorHomePage extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 0,
-        selectedItemColor: AppColors.primaryBlue,
-        unselectedItemColor: AppColors.dark3,
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_rounded),
-            label: 'Beranda',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_add_alt_1_rounded),
-            label: 'Permintaan',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.description_rounded),
-            label: 'Riwayat',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_rounded),
-            label: 'Profil',
-          ),
-        ],
+      bottomNavigationBar: DoctorBottomNavBar(
+        currentIndex: _currentIndex,
+        onTap: (i) => setState(() => _currentIndex = i),
       ),
     );
   }

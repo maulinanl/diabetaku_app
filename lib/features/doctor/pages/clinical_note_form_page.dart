@@ -64,14 +64,13 @@ class _ClinicalNoteFormPageState extends State<ClinicalNoteFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    final topPad = MediaQuery.of(context).padding.top;
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         top: false,
         child: Column(
           children: [
-            _buildHeaderAdd(topPad),
+            _buildHeader(),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(16, 18, 16, 20),
@@ -399,44 +398,47 @@ class _ClinicalNoteFormPageState extends State<ClinicalNoteFormPage> {
     );
   }
 
-  Widget _buildHeaderAdd(double topPad) {
+  Widget _buildHeader() {
     return Container(
-      height: 204,
-      padding: EdgeInsets.fromLTRB(18, topPad + 10, 18, 12),
+      height: 210,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       decoration: BoxDecoration(
         color: AppColors.primaryBlue,
         borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(22),
-          bottomRight: Radius.circular(22),
+          bottomLeft: Radius.circular(28),
+          bottomRight: Radius.circular(28),
         ),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
+          // top row: back icon + centered title
           Row(
             children: [
               IconButton(
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: () => Navigator.pop(context),
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
               ),
               const Expanded(
                 child: Center(
                   child: Text(
-                    'Tambah Catatan Klinis',
+                    'Batas Normal Pasien',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 20,
+                      fontSize: 22,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 48),
+              const SizedBox(width: 48), // spacer supaya title tetap centered
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
+          // white card (contains avatar, info, and the blue button)
           Container(
-            margin: const EdgeInsets.only(top: 6),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
@@ -448,64 +450,82 @@ class _ClinicalNoteFormPageState extends State<ClinicalNoteFormPage> {
                 ),
               ],
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: AppColors.lightBlue,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: AppColors.veryLightBlue,
-                      width: 4,
-                    ),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 6,
-                        offset: Offset(0, 3),
+                Row(
+                  children: [
+                    Container(
+                      width: 64,
+                      height: 90,
+                      decoration: BoxDecoration(
+                        color: AppColors.lightBlue,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppColors.veryLightBlue,
+                          width: 4,
+                        ),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 6,
+                            offset: Offset(0, 3),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: const Center(
-                    child: Text(
-                      'AS',
-                      style: TextStyle(
-                        color: AppColors.primaryBlue,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Text(
-                        'Angelica Sabi Gita',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
+                      child: const Center(
+                        child: Text(
+                          'AS',
+                          style: TextStyle(
+                            color: AppColors.primaryBlue,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
                         ),
                       ),
-                      SizedBox(height: 6),
-                      Text(
-                        '32 tahun • Perempuan',
-                        style: TextStyle(fontSize: 13, color: AppColors.dark2),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Angelica Sabi Gita',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            '32 tahun • Perempuan',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.dark2,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.veryLightBlue,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Text(
+                              'DM Tipe 2',
+                              style: TextStyle(
+                                color: AppColors.primaryBlue,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      SizedBox(height: 8),
-                      SizedBox(
-                        height: 28,
-                        child: Chip(
-                          label: Text('DM Tipe 2'),
-                          backgroundColor: AppColors.veryLightBlue,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ],
             ),
