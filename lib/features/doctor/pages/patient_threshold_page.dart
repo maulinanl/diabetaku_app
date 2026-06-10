@@ -132,11 +132,8 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
         top: false,
         child: Column(
           children: [
-            // header (same style as detail page header, without action button)
             _buildHeader(),
-
             const SizedBox(height: 12),
-
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.symmetric(
@@ -161,7 +158,6 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
                       ),
                       child: Column(
                         children: [
-                          // header row title + edit button (or reset)
                           Row(
                             children: [
                               Row(
@@ -222,8 +218,6 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
                             ],
                           ),
                           const SizedBox(height: 12),
-
-                          // display or editor
                           if (!editing)
                             Row(
                               children: [
@@ -462,9 +456,6 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
     );
   }
 
-  // header same style as patient detail but without the action button
-  // ...existing code...
-  // header same style as patient detail but without the action button
   Widget _buildHeader() {
     return Container(
       height: 210,
@@ -479,7 +470,6 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // top row: back icon + centered title
           Row(
             children: [
               IconButton(
@@ -498,11 +488,10 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
                   ),
                 ),
               ),
-              const SizedBox(width: 48), // spacer supaya title tetap centered
+              const SizedBox(width: 48),
             ],
           ),
           const SizedBox(height: 12),
-          // white card (contains avatar, info, and the blue button)
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),

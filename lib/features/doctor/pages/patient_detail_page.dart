@@ -23,31 +23,35 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.primaryBlue,
       body: SafeArea(
         top: false,
         child: Column(
           children: [
             _buildHeader(),
+
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 24),
-                    _buildSummaryCards(),
-                    const SizedBox(height: 20),
-                    _buildThresholdSection(),
-                    const SizedBox(height: 20),
-                    _buildTabs(),
-                    const SizedBox(height: 14),
-                    _buildPeriods(),
-                    const SizedBox(height: 20),
-                    _buildDynamicContent(),
-                    const SizedBox(height: 24),
-                    _buildDisconnectButton(),
-                  ],
+              child: Container(
+                color: AppColors.background,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 24),
+                      _buildSummaryCards(),
+                      const SizedBox(height: 20),
+                      _buildThresholdSection(),
+                      const SizedBox(height: 20),
+                      _buildTabs(),
+                      const SizedBox(height: 14),
+                      _buildPeriods(),
+                      const SizedBox(height: 20),
+                      _buildDynamicContent(),
+                      const SizedBox(height: 24),
+                      _buildDisconnectButton(),
+                    ],
+                  ),
                 ),
               ),
             ),

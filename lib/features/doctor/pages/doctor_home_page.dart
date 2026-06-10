@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import 'patient_detail_page.dart';
-import '../widgets/doctor_bottom_nav.dart';
 
 class DoctorHomePage extends StatefulWidget {
-  const DoctorHomePage({Key? key}) : super(key: key);
+  final bool showNavbar;
+
+  const DoctorHomePage({super.key, this.showNavbar = true});
 
   @override
   _DoctorHomePageState createState() => _DoctorHomePageState();
 }
 
 class _DoctorHomePageState extends State<DoctorHomePage> {
-  int _currentIndex = 0;
-
   @override
   Widget build(BuildContext context) {
     final patients = [
@@ -51,7 +50,7 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
     ];
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.primaryBlue,
       body: SafeArea(
         top: false,
         child: Column(
@@ -59,6 +58,7 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
             Builder(
               builder: (context) {
                 final topPad = MediaQuery.of(context).padding.top;
+
                 return Container(
                   padding: EdgeInsets.fromLTRB(24, topPad + 28, 24, 32),
                   decoration: const BoxDecoration(
@@ -138,39 +138,39 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
             ),
 
             Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.all(24),
-                itemCount: patients.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 14),
-                itemBuilder: (context, index) {
-                  final p = patients[index];
-                  return GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const PatientDetailPage(),
-                        ),
-                      );
-                    },
-                    child: _PatientCard(
-                      initials: p[0] as String,
-                      name: p[1] as String,
-                      info: p[2] as String,
-                      type: p[3] as String,
-                      glucose: p[4] as String,
-                      isNormal: p[5] as bool,
-                    ),
-                  );
-                },
+              child: Container(
+                color: AppColors.background,
+                child: ListView.separated(
+                  padding: const EdgeInsets.all(24),
+                  itemCount: patients.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 14),
+                  itemBuilder: (context, index) {
+                    final p = patients[index];
+
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const PatientDetailPage(),
+                          ),
+                        );
+                      },
+                      child: _PatientCard(
+                        initials: p[0] as String,
+                        name: p[1] as String,
+                        info: p[2] as String,
+                        type: p[3] as String,
+                        glucose: p[4] as String,
+                        isNormal: p[5] as bool,
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
           ],
         ),
-      ),
-      bottomNavigationBar: DoctorBottomNavBar(
-        currentIndex: _currentIndex,
-        onTap: (i) => setState(() => _currentIndex = i),
       ),
     );
   }

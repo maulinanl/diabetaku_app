@@ -1,7 +1,17 @@
 import 'package:flutter/material.dart';
-import 'features/doctor/pages/doctor_home_page.dart';
+import 'package:flutter/services.dart';
+import 'core/theme/app_colors.dart';
+import 'features/doctor/pages/doctor_main_page.dart';
 
 void main() {
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: AppColors.primaryBlue,
+      statusBarIconBrightness: Brightness.light,
+      statusBarBrightness: Brightness.dark,
+    ),
+  );
+
   runApp(const DiabetAkuApp());
 }
 
@@ -10,13 +20,10 @@ class DiabetAkuApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       title: 'diabetAku',
       debugShowCheckedModeBanner: false,
-      home: const DoctorHomePage(),
+      home: DoctorMainPage(),
     );
   }
 }
-
-
-

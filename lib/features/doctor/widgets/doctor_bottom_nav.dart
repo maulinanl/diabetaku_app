@@ -4,104 +4,85 @@ import '../../../core/theme/app_colors.dart';
 class DoctorBottomNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
-  final List<_NavItem> items;
 
   const DoctorBottomNavBar({
-    Key? key,
+    super.key,
     required this.currentIndex,
     required this.onTap,
-    this.items = const [
-      _NavItem(icon: Icons.home_rounded, label: 'Beranda'),
-      _NavItem(icon: Icons.person_add_alt_1_rounded, label: 'Permintaan'),
-      _NavItem(icon: Icons.description_rounded, label: 'Riwayat'),
-      _NavItem(icon: Icons.person_rounded, label: 'Profil'),
-    ],
-  }) : super(key: key);
+  });
+
+  static const items = [
+    _NavItem(icon: Icons.home_rounded, label: 'Beranda'),
+    _NavItem(icon: Icons.person_add_alt_1_rounded, label: 'Permintaan'),
+    _NavItem(icon: Icons.description_rounded, label: 'Riwayat'),
+    _NavItem(icon: Icons.person_rounded, label: 'Profil'),
+  ];
 
   @override
-Widget build(BuildContext context) {
-  final bottomInset = MediaQuery.of(context).padding.bottom;
-  const baseHeight = 88.0;
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).padding.bottom;
 
-  return Container(
-    height: baseHeight + bottomInset,
-    padding: EdgeInsets.only(
-      left: 12,
-      right: 12,
-      top: 8,
-      bottom: bottomInset + 6,
-    ),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: const BorderRadius.only(
-        topLeft: Radius.circular(28),
-        topRight: Radius.circular(28),
+    return Container(
+      height: 95 + bottomInset,
+      padding: EdgeInsets.only(
+        left: 18,
+        right: 18,
+        top: 14,
+        bottom: bottomInset + 10,
       ),
-      boxShadow: const [
-        BoxShadow(
-          color: Colors.black12,
-          blurRadius: 12,
-          offset: Offset(0, -6),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(28),
+          topRight: Radius.circular(28),
         ),
-      ],
-    ),
-    child: Row(
-      children: List.generate(items.length, (i) {
-        final selected = i == currentIndex;
-        final item = items[i];
-
-        return Expanded(
-          child: InkWell(
-            onTap: () => onTap(i),
-            borderRadius: BorderRadius.circular(12),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? AppColors.veryLightBlue
-                        : Colors.transparent,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    item.icon,
-                    size: 22,
-                    color: selected
-                        ? AppColors.primaryBlue
-                        : AppColors.dark2,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  item.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    height: 1.1,
-                    color: selected
-                        ? AppColors.primaryBlue
-                        : AppColors.dark2,
-                    fontWeight:
-                        selected ? FontWeight.w600 : FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 10,
+            offset: Offset(0, -3),
           ),
-        );
-      }),
-    ),
-  );
+        ],
+      ),
+      child: Row(
+        children: List.generate(items.length, (index) {
+          final item = items[index];
+          final selected = currentIndex == index;
+
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => onTap(index),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    item.icon,
+                    size: 28,
+                    color: selected ? AppColors.primaryBlue : AppColors.dark3,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    item.label,
+                    style: TextStyle(
+                      fontSize: 14,
+                      height: 1.1,
+                      fontWeight: FontWeight.w500,
+                      color: selected ? AppColors.primaryBlue : AppColors.dark3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
 }
 
-}
- 
 class _NavItem {
   final IconData icon;
   final String label;
+
   const _NavItem({required this.icon, required this.label});
 }
