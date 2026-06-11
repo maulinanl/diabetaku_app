@@ -11,6 +11,9 @@ class DoctorHistoryPage extends StatefulWidget {
 
 class _DoctorHistoryPageState extends State<DoctorHistoryPage> {
   int selectedFilter = 0;
+  DateTimeRange? selectedRange;
+  final TextEditingController _searchController = TextEditingController();
+  String searchQuery = '';
 
   final filters = ['Semua', 'Catatan Klinis', '+ Rekomendasi'];
 
@@ -48,62 +51,132 @@ class _DoctorHistoryPageState extends State<DoctorHistoryPage> {
   ];
 
   @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final filtered = histories.where((item) {
-      if (selectedFilter == 0) return true;
-      if (selectedFilter == 1) return item['type'] == 'Catatan Klinis';
-      return item['type'] == 'Rekomendasi';
+      final name = item['name']!.toLowerCase();
+      final matchesSearch = name.contains(searchQuery.toLowerCase());
+
+      final matchesFilter = selectedFilter == 0
+          ? true
+          : selectedFilter == 1
+          ? item['type'] == 'Catatan Klinis'
+          : item['type'] == 'Rekomendasi';
+
+      return matchesSearch && matchesFilter;
     }).toList();
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.primaryBlue,
       body: SafeArea(
         top: false,
         child: Column(
           children: [
             _buildHeader(),
+
             Expanded(
-              child: filtered.isEmpty
-                  ? _buildEmptyState()
-                  : ListView(
-                      padding: const EdgeInsets.fromLTRB(18, 16, 18, 100),
-                      children: [
-                        const Text(
-                          '7 Jun 2025 - Hari ini',
-                          style: TextStyle(
-                            color: AppColors.primaryBlue,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        ...filtered.map((item) {
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 14),
-                            child: GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        const ClinicalNoteDetailPage(),
-                                  ),
-                                );
-                              },
-                              child: _HistoryCard(
-                                initial: item['initial']!,
-                                name: item['name']!,
-                                age: item['age']!,
-                                type: item['type']!,
-                                status: item['status']!,
-                                description: item['description']!,
-                                followUp: item['followUp']!,
+              child: Container(
+                color: AppColors.background,
+                child: Column(
+                  children: [
+                    _buildFilters(),
+
+                    Expanded(
+                      child: filtered.isEmpty
+                          ? _buildEmptyState()
+                          : ListView(
+                              padding: const EdgeInsets.fromLTRB(
+                                18,
+                                16,
+                                18,
+                                120,
                               ),
+                              children: [
+                                Row(
+                                  children: [
+                                    const Expanded(
+                                      child: Text(
+                                        '7 Jun 2025 - Hari ini',
+                                        style: TextStyle(
+                                          color: AppColors.primaryBlue,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                    OutlinedButton.icon(
+                                      onPressed: () async {
+                                        final picked =
+                                            await _showCompactDateRangePicker();
+
+                                        if (picked != null) {
+                                          setState(() {
+                                            selectedRange = picked;
+                                          });
+                                        }
+                                      },
+                                      icon: const Icon(
+                                        Icons.calendar_month,
+                                        size: 14,
+                                      ),
+                                      label: Text(
+                                        selectedRange == null
+                                            ? 'Rentang tanggal'
+                                            : '${selectedRange!.start.day}/${selectedRange!.start.month} - ${selectedRange!.end.day}/${selectedRange!.end.month}',
+                                      ),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: AppColors.primaryBlue,
+                                        backgroundColor: AppColors.white,
+                                        side: const BorderSide(
+                                          color: AppColors.light1,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+
+                                ...filtered.map((item) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 14),
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                const ClinicalNoteDetailPage(),
+                                          ),
+                                        );
+                                      },
+                                      child: _HistoryCard(
+                                        initial: item['initial']!,
+                                        name: item['name']!,
+                                        age: item['age']!,
+                                        type: item['type']!,
+                                        status: item['status']!,
+                                        description: item['description']!,
+                                        followUp: item['followUp']!,
+                                      ),
+                                    ),
+                                  );
+                                }),
+                              ],
                             ),
-                          );
-                        }),
-                      ],
                     ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
@@ -116,7 +189,7 @@ class _DoctorHistoryPageState extends State<DoctorHistoryPage> {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(18, topPad + 18, 18, 20),
+      padding: EdgeInsets.fromLTRB(28, topPad + 28, 28, 28),
       decoration: const BoxDecoration(
         color: AppColors.primaryBlue,
         borderRadius: BorderRadius.only(
@@ -130,66 +203,265 @@ class _DoctorHistoryPageState extends State<DoctorHistoryPage> {
             'Riwayat',
             style: TextStyle(
               color: Colors.white,
-              fontSize: 18,
+              fontSize: 22,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 26),
           TextField(
+            controller: _searchController,
+            onChanged: (value) {
+              setState(() {
+                searchQuery = value;
+              });
+            },
             decoration: InputDecoration(
               hintText: 'Cari nama pasien',
-              hintStyle: const TextStyle(fontSize: 13, color: AppColors.dark3),
+              hintStyle: const TextStyle(fontSize: 14, color: AppColors.dark3),
               prefixIcon: const Icon(
                 Icons.search,
                 color: AppColors.primaryBlue,
-                size: 20,
+                size: 22,
               ),
+              suffixIcon: searchQuery.isNotEmpty
+                  ? IconButton(
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() {
+                          searchQuery = '';
+                        });
+                      },
+                      icon: const Icon(
+                        Icons.close,
+                        color: AppColors.dark2,
+                        size: 18,
+                      ),
+                    )
+                  : null,
               filled: true,
               fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(vertical: 16),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(6),
                 borderSide: BorderSide.none,
               ),
             ),
           ),
-          const SizedBox(height: 14),
-          Row(
-            children: List.generate(filters.length, (index) {
-              final selected = selectedFilter == index;
+        ],
+      ),
+    );
+  }
 
-              return Expanded(
-                child: GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      selectedFilter = index;
-                    });
-                  },
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    padding: const EdgeInsets.symmetric(vertical: 9),
-                    decoration: BoxDecoration(
-                      color: selected ? AppColors.primaryBlue : Colors.white,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: selected
-                            ? AppColors.primaryBlue
-                            : AppColors.light1,
-                      ),
-                    ),
-                    child: Text(
-                      filters[index],
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: selected ? Colors.white : AppColors.primaryBlue,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+  Widget _buildFilters() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: List.generate(filters.length, (index) {
+            final selected = selectedFilter == index;
+
+            return GestureDetector(
+              onTap: () {
+                setState(() {
+                  selectedFilter = index;
+                });
+              },
+              child: Container(
+                margin: const EdgeInsets.only(right: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: selected ? AppColors.primaryBlue : AppColors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: selected ? AppColors.primaryBlue : AppColors.light1,
                   ),
                 ),
-              );
-            }),
+                child: Text(
+                  filters[index],
+                  style: TextStyle(
+                    color: selected ? Colors.white : AppColors.primaryBlue,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            );
+          }),
+        ),
+      ),
+    );
+  }
+
+  Future<DateTimeRange?> _showCompactDateRangePicker() async {
+    DateTime? startDate = selectedRange?.start;
+    DateTime? endDate = selectedRange?.end;
+    final now = DateTime.now();
+
+    return showDialog<DateTimeRange>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 18,
+                vertical: 24,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Container(
+                width: 360,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Pilih Rentang Tanggal',
+                      style: TextStyle(
+                        color: AppColors.primaryBlue,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _rangeBox(
+                            label: 'Mulai',
+                            value: startDate == null
+                                ? '-'
+                                : '${startDate!.day}/${startDate!.month}/${startDate!.year}',
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _rangeBox(
+                            label: 'Selesai',
+                            value: endDate == null
+                                ? '-'
+                                : '${endDate!.day}/${endDate!.month}/${endDate!.year}',
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    SizedBox(
+                      height: 330,
+                      child: Theme(
+                        data: Theme.of(context).copyWith(
+                          colorScheme: const ColorScheme.light(
+                            primary: AppColors.primaryBlue,
+                            onPrimary: Colors.white,
+                            surface: Colors.white,
+                            onSurface: AppColors.dark1,
+                          ),
+                        ),
+                        child: CalendarDatePicker(
+                          initialDate: startDate ?? now,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2030),
+                          onDateChanged: (date) {
+                            setDialogState(() {
+                              if (startDate == null ||
+                                  (startDate != null && endDate != null)) {
+                                startDate = date;
+                                endDate = null;
+                              } else if (date.isBefore(startDate!)) {
+                                endDate = startDate;
+                                startDate = date;
+                              } else {
+                                endDate = date;
+                              }
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(dialogContext),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.dark2,
+                              side: const BorderSide(color: AppColors.light1),
+                            ),
+                            child: const Text('Batal'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: startDate != null && endDate != null
+                                ? () {
+                                    Navigator.pop(
+                                      dialogContext,
+                                      DateTimeRange(
+                                        start: startDate!,
+                                        end: endDate!,
+                                      ),
+                                    );
+                                  }
+                                : null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primaryBlue,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                            ),
+                            child: const Text('Terapkan'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _rangeBox({required String label, required String value}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      decoration: BoxDecoration(
+        color: AppColors.veryLightBlue,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.light1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(color: AppColors.dark2, fontSize: 10),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppColors.primaryBlue,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -197,9 +469,11 @@ class _DoctorHistoryPageState extends State<DoctorHistoryPage> {
   }
 
   Widget _buildEmptyState() {
-    return const Center(
+    final isSearching = searchQuery.trim().isNotEmpty;
+
+    return Center(
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 40),
+        padding: const EdgeInsets.symmetric(horizontal: 40),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -207,24 +481,29 @@ class _DoctorHistoryPageState extends State<DoctorHistoryPage> {
               radius: 36,
               backgroundColor: AppColors.veryLightBlue,
               child: Icon(
-                Icons.history_toggle_off,
+                isSearching ? Icons.search_off : Icons.history_toggle_off,
                 color: AppColors.primaryBlue,
                 size: 36,
               ),
             ),
-            SizedBox(height: 18),
+            const SizedBox(height: 18),
             Text(
-              'Belum ada riwayat',
-              style: TextStyle(
+              isSearching ? 'Riwayat tidak ditemukan' : 'Belum ada riwayat',
+              style: const TextStyle(
                 color: AppColors.dark1,
                 fontWeight: FontWeight.w600,
               ),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
-              'Catatan klinis dengan rekomendasi akan muncul di sini setelah kamu membuat catatan klinis untuk pasien.',
+              isSearching
+                  ? 'Tidak ada riwayat untuk nama pasien yang kamu cari.'
+                  : 'Catatan klinis dengan rekomendasi akan muncul di sini setelah kamu membuat catatan klinis untuk pasien.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.primaryBlue, fontSize: 12),
+              style: const TextStyle(
+                color: AppColors.primaryBlue,
+                fontSize: 12,
+              ),
             ),
           ],
         ),

@@ -1,79 +1,210 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import 'role_selection_page.dart';
+import '../../doctor/pages/doctor_main_page.dart';
+import '../../patient/pages/patient_main_page.dart';
+import '../../family/pages/family_main_page.dart';
+import 'forgot_password_page.dart';
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
+
+  bool obscurePassword = true;
+  bool isFormValid = false;
+
+  bool showPendingVerification = false;
+  bool showLoginError = false;
+
+  void _handleLogin() {
+    final email = emailController.text.trim().toLowerCase();
+
+    if (email.contains('dokter')) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const DoctorMainPage()),
+      );
+    } else if (email.contains('pasien')) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const PatientMainPage()),
+      );
+    } else if (email.contains('keluarga') || email.contains('family')) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const FamilyMainPage()),
+      );
+    } else {
+      setState(() {
+        showLoginError = true;
+        showPendingVerification = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Demo login:\n'
+            'dokter@gmail.com\n'
+            'pasien@gmail.com\n'
+            'keluarga@gmail.com',
+          ),
+        ),
+      );
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    emailController.addListener(_validateForm);
+    passwordController.addListener(_validateForm);
+  }
+
+  void _validateForm() {
+    setState(() {
+      isFormValid =
+          emailController.text.trim().isNotEmpty &&
+          passwordController.text.trim().isNotEmpty;
+    });
+  }
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 24,
-            vertical: 20,
-          ),
+          padding: const EdgeInsets.fromLTRB(28, 28, 28, 24),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 20),
-
-              Image.asset(
-                'assets/images/logo.png',
-                width: 140,
-              ),
-
-              const SizedBox(height: 12),
-
-              const Text(
-                'Selamat Datang\nMasuk Akun',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
+              const Center(
+                child: Text(
+                  'Selamat Datang',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.dark1,
+                  ),
                 ),
               ),
-
-              const SizedBox(height: 32),
-
-              TextFormField(
-                decoration: InputDecoration(
-                  hintText: 'Email atau phone',
-                  filled: true,
-                  fillColor: const Color(0xFFF5F7FB),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+              const Center(
+                child: Text(
+                  'Masuk Akun',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primaryBlue,
                   ),
                 ),
               ),
 
               const SizedBox(height: 16),
 
+              Center(child: Image.asset('assets/images/logo.png', width: 210)),
+
+              const SizedBox(height: 34),
+
+              if (showPendingVerification) ...[
+                _infoBox(
+                  icon: Icons.access_time,
+                  title: 'Akun menunggu verifikasi admin',
+                  message:
+                      'Akun sedang dalam proses verifikasi admin (1–2 hari kerja). Anda akan menerima notifikasi email setelah disetujui.',
+                  color: AppColors.primaryBlue,
+                  bgColor: AppColors.veryLightBlue,
+                ),
+                const SizedBox(height: 18),
+              ],
+
+              if (showLoginError) ...[
+                _infoBox(
+                  icon: Icons.info_outline,
+                  title: 'Email atau kata sandi salah.',
+                  message:
+                      'Percobaan ke-3 dari 5. Akun dikunci 30 menit setelah 5 kali gagal.',
+                  color: AppColors.red,
+                  bgColor: AppColors.lightRed,
+                ),
+                const SizedBox(height: 18),
+              ],
+
+              const Text(
+                'Email',
+                style: TextStyle(
+                  color: AppColors.dark2,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 8),
+
               TextFormField(
-                obscureText: true,
-                decoration: InputDecoration(
-                  hintText: 'Password',
-                  filled: true,
-                  fillColor: const Color(0xFFF5F7FB),
-                  suffixIcon: const Icon(Icons.visibility_off),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+                controller: emailController,
+                decoration: _inputDecoration(hint: 'Email atau phone'),
+              ),
+
+              const SizedBox(height: 18),
+
+              const Text(
+                'Password',
+                style: TextStyle(
+                  color: AppColors.dark2,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              TextFormField(
+                controller: passwordController,
+                obscureText: obscurePassword,
+                decoration: _inputDecoration(
+                  hint: 'Password',
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      obscurePassword
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        obscurePassword = !obscurePassword;
+                      });
+                    },
                   ),
                 ),
               ),
 
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
 
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
-                  onPressed: () {},
-                  child: const Text(
-                    'Lupa kata sandi?',
-                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ForgotPasswordPage(),
+                      ),
+                    );
+                  },
+                  child: const Text('Lupa kata sandi?'),
                 ),
               ),
 
@@ -83,75 +214,175 @@ class LoginPage extends StatelessWidget {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: isFormValid ? _handleLogin : null,
+                  // onPressed: isFormValid
+                  //     ? () {
+                  //         Navigator.pushReplacement(
+                  //           context,
+                  //           MaterialPageRoute(
+                  //             builder: (_) => const DoctorMainPage(),
+                  //           ),
+                  //         );
+                  //       }
+                  //     : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2F80ED),
+                    backgroundColor: AppColors.primaryBlue,
+                    disabledBackgroundColor: const Color(0xFFAFCBEA),
+                    disabledForegroundColor: AppColors.white,
                     foregroundColor: Colors.white,
+                    elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(6),
                     ),
                   ),
-                  child: const Text('Masuk'),
+                  child: const Text(
+                    'Masuk',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                 ),
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
 
               const Row(
                 children: [
-                  Expanded(child: Divider()),
+                  Expanded(child: Divider(color: AppColors.dark2)),
                   Padding(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: 10),
-                    child: Text('atau'),
+                    padding: EdgeInsets.symmetric(horizontal: 10),
+                    child: Text(
+                      'atau',
+                      style: TextStyle(color: AppColors.dark1),
+                    ),
                   ),
-                  Expanded(child: Divider()),
+                  Expanded(child: Divider(color: AppColors.dark2)),
                 ],
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
 
               SizedBox(
                 width: double.infinity,
                 height: 50,
-                child: OutlinedButton(
-  onPressed: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const RoleSelectionPage(),
-      ),
-    );
-  },
-  child: const Text('Daftar Akun Baru'),
-),
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const RoleSelectionPage(),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryBlue,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                  child: const Text(
+                    'Daftar Akun Baru',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
               ),
 
-              const SizedBox(height: 30),
+              const SizedBox(height: 34),
 
-              Row(
-                mainAxisAlignment:
-                    MainAxisAlignment.center,
-                children: [
-                  const Text(
-                    'Butuh bantuan? ',
-                  ),
-                  GestureDetector(
-                    onTap: () {},
-                    child: const Text(
-                      'Hubungi admin',
-                      style: TextStyle(
-                        color: Colors.blue,
-                        fontWeight: FontWeight.bold,
+              Center(
+                child: RichText(
+                  text: const TextSpan(
+                    text: 'Butuh bantuan? ',
+                    style: TextStyle(color: AppColors.dark1, fontSize: 13),
+                    children: [
+                      TextSpan(
+                        text: 'Hubungi admin',
+                        style: TextStyle(
+                          color: AppColors.primaryBlue,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                  )
-                ],
-              )
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration({
+    required String hint,
+    bool error = false,
+    Widget? suffixIcon,
+  }) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: AppColors.dark4, fontSize: 14),
+      suffixIcon: suffixIcon,
+      filled: true,
+      fillColor: AppColors.white,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(6),
+        borderSide: BorderSide(color: error ? AppColors.red : AppColors.light1),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(6),
+        borderSide: BorderSide(
+          color: error ? AppColors.red : AppColors.primaryBlue,
+          width: 1.4,
+        ),
+      ),
+    );
+  }
+
+  Widget _infoBox({
+    required IconData icon,
+    required String title,
+    required String message,
+    required Color color,
+    required Color bgColor,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                text: title,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+                children: [
+                  TextSpan(
+                    text: '\n$message',
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w400,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

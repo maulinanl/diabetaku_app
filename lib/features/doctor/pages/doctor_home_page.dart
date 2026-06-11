@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import 'patient_detail_page.dart';
+import 'doctor_notification_page.dart';
 
 class DoctorHomePage extends StatefulWidget {
   final bool showNavbar;
@@ -12,6 +13,16 @@ class DoctorHomePage extends StatefulWidget {
 }
 
 class _DoctorHomePageState extends State<DoctorHomePage> {
+  final TextEditingController _searchController = TextEditingController();
+
+  String searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final patients = [
@@ -48,6 +59,12 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
         true,
       ],
     ];
+
+    final filteredPatients = patients.where((patient) {
+      final name = patient[1].toString().toLowerCase();
+
+      return name.contains(searchQuery.toLowerCase());
+    }).toList();
 
     return Scaffold(
       backgroundColor: AppColors.primaryBlue,
@@ -103,7 +120,15 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
                               borderRadius: BorderRadius.circular(14),
                             ),
                             child: IconButton(
-                              onPressed: () {},
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        const DoctorNotificationPage(),
+                                  ),
+                                );
+                              },
                               icon: const Icon(
                                 Icons.notifications_none_rounded,
                                 color: AppColors.primaryBlue,
@@ -114,6 +139,12 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
                       ),
                       const SizedBox(height: 28),
                       TextField(
+                        controller: _searchController,
+                        onChanged: (value) {
+                          setState(() {
+                            searchQuery = value;
+                          });
+                        },
                         decoration: InputDecoration(
                           hintText: 'Cari nama pasien',
                           prefixIcon: const Icon(
@@ -140,33 +171,55 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
             Expanded(
               child: Container(
                 color: AppColors.background,
-                child: ListView.separated(
-                  padding: const EdgeInsets.all(24),
-                  itemCount: patients.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 14),
-                  itemBuilder: (context, index) {
-                    final p = patients[index];
 
-                    return GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const PatientDetailPage(),
-                          ),
-                        );
-                      },
-                      child: _PatientCard(
-                        initials: p[0] as String,
-                        name: p[1] as String,
-                        info: p[2] as String,
-                        type: p[3] as String,
-                        glucose: p[4] as String,
-                        isNormal: p[5] as bool,
+                child: filteredPatients.isEmpty
+                    ? const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.search_off,
+                              size: 70,
+                              color: AppColors.primaryBlue,
+                            ),
+                            SizedBox(height: 12),
+                            Text(
+                              'Pasien tidak ditemukan',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.dark1,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.all(24),
+                        itemCount: filteredPatients.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 14),
+                        itemBuilder: (context, index) {
+                          final p = filteredPatients[index];
+
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const PatientDetailPage(),
+                                ),
+                              );
+                            },
+                            child: _PatientCard(
+                              initials: p[0] as String,
+                              name: p[1] as String,
+                              info: p[2] as String,
+                              type: p[3] as String,
+                              glucose: p[4] as String,
+                              isNormal: p[5] as bool,
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
               ),
             ),
           ],

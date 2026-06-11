@@ -25,25 +25,34 @@ class _ClinicalNoteFormPageState extends State<ClinicalNoteFormPage> {
 
   Future<void> _pickFollowUpDate() async {
     final now = DateTime.now();
+
     final picked = await showDatePicker(
       context: context,
       initialDate: _followUpDate ?? now,
-      firstDate: DateTime(now.year - 5),
-      lastDate: DateTime(now.year + 5),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
       builder: (context, child) {
-        final mq = MediaQuery.of(context).size;
-        final maxWidth = mq.width * 0.94;
-        final constrainedWidth = maxWidth > 420 ? 420.0 : maxWidth;
-        return Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: constrainedWidth),
-            child: Material(color: Colors.transparent, child: child!),
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primaryBlue,
+            ),
+          ),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420, maxHeight: 520),
+              child: Material(color: Colors.transparent, child: child!),
+            ),
           ),
         );
       },
     );
 
-    if (picked != null) setState(() => _followUpDate = picked);
+    if (picked != null) {
+      setState(() {
+        _followUpDate = picked;
+      });
+    }
   }
 
   void _save() {
@@ -354,44 +363,39 @@ class _ClinicalNoteFormPageState extends State<ClinicalNoteFormPage> {
   Widget _buildFollowUpCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.light1),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.calendar_today, color: AppColors.primaryBlue),
-          const SizedBox(width: 12),
-          Expanded(
-            child: GestureDetector(
-              onTap: _pickFollowUpDate,
-              child: Container(
-                height: 44,
-                alignment: Alignment.centerLeft,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: AppColors.veryLightBlue,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  _followUpDate == null
-                      ? 'Tanggal Follow Up'
-                      : _formatDate(_followUpDate!),
-                  style: TextStyle(
-                    color: _followUpDate == null
-                        ? AppColors.dark2
-                        : AppColors.dark1,
-                  ),
-                ),
+          const Text(
+            'Jadwal Kontrol',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 12),
+
+          OutlinedButton.icon(
+            onPressed: _pickFollowUpDate,
+            icon: const Icon(Icons.calendar_month, size: 18),
+            label: Text(
+              _followUpDate == null
+                  ? 'Pilih Tanggal Kontrol'
+                  : _formatDate(_followUpDate!),
+            ),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 48),
+              alignment: Alignment.centerLeft,
+              foregroundColor: AppColors.primaryBlue,
+              backgroundColor: Colors.white,
+              side: const BorderSide(color: AppColors.light1),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
               ),
             ),
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            onPressed: () => setState(() => _followUpDate = null),
-            icon: const Icon(Icons.refresh, color: AppColors.primaryBlue),
           ),
         ],
       ),

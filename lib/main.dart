@@ -1,7 +1,7 @@
+import 'package:diabetaku_app/features/auth/pages/splash_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'core/theme/app_colors.dart';
-import 'features/doctor/pages/doctor_main_page.dart';
 
 void main() {
   SystemChrome.setSystemUIOverlayStyle(
@@ -23,7 +23,7 @@ class DiabetAkuApp extends StatelessWidget {
     return const MaterialApp(
       title: 'diabetAku',
       debugShowCheckedModeBanner: false,
-      home: DoctorMainPage(),
+      home: SplashPage(),
     );
   }
 }

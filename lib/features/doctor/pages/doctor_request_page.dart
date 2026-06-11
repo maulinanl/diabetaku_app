@@ -35,7 +35,7 @@ class _DoctorRequestPageState extends State<DoctorRequestPage> {
       'initial': 'WP',
       'name': 'Wahyu Prasetyo',
       'info': 'DM Tipe 2 • 47 tahun • Laki-laki',
-      'diagnosis': 'Diagnosis: 2019',
+      'diagnosis': 'Diterima: 7 Jun 2025',
       'time': '2 jam lalu',
     },
   ];
@@ -55,99 +55,76 @@ class _DoctorRequestPageState extends State<DoctorRequestPage> {
     final data = selectedTab == 0
         ? pendingRequests
         : selectedTab == 1
-        ? acceptedRequests
-        : rejectedRequests;
+            ? acceptedRequests
+            : rejectedRequests;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.primaryBlue,
       body: SafeArea(
+        top: false,
         child: Column(
           children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 18),
-              color: AppColors.primaryBlue,
-              child: const Center(
-                child: Text(
-                  'Permintaan Koneksi',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: List.generate(tabs.length, (index) {
-                  final selected = selectedTab == index;
-
-                  return Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          selectedTab = index;
-                        });
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        padding: const EdgeInsets.symmetric(vertical: 9),
-                        decoration: BoxDecoration(
-                          color: selected
-                              ? AppColors.primaryBlue
-                              : AppColors.white,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.light1),
-                        ),
+            _buildHeader(context),
+            Expanded(
+              child: Container(
+                color: AppColors.background,
+                child: Column(
+                  children: [
+                    _buildTabs(),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
                         child: Text(
-                          tabs[index],
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: selected
-                                ? Colors.white
-                                : AppColors.primaryBlue,
-                            fontSize: 12,
+                          selectedTab == 0
+                              ? 'KONEKSI MENUNGGU - ${data.length}'
+                              : selectedTab == 1
+                                  ? 'KONEKSI DITERIMA - ${data.length}'
+                                  : 'KONEKSI DITOLAK - ${data.length}',
+                          style: const TextStyle(
+                            color: AppColors.primaryBlue,
+                            fontSize: 11,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
                     ),
-                  );
-                }),
-              ),
-            ),
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: data.isEmpty
+                          ? _emptyState()
+                          : ListView.separated(
+                              padding:
+                                  const EdgeInsets.fromLTRB(18, 0, 18, 120),
+                              itemCount: data.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: 14),
+                              itemBuilder: (context, index) {
+                                final item = data[index];
 
-            Expanded(
-              child: data.isEmpty
-                  ? _emptyState()
-                  : ListView.separated(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: data.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 14),
-                      itemBuilder: (context, index) {
-                        final item = data[index];
-
-                        return _RequestCard(
-                          initial: item['initial']!,
-                          name: item['name']!,
-                          info: item['info']!,
-                          diagnosis: item['diagnosis']!,
-                          time: item['time']!,
-                          status: selectedTab,
-                          onDetail: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const RequestDetailPage(),
-                              ),
-                            );
-                          },
-                        );
-                      },
+                                return _RequestCard(
+                                  initial: item['initial']!,
+                                  name: item['name']!,
+                                  info: item['info']!,
+                                  diagnosis: item['diagnosis']!,
+                                  time: item['time']!,
+                                  status: selectedTab,
+                                  onDetail: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const RequestDetailPage(),
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                            ),
                     ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
@@ -155,34 +132,104 @@ class _DoctorRequestPageState extends State<DoctorRequestPage> {
     );
   }
 
+  Widget _buildHeader(BuildContext context) {
+    final topPad = MediaQuery.of(context).padding.top;
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(20, topPad + 22, 20, 26),
+      decoration: const BoxDecoration(
+        color: AppColors.primaryBlue,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(22),
+          bottomRight: Radius.circular(22),
+        ),
+      ),
+      child: const Center(
+        child: Text(
+          'Permintaan Koneksi',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabs() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+      child: Row(
+        children: List.generate(tabs.length, (index) {
+          final selected = selectedTab == index;
+
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => selectedTab = index),
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 5),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: selected ? AppColors.primaryBlue : AppColors.white,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: selected ? AppColors.primaryBlue : AppColors.light1,
+                  ),
+                ),
+                child: Text(
+                  tabs[index],
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: selected ? Colors.white : AppColors.primaryBlue,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
   Widget _emptyState() {
     return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.person_add_alt_1_rounded,
-            size: 72,
-            color: AppColors.primaryBlue,
-          ),
-          SizedBox(height: 18),
-          Text(
-            'Tidak ada Permintaan',
-            style: TextStyle(
-              color: AppColors.dark1,
-              fontWeight: FontWeight.w600,
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 44),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircleAvatar(
+              radius: 38,
+              backgroundColor: AppColors.veryLightBlue,
+              child: Icon(
+                Icons.person_add_alt_1_rounded,
+                size: 42,
+                color: AppColors.primaryBlue,
+              ),
             ),
-          ),
-          SizedBox(height: 8),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 40),
-            child: Text(
+            SizedBox(height: 18),
+            Text(
+              'Tidak ada Permintaan',
+              style: TextStyle(
+                color: AppColors.dark1,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
               'Pasien yang ingin terhubung denganmu akan muncul di sini untuk kamu terima atau tolak.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.primaryBlue, fontSize: 12),
+              style: TextStyle(
+                color: AppColors.primaryBlue,
+                fontSize: 12,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -218,9 +265,10 @@ class _RequestCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.white,
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.light1),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.10),
+              color: Colors.black.withOpacity(0.08),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),
@@ -231,11 +279,14 @@ class _RequestCard extends StatelessWidget {
             Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: AppColors.lightBlue,
+                  radius: 25,
+                  backgroundColor:
+                      isRejected ? AppColors.lightRed : AppColors.lightBlue,
                   child: Text(
                     initial,
-                    style: const TextStyle(
-                      color: AppColors.primaryBlue,
+                    style: TextStyle(
+                      color:
+                          isRejected ? AppColors.red : AppColors.primaryBlue,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -250,6 +301,7 @@ class _RequestCard extends StatelessWidget {
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           color: AppColors.dark1,
+                          fontSize: 14,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -272,24 +324,41 @@ class _RequestCard extends StatelessWidget {
                     fontSize: 11,
                   ),
                 ),
+                const SizedBox(width: 4),
+                const Icon(
+                  Icons.chevron_right,
+                  size: 18,
+                  color: AppColors.dark3,
+                ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(9),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
               decoration: BoxDecoration(
                 color: isRejected
                     ? AppColors.lightRed
                     : AppColors.veryLightBlue,
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: Text(
-                diagnosis,
-                style: TextStyle(
-                  color: isRejected ? AppColors.red : AppColors.primaryBlue,
-                  fontSize: 11,
-                ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.calendar_today_outlined,
+                    size: 13,
+                    color: isRejected ? AppColors.red : AppColors.primaryBlue,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    diagnosis,
+                    style: TextStyle(
+                      color:
+                          isRejected ? AppColors.red : AppColors.primaryBlue,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
               ),
             ),
             if (status == 0) ...[
@@ -299,26 +368,10 @@ class _RequestCard extends StatelessWidget {
                   Expanded(
                     child: SizedBox(
                       height: 40,
-                      child: OutlinedButton(
+                      child: ElevatedButton.icon(
                         onPressed: () {},
-                        style: OutlinedButton.styleFrom(
-                          backgroundColor: AppColors.red,
-                          foregroundColor: Colors.white,
-                          side: const BorderSide(color: AppColors.light1),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                        ),
-                        child: const Text('Tolak'),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: SizedBox(
-                      height: 40,
-                      child: ElevatedButton(
-                        onPressed: () {},
+                        icon: const Icon(Icons.check, size: 16),
+                        label: const Text('Terima'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryBlue,
                           foregroundColor: Colors.white,
@@ -327,7 +380,25 @@ class _RequestCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(6),
                           ),
                         ),
-                        child: const Text('Terima'),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: SizedBox(
+                      height: 40,
+                      child: OutlinedButton.icon(
+                        onPressed: () {},
+                        icon: const Icon(Icons.close, size: 16),
+                        label: const Text('Tolak'),
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: AppColors.red,
+                          side: const BorderSide(color: AppColors.red),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -347,145 +418,153 @@ class RequestDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.primaryBlue,
       body: SafeArea(
+        top: false,
         child: Column(
           children: [
-            Container(
-              padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
-              decoration: const BoxDecoration(
-                color: AppColors.primaryBlue,
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(18),
-                  bottomRight: Radius.circular(18),
-                ),
-              ),
-              child: Column(
-                children: [
-                  Row(
+            _buildHeader(context),
+            Expanded(
+              child: Container(
+                color: AppColors.background,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
                     children: [
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.arrow_back, color: Colors.white),
-                      ),
-                      const Expanded(
-                        child: Text(
-                          'Permintaan Koneksi',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
+                      _dataPatientCard(),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 44,
+                        child: ElevatedButton(
+                          onPressed: () {},
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primaryBlue,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
                           ),
+                          child: const Text('Terima permintaan'),
                         ),
                       ),
-                      const SizedBox(width: 48),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 44,
+                        child: OutlinedButton(
+                          onPressed: () {},
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.red,
+                            side: const BorderSide(color: AppColors.red),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                          ),
+                          child: const Text('Tolak permintaan'),
+                        ),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.18),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Row(
-                      children: [
-                        CircleAvatar(
-                          backgroundColor: AppColors.lightBlue,
-                          child: Icon(
-                            Icons.person_add_alt_1,
-                            color: AppColors.primaryBlue,
-                          ),
-                        ),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Permintaan koneksi baru\n7 Jun 2025\n08:15',
-                            style: TextStyle(color: Colors.white, fontSize: 12),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.light1),
                 ),
-                child: const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Data Pasien',
-                      style: TextStyle(
-                        color: AppColors.primaryBlue,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 14),
-                    _DetailRow(label: 'Nama', value: 'Wahyu Tri Utomo'),
-                    _DetailRow(label: 'Tipe DM', value: 'DM Tipe 2'),
-                    _DetailRow(label: 'Usia', value: '47 tahun'),
-                    _DetailRow(label: 'Tahun diagnosis', value: '2019'),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                children: [
-                  SizedBox(
-                    width: double.infinity,
-                    height: 46,
-                    child: ElevatedButton(
-                      onPressed: () {},
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryBlue,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                      ),
-                      child: const Text('Terima permintaan'),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 46,
-                    child: ElevatedButton(
-                      onPressed: () {},
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.red,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                      ),
-                      child: const Text('Tolak permintaan'),
-                    ),
-                  ),
-                ],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context) {
+    final topPad = MediaQuery.of(context).padding.top;
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(16, topPad + 12, 16, 24),
+      decoration: const BoxDecoration(
+        color: AppColors.primaryBlue,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(22),
+          bottomRight: Radius.circular(22),
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+              ),
+              const Expanded(
+                child: Text(
+                  'Permintaan Koneksi',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 48),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: AppColors.lightBlue,
+                  child: Icon(
+                    Icons.person_add_alt_1,
+                    color: AppColors.primaryBlue,
+                  ),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Permintaan koneksi baru\n7 Jun 2025\n08:15',
+                    style: TextStyle(color: Colors.white, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dataPatientCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.light1),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Data Pasien',
+            style: TextStyle(
+              color: AppColors.primaryBlue,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 14),
+          _DetailRow(label: 'Nama', value: 'Wahyu Tri Utomo'),
+          _DetailRow(label: 'Tipe DM', value: 'DM Tipe 2'),
+          _DetailRow(label: 'Usia', value: '47 tahun'),
+          _DetailRow(label: 'Tahun diagnosis', value: '2019'),
+        ],
       ),
     );
   }
@@ -495,7 +574,10 @@ class _DetailRow extends StatelessWidget {
   final String label;
   final String value;
 
-  const _DetailRow({required this.label, required this.value});
+  const _DetailRow({
+    required this.label,
+    required this.value,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -506,7 +588,7 @@ class _DetailRow extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.primaryBlue,
                 fontSize: 12,
               ),
@@ -514,7 +596,10 @@ class _DetailRow extends StatelessWidget {
           ),
           Text(
             value,
-            style: const TextStyle(color: AppColors.dark1, fontSize: 12),
+            style: TextStyle(
+              color: AppColors.dark1,
+              fontSize: 12,
+            ),
           ),
         ],
       ),

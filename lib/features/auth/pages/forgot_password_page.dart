@@ -1,0 +1,128 @@
+import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
+import 'email_sent_page.dart';
+
+class ForgotPasswordPage extends StatefulWidget {
+  const ForgotPasswordPage({super.key});
+
+  @override
+  State<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
+}
+
+class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
+  final emailController = TextEditingController();
+
+  bool get isValid => emailController.text.trim().isNotEmpty;
+
+  @override
+  void initState() {
+    super.initState();
+    emailController.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(28, 12, 28, 24),
+          child: Column(
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.arrow_back, color: AppColors.dark2),
+                ),
+              ),
+              const SizedBox(height: 40),
+              const Icon(
+                Icons.lock_outline,
+                size: 64,
+                color: AppColors.primaryBlue,
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'Lupa Kata Sandi',
+                style: TextStyle(
+                  color: AppColors.primaryBlue,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Masukkan email yang terdaftar untuk mengatur ulang kata sandi.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.dark2,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 28),
+              TextFormField(
+                controller: emailController,
+                decoration: InputDecoration(
+                  labelText: 'Email',
+                  hintText: 'Masukkan alamat emailmu',
+                  filled: true,
+                  fillColor: AppColors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(6),
+                    borderSide: const BorderSide(color: AppColors.light1),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(6),
+                    borderSide: const BorderSide(color: AppColors.light1),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: ElevatedButton(
+                  onPressed: isValid
+                      ? () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const EmailSentPage(),
+                            ),
+                          );
+                        }
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryBlue,
+                    disabledBackgroundColor: const Color(0xFFAFCBEA),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                  child: const Text('Kirim'),
+                ),
+              ),
+              const SizedBox(height: 14),
+              TextButton(
+                onPressed: () {},
+                child: const Text(
+                  'Ingat kata sandi? Masuk',
+                  style: TextStyle(color: AppColors.primaryBlue),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

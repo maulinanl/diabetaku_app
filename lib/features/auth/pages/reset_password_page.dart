@@ -1,0 +1,233 @@
+import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
+import 'login_page.dart';
+
+class ResetPasswordPage extends StatefulWidget {
+  const ResetPasswordPage({super.key});
+
+  @override
+  State<ResetPasswordPage> createState() => _ResetPasswordPageState();
+}
+
+class _ResetPasswordPageState extends State<ResetPasswordPage> {
+  final passwordController = TextEditingController();
+  final confirmController = TextEditingController();
+
+  bool obscurePassword = true;
+  bool obscureConfirm = true;
+
+  bool get isValid =>
+      passwordController.text.trim().length >= 8 &&
+      confirmController.text.trim() == passwordController.text.trim();
+
+  @override
+  void initState() {
+    super.initState();
+    passwordController.addListener(() => setState(() {}));
+    confirmController.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    passwordController.dispose();
+    confirmController.dispose();
+    super.dispose();
+  }
+
+  void _showSuccessSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(28),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircleAvatar(
+                radius: 36,
+                backgroundColor: Color(0xFFEAFBF3),
+                child: Icon(
+                  Icons.lock_reset,
+                  color: Color(0xFF10C878),
+                  size: 36,
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'Kata Sandi Berhasil Diubah!',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.primaryBlue,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Kata sandi Anda telah berhasil diperbarui. Silakan gunakan kata sandi baru untuk masuk ke akun Anda.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.dark2,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 22),
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const LoginPage(),
+                      ),
+                      (route) => false,
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryBlue,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                  child: const Text('Masuk'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(28, 12, 28, 24),
+          child: Column(
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.arrow_back, color: AppColors.dark2),
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'Atur Ulang Kata Sandi',
+                style: TextStyle(
+                  color: AppColors.primaryBlue,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Masukkan kata sandi setidaknya 8 karakter',
+                style: TextStyle(
+                  color: AppColors.dark2,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 24),
+              TextFormField(
+                controller: passwordController,
+                obscureText: obscurePassword,
+                decoration: _inputDecoration(
+                  label: 'Kata Sandi',
+                  hint: 'Masukkan kata sandi baru',
+                  obscure: obscurePassword,
+                  onToggle: () {
+                    setState(() {
+                      obscurePassword = !obscurePassword;
+                    });
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: confirmController,
+                obscureText: obscureConfirm,
+                decoration: _inputDecoration(
+                  label: 'Konfirmasi Kata Sandi',
+                  hint: 'Konfirmasi kata sandi',
+                  obscure: obscureConfirm,
+                  onToggle: () {
+                    setState(() {
+                      obscureConfirm = !obscureConfirm;
+                    });
+                  },
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: ElevatedButton(
+                  onPressed: isValid ? _showSuccessSheet : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryBlue,
+                    disabledBackgroundColor: const Color(0xFFAFCBEA),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                  child: const Text('Atur Ulang Kata Sandi'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration({
+    required String label,
+    required String hint,
+    required bool obscure,
+    required VoidCallback onToggle,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      filled: true,
+      fillColor: AppColors.white,
+      suffixIcon: IconButton(
+        onPressed: onToggle,
+        icon: Icon(
+          obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+          color: AppColors.dark2,
+        ),
+      ),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(6),
+        borderSide: const BorderSide(color: AppColors.light1),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(6),
+        borderSide: const BorderSide(color: AppColors.light1),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(6),
+        borderSide: const BorderSide(color: AppColors.primaryBlue),
+      ),
+    );
+  }
+}
