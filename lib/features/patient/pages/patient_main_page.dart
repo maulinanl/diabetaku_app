@@ -1,13 +1,43 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import 'patient_notification_page.dart';
+import 'patient_connection_page.dart';
+import '../widgets/patient_bottom_nav.dart';
 
-class PatientMainPage extends StatelessWidget {
+class PatientMainPage extends StatefulWidget {
   const PatientMainPage({super.key});
 
   @override
+  State<PatientMainPage> createState() => _PatientMainPageState();
+}
+
+class _PatientMainPageState extends State<PatientMainPage> {
+  int currentIndex = 0;
+
+  final pages = const [
+    PatientHomePage(),
+    PatientConnectionPage(),
+    Center(child: Text('Riwayat')),
+    Center(child: Text('Profil')),
+  ];
+
+  @override
   Widget build(BuildContext context) {
-    return const PatientHomePage();
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: pages[currentIndex],
+      bottomNavigationBar: PatientBottomNavBar(
+        currentIndex: currentIndex,
+        onTap: (index) {
+          setState(() {
+            currentIndex = index;
+          });
+        },
+        onAddTap: () {
+          // nanti buat input data harian pasien
+        },
+      ),
+    );
   }
 }
 
@@ -67,9 +97,9 @@ class _PatientHomePageState extends State<PatientHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.primaryBlue,
-      body: SafeArea(
+    return Container(
+      color: AppColors.primaryBlue,
+      child: SafeArea(
         top: false,
         child: Column(
           children: [
@@ -78,7 +108,7 @@ class _PatientHomePageState extends State<PatientHomePage> {
               child: Container(
                 color: AppColors.background,
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 120),
                   child: Column(
                     children: [
                       _doctorNoteCard(),
