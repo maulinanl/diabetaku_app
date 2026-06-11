@@ -3,6 +3,7 @@ import '../../../core/theme/app_colors.dart';
 import 'patient_notification_page.dart';
 import 'patient_connection_page.dart';
 import '../widgets/patient_bottom_nav.dart';
+import 'patient_add_data_page.dart';
 
 class PatientMainPage extends StatefulWidget {
   const PatientMainPage({super.key});
@@ -34,7 +35,10 @@ class _PatientMainPageState extends State<PatientMainPage> {
           });
         },
         onAddTap: () {
-          // nanti buat input data harian pasien
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const PatientAddDataPage()),
+          );
         },
       ),
     );
@@ -567,26 +571,6 @@ class _PatientHomePageState extends State<PatientHomePage> {
           color: textColor,
           fontSize: 15,
           fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  Widget _calendarBlock({
-    required String text,
-    required Color color,
-    required Color textColor,
-    required BorderRadius radius,
-  }) {
-    return Container(
-      alignment: Alignment.center,
-      decoration: BoxDecoration(color: color, borderRadius: radius),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: textColor,
-          fontSize: 16,
-          fontWeight: FontWeight.w700,
         ),
       ),
     );
