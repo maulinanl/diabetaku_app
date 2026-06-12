@@ -5,6 +5,7 @@ import 'patient_connection_page.dart';
 import '../widgets/patient_bottom_nav.dart';
 import 'patient_add_data_page.dart';
 import 'patient_history_page.dart';
+import 'patient_profile_page.dart';
 
 class PatientMainPage extends StatefulWidget {
   const PatientMainPage({super.key});
@@ -20,7 +21,7 @@ class _PatientMainPageState extends State<PatientMainPage> {
     PatientHomePage(),
     PatientConnectionPage(),
     PatientHistoryPage(),
-    Center(child: Text('Profil')),
+    PatientProfilePage(),
   ];
 
   @override
