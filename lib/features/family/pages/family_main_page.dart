@@ -5,6 +5,7 @@ import 'family_connection_page.dart';
 import 'family_notification_page.dart';
 import 'family_add_data_page.dart';
 import 'family_history_page.dart';
+import 'family_profile_page.dart';
 
 class FamilyMainPage extends StatefulWidget {
   const FamilyMainPage({super.key});
@@ -86,7 +87,7 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
     if (currentIndex == 0) return _familyHomeContent();
     if (currentIndex == 1) return const FamilyConnectionPage();
     if (currentIndex == 2) return const FamilyHistoryPage();
-    return const Center(child: Text('Profil'));
+    return const FamilyProfilePage();
   }
 
   Widget _familyHomeContent() {
