@@ -90,7 +90,6 @@ class _FamilyAddDataPageState extends State<FamilyAddDataPage> {
                 ),
                 itemBuilder: (context, index) {
                   final item = items[index];
-                  final patient = patients[selectedPatientIndex];
 
                   return InkWell(
                     borderRadius: BorderRadius.circular(12),
