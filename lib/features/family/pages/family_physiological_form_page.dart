@@ -1,0 +1,295 @@
+import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
+
+class FamilyPhysiologicalFormPage extends StatefulWidget {
+  final String patientInitial;
+  final String patientName;
+  final String patientInfo;
+
+  const FamilyPhysiologicalFormPage({
+    super.key,
+    required this.patientInitial,
+    required this.patientName,
+    required this.patientInfo,
+  });
+
+  @override
+  State<FamilyPhysiologicalFormPage> createState() =>
+      _FamilyPhysiologicalFormPageState();
+}
+
+class _FamilyPhysiologicalFormPageState
+    extends State<FamilyPhysiologicalFormPage> {
+  final systolicController = TextEditingController();
+  final diastolicController = TextEditingController();
+  final weightController = TextEditingController();
+  final heightController = TextEditingController();
+
+  @override
+  void dispose() {
+    systolicController.dispose();
+    diastolicController.dispose();
+    weightController.dispose();
+    heightController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.primaryBlue,
+        foregroundColor: Colors.white,
+        centerTitle: true,
+        title: const Text('Tambah Data'),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _patientCard(),
+            const SizedBox(height: 18),
+            const Text(
+              'Data Fisiologis',
+              style: TextStyle(
+                color: AppColors.primaryBlue,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 14),
+            _label('Tanggal dan waktu*'),
+            Row(
+              children: [
+                Expanded(child: _input(hint: '07/06/2025')),
+                const SizedBox(width: 10),
+                Expanded(child: _input(hint: '08:30')),
+              ],
+            ),
+            const SizedBox(height: 14),
+            _label('Tekanan Darah*'),
+            Row(
+              children: [
+                Expanded(
+                  child: _input(
+                    hint: 'Sistolik',
+                    controller: systolicController,
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _input(
+                    hint: 'Diastolik',
+                    controller: diastolicController,
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            _label('Berat Badan (kg)*'),
+            _input(
+              hint: 'Masukkan berat badan',
+              controller: weightController,
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 14),
+            _label('Tinggi Badan (cm)'),
+            _input(
+              hint: 'Masukkan tinggi badan',
+              controller: heightController,
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 24),
+            _saveButton(context),
+            const SizedBox(height: 12),
+            _cancelButton(context),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _patientCard() {
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.light1),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 22,
+            backgroundColor: AppColors.lightBlue,
+            child: Text(
+              widget.patientInitial,
+              style: const TextStyle(
+                color: AppColors.primaryBlue,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.patientName,
+                  style: const TextStyle(
+                    color: AppColors.dark1,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  widget.patientInfo,
+                  style: const TextStyle(color: AppColors.dark2, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _label(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 7),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: AppColors.primaryBlue,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _input({
+    required String hint,
+    TextEditingController? controller,
+    TextInputType? keyboardType,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: AppColors.dark3, fontSize: 12),
+        filled: true,
+        fillColor: AppColors.white,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 13,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: const BorderSide(color: AppColors.light1),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: const BorderSide(color: AppColors.primaryBlue),
+        ),
+      ),
+    );
+  }
+
+  Widget _saveButton(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 46,
+      child: ElevatedButton(
+        onPressed: () => _showSuccessSheet(context),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primaryBlue,
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
+        child: const Text('Simpan'),
+      ),
+    );
+  }
+
+  Widget _cancelButton(BuildContext context) {
+    return Center(
+      child: TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text(
+          'Batal',
+          style: TextStyle(color: AppColors.primaryBlue),
+        ),
+      ),
+    );
+  }
+
+  void _showSuccessSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return _successSheet(sheetContext, context);
+      },
+    );
+  }
+
+  Widget _successSheet(BuildContext sheetContext, BuildContext pageContext) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CircleAvatar(
+            radius: 36,
+            backgroundColor: Color(0xFFEAFBF3),
+            child: Icon(Icons.check, color: Color(0xFF10C878), size: 36),
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            'Data berhasil disimpan',
+            style: TextStyle(
+              color: AppColors.primaryBlue,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Data menunggu konfirmasi pasien sebelum masuk ke riwayat kesehatan.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppColors.dark2, fontSize: 13),
+          ),
+          const SizedBox(height: 22),
+          SizedBox(
+            width: double.infinity,
+            height: 46,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.pop(sheetContext);
+                Navigator.pop(pageContext);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryBlue,
+                foregroundColor: Colors.white,
+                elevation: 0,
+              ),
+              child: const Text('Kembali'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

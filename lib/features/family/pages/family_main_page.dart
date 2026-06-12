@@ -3,6 +3,7 @@ import '../../../core/theme/app_colors.dart';
 import '../widgets/family_bottom_nav.dart';
 import 'family_connection_page.dart';
 import 'family_notification_page.dart';
+import 'family_add_data_page.dart';
 
 class FamilyMainPage extends StatefulWidget {
   const FamilyMainPage({super.key});
@@ -13,6 +14,31 @@ class FamilyMainPage extends StatefulWidget {
 
 class _FamilyMainPageState extends State<FamilyMainPage> {
   int currentIndex = 0;
+
+  int selectedPatientIndex = 0;
+
+  final patients = [
+    {
+      'initial': 'BS',
+      'name': 'Budi Santoso',
+      'relation': 'Ayah',
+      'dm': 'DM Tipe 2',
+      'age': '58 th',
+      'glucose': '142',
+      'bloodPressure': '135/88',
+      'weight': '70.2',
+    },
+    {
+      'initial': 'SR',
+      'name': 'Sari Rahayu',
+      'relation': 'Ibu',
+      'dm': 'DM Tipe 2',
+      'age': '55 th',
+      'glucose': '187',
+      'bloodPressure': '128/82',
+      'weight': '78.5',
+    },
+  ];
 
   final dailyChecks = [
     ['Glukosa', Icons.opacity, true],
@@ -46,8 +72,9 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
           setState(() => currentIndex = index);
         },
         onAddTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Halaman tambah data keluarga')),
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const FamilyAddDataPage()),
           );
         },
       ),
@@ -123,6 +150,7 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
   }
 
   Widget _header(BuildContext context) {
+    final patient = patients[selectedPatientIndex];
     final topPad = MediaQuery.of(context).padding.top;
 
     return Container(
@@ -179,17 +207,18 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.white,
-              borderRadius: BorderRadius.circular(10),
+              color: Colors.white.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
             ),
             child: Row(
               children: [
-                const CircleAvatar(
+                CircleAvatar(
                   radius: 26,
                   backgroundColor: AppColors.lightBlue,
                   child: Text(
-                    'AS',
-                    style: TextStyle(
+                    patient['initial']!,
+                    style: const TextStyle(
                       color: AppColors.primaryBlue,
                       fontWeight: FontWeight.bold,
                     ),
@@ -200,22 +229,37 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Angelica Sabi Gita',
-                        style: TextStyle(
-                          color: AppColors.dark1,
-                          fontSize: 13,
+                      Text(
+                        patient['name']!,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                       const SizedBox(height: 3),
-                      const Text(
-                        '32 tahun • Perempuan',
-                        style: TextStyle(color: AppColors.dark2, fontSize: 11),
+                      Text(
+                        '${patient['relation']} • ${patient['dm']} • ${patient['age']}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                        ),
                       ),
-                      const SizedBox(height: 6),
-                      _miniBadge('DM Tipe 2'),
                     ],
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _showPatientSelector,
+                  icon: const Icon(Icons.swap_horiz, size: 15),
+                  label: const Text('Ganti'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.dark1,
+                    backgroundColor: AppColors.lightBlue,
+                    side: BorderSide.none,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                 ),
               ],
@@ -223,6 +267,127 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showPatientSelector() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return Container(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 42,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.light1,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'Pilih pasien yang ingin dilihat',
+                style: TextStyle(
+                  color: AppColors.dark1,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ...List.generate(patients.length, (index) {
+                final patient = patients[index];
+                final selected = selectedPatientIndex == index;
+
+                return InkWell(
+                  onTap: () {
+                    setState(() => selectedPatientIndex = index);
+                    Navigator.pop(sheetContext);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 24,
+                          backgroundColor: selected
+                              ? AppColors.primaryBlue
+                              : AppColors.lightBlue,
+                          child: Text(
+                            patient['initial']!,
+                            style: TextStyle(
+                              color: selected
+                                  ? Colors.white
+                                  : AppColors.primaryBlue,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                patient['name']!,
+                                style: const TextStyle(
+                                  color: AppColors.dark1,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                '${patient['relation']} • ${patient['dm']} • ${patient['age']}',
+                                style: const TextStyle(
+                                  color: AppColors.dark2,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(
+                          selected
+                              ? Icons.radio_button_checked
+                              : Icons.radio_button_unchecked,
+                          color: AppColors.primaryBlue,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.veryLightBlue,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Text(
+                  'Data beranda, riwayat, dan kalender akan berubah sesuai pasien yang dipilih.',
+                  style: TextStyle(
+                    color: AppColors.primaryBlue,
+                    fontSize: 11,
+                    height: 1.35,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -299,34 +464,36 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
   }
 
   Widget _summaryCards() {
+    final patient = patients[selectedPatientIndex];
+
     return Row(
-      children: const [
+      children: [
         Expanded(
           child: _HealthSummaryCard(
             title: 'Glukosa',
-            value: '187',
+            value: patient['glucose']!,
             unit: 'mg/dL',
             status: 'Tinggi',
             color: AppColors.red,
           ),
         ),
-        SizedBox(width: 8),
+        const SizedBox(width: 8),
         Expanded(
           child: _HealthSummaryCard(
             title: 'Tekanan Darah',
-            value: '128/82',
+            value: patient['bloodPressure']!,
             unit: 'mmHg',
             status: 'Normal',
             color: Color(0xFF10C878),
           ),
         ),
-        SizedBox(width: 8),
+        const SizedBox(width: 8),
         Expanded(
           child: _HealthSummaryCard(
             title: 'Berat Badan',
-            value: '78.5',
+            value: patient['weight']!,
             unit: 'kg',
-            status: 'Overweight',
+            status: 'Stabil',
             color: Color(0xFFFFC542),
           ),
         ),
@@ -688,24 +855,6 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
         border: Border.all(color: AppColors.light1),
       ),
       child: Icon(icon, color: AppColors.dark2, size: 18),
-    );
-  }
-
-  Widget _miniBadge(String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-      decoration: BoxDecoration(
-        color: AppColors.veryLightBlue,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: AppColors.primaryBlue,
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
     );
   }
 
