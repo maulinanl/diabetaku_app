@@ -4,6 +4,7 @@ import 'patient_notification_page.dart';
 import 'patient_connection_page.dart';
 import '../widgets/patient_bottom_nav.dart';
 import 'patient_add_data_page.dart';
+import 'patient_history_page.dart';
 
 class PatientMainPage extends StatefulWidget {
   const PatientMainPage({super.key});
@@ -18,7 +19,7 @@ class _PatientMainPageState extends State<PatientMainPage> {
   final pages = const [
     PatientHomePage(),
     PatientConnectionPage(),
-    Center(child: Text('Riwayat')),
+    PatientHistoryPage(),
     Center(child: Text('Profil')),
   ];
 
