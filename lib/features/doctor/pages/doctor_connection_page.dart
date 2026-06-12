@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import 'patient_detail_page.dart';
 
-class DoctorRequestPage extends StatefulWidget {
-  const DoctorRequestPage({super.key});
+class DoctorConnectionPage extends StatefulWidget {
+  const DoctorConnectionPage({super.key});
 
   @override
-  State<DoctorRequestPage> createState() => _DoctorRequestPageState();
+  State<DoctorConnectionPage> createState() => _DoctorConnectionPageState();
 }
 
-class _DoctorRequestPageState extends State<DoctorRequestPage> {
+class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
   int selectedTab = 0;
 
   final tabs = ['Menunggu', 'Diterima', 'Ditolak'];
@@ -55,8 +56,8 @@ class _DoctorRequestPageState extends State<DoctorRequestPage> {
     final data = selectedTab == 0
         ? pendingRequests
         : selectedTab == 1
-            ? acceptedRequests
-            : rejectedRequests;
+        ? acceptedRequests
+        : rejectedRequests;
 
     return Scaffold(
       backgroundColor: AppColors.primaryBlue,
@@ -79,8 +80,8 @@ class _DoctorRequestPageState extends State<DoctorRequestPage> {
                           selectedTab == 0
                               ? 'KONEKSI MENUNGGU - ${data.length}'
                               : selectedTab == 1
-                                  ? 'KONEKSI DITERIMA - ${data.length}'
-                                  : 'KONEKSI DITOLAK - ${data.length}',
+                              ? 'KONEKSI DITERIMA - ${data.length}'
+                              : 'KONEKSI DITOLAK - ${data.length}',
                           style: const TextStyle(
                             color: AppColors.primaryBlue,
                             fontSize: 11,
@@ -94,8 +95,12 @@ class _DoctorRequestPageState extends State<DoctorRequestPage> {
                       child: data.isEmpty
                           ? _emptyState()
                           : ListView.separated(
-                              padding:
-                                  const EdgeInsets.fromLTRB(18, 0, 18, 120),
+                              padding: const EdgeInsets.fromLTRB(
+                                18,
+                                0,
+                                18,
+                                120,
+                              ),
                               itemCount: data.length,
                               separatorBuilder: (_, __) =>
                                   const SizedBox(height: 14),
@@ -109,15 +114,29 @@ class _DoctorRequestPageState extends State<DoctorRequestPage> {
                                   diagnosis: item['diagnosis']!,
                                   time: item['time']!,
                                   status: selectedTab,
-                                  onDetail: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            const RequestDetailPage(),
-                                      ),
-                                    );
-                                  },
+                                  onDetail: selectedTab == 2
+                                      ? null
+                                      : () {
+                                          if (selectedTab == 1) {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    const PatientDetailPage(),
+                                              ),
+                                            );
+                                          } else {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    RequestDetailPage(
+                                                      status: selectedTab,
+                                                    ),
+                                              ),
+                                            );
+                                          }
+                                        },
                                 );
                               },
                             ),
@@ -223,10 +242,7 @@ class _DoctorRequestPageState extends State<DoctorRequestPage> {
             Text(
               'Pasien yang ingin terhubung denganmu akan muncul di sini untuk kamu terima atau tolak.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.primaryBlue,
-                fontSize: 12,
-              ),
+              style: TextStyle(color: AppColors.primaryBlue, fontSize: 12),
             ),
           ],
         ),
@@ -242,7 +258,7 @@ class _RequestCard extends StatelessWidget {
   final String diagnosis;
   final String time;
   final int status;
-  final VoidCallback onDetail;
+  final VoidCallback? onDetail;
 
   const _RequestCard({
     required this.initial,
@@ -256,10 +272,16 @@ class _RequestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isPending = status == 0;
+    final isAccepted = status == 1;
     final isRejected = status == 2;
 
-    return GestureDetector(
+    final statusColor = isRejected ? AppColors.red : AppColors.primaryBlue;
+    final statusBg = isRejected ? AppColors.lightRed : AppColors.veryLightBlue;
+
+    return InkWell(
       onTap: onDetail,
+      borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
@@ -268,7 +290,7 @@ class _RequestCard extends StatelessWidget {
           border: Border.all(color: AppColors.light1),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),
@@ -280,13 +302,13 @@ class _RequestCard extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 25,
-                  backgroundColor:
-                      isRejected ? AppColors.lightRed : AppColors.lightBlue,
+                  backgroundColor: isRejected
+                      ? AppColors.lightRed
+                      : AppColors.lightBlue,
                   child: Text(
                     initial,
                     style: TextStyle(
-                      color:
-                          isRejected ? AppColors.red : AppColors.primaryBlue,
+                      color: isRejected ? AppColors.red : AppColors.primaryBlue,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -317,19 +339,15 @@ class _RequestCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                Text(
-                  time,
-                  style: TextStyle(
-                    color: isRejected ? AppColors.red : AppColors.primaryBlue,
-                    fontSize: 11,
+                Text(time, style: TextStyle(color: statusColor, fontSize: 11)),
+                if (!isRejected) ...[
+                  const SizedBox(width: 4),
+                  const Icon(
+                    Icons.chevron_right,
+                    size: 18,
+                    color: AppColors.dark3,
                   ),
-                ),
-                const SizedBox(width: 4),
-                const Icon(
-                  Icons.chevron_right,
-                  size: 18,
-                  color: AppColors.dark3,
-                ),
+                ],
               ],
             ),
             const SizedBox(height: 12),
@@ -337,31 +355,29 @@ class _RequestCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
               decoration: BoxDecoration(
-                color: isRejected
-                    ? AppColors.lightRed
-                    : AppColors.veryLightBlue,
+                color: statusBg,
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Row(
                 children: [
                   Icon(
-                    Icons.calendar_today_outlined,
+                    isAccepted
+                        ? Icons.check_circle_outline
+                        : isRejected
+                        ? Icons.cancel_outlined
+                        : Icons.calendar_today_outlined,
                     size: 13,
-                    color: isRejected ? AppColors.red : AppColors.primaryBlue,
+                    color: statusColor,
                   ),
                   const SizedBox(width: 6),
                   Text(
                     diagnosis,
-                    style: TextStyle(
-                      color:
-                          isRejected ? AppColors.red : AppColors.primaryBlue,
-                      fontSize: 11,
-                    ),
+                    style: TextStyle(color: statusColor, fontSize: 11),
                   ),
                 ],
               ),
             ),
-            if (status == 0) ...[
+            if (isPending) ...[
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -413,17 +429,22 @@ class _RequestCard extends StatelessWidget {
 }
 
 class RequestDetailPage extends StatelessWidget {
-  const RequestDetailPage({super.key});
+  final int status;
+
+  const RequestDetailPage({super.key, required this.status});
 
   @override
   Widget build(BuildContext context) {
+    final isPending = status == 0;
+    final isRejected = status == 2;
+
     return Scaffold(
       backgroundColor: AppColors.primaryBlue,
       body: SafeArea(
         top: false,
         child: Column(
           children: [
-            _buildHeader(context),
+            _buildHeader(context, isRejected),
             Expanded(
               child: Container(
                 color: AppColors.background,
@@ -432,39 +453,50 @@ class RequestDetailPage extends StatelessWidget {
                   child: Column(
                     children: [
                       _dataPatientCard(),
-                      const SizedBox(height: 24),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 44,
-                        child: ElevatedButton(
-                          onPressed: () {},
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primaryBlue,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6),
+                      if (isPending) ...[
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 44,
+                          child: ElevatedButton(
+                            onPressed: () {},
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primaryBlue,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6),
+                              ),
                             ),
+                            child: const Text('Terima permintaan'),
                           ),
-                          child: const Text('Terima permintaan'),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 44,
-                        child: OutlinedButton(
-                          onPressed: () {},
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.red,
-                            side: const BorderSide(color: AppColors.red),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 44,
+                          child: OutlinedButton(
+                            onPressed: () {},
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.red,
+                              side: const BorderSide(color: AppColors.red),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6),
+                              ),
                             ),
+                            child: const Text('Tolak permintaan'),
                           ),
-                          child: const Text('Tolak permintaan'),
                         ),
-                      ),
+                      ] else if (isRejected) ...[
+                        const SizedBox(height: 18),
+                        _infoBox(
+                          icon: Icons.cancel_outlined,
+                          text:
+                              'Permintaan koneksi ini telah ditolak. Pasien tidak memiliki akses pemantauan dengan dokter.',
+                          color: AppColors.red,
+                          bg: AppColors.lightRed,
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -476,7 +508,7 @@ class RequestDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, bool isRejected) {
     final topPad = MediaQuery.of(context).padding.top;
 
     return Container(
@@ -496,11 +528,11 @@ class RequestDetailPage extends StatelessWidget {
                 onPressed: () => Navigator.pop(context),
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
               ),
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Permintaan Koneksi',
+                  isRejected ? 'Koneksi Ditolak' : 'Permintaan Koneksi',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
                   ),
@@ -517,20 +549,24 @@ class RequestDetailPage extends StatelessWidget {
               color: Colors.white.withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Row(
+            child: Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: AppColors.lightBlue,
+                  backgroundColor: isRejected
+                      ? AppColors.lightRed
+                      : AppColors.lightBlue,
                   child: Icon(
-                    Icons.person_add_alt_1,
-                    color: AppColors.primaryBlue,
+                    isRejected ? Icons.cancel_outlined : Icons.person_add_alt_1,
+                    color: isRejected ? AppColors.red : AppColors.primaryBlue,
                   ),
                 ),
-                SizedBox(width: 12),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Permintaan koneksi baru\n7 Jun 2025\n08:15',
-                    style: TextStyle(color: Colors.white, fontSize: 12),
+                    isRejected
+                        ? 'Permintaan koneksi ditolak\n7 Jun 2025\n08:15'
+                        : 'Permintaan koneksi baru\n7 Jun 2025\n08:15',
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
                   ),
                 ),
               ],
@@ -560,10 +596,39 @@ class RequestDetailPage extends StatelessWidget {
             ),
           ),
           SizedBox(height: 14),
-          _DetailRow(label: 'Nama', value: 'Wahyu Tri Utomo'),
+          _DetailRow(label: 'Nama', value: 'Wahyu Prasetyo'),
           _DetailRow(label: 'Tipe DM', value: 'DM Tipe 2'),
           _DetailRow(label: 'Usia', value: '47 tahun'),
+          _DetailRow(label: 'Jenis Kelamin', value: 'Laki-laki'),
           _DetailRow(label: 'Tahun diagnosis', value: '2019'),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoBox({
+    required IconData icon,
+    required String text,
+    required Color color,
+    required Color bg,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(color: color, fontSize: 12, height: 1.35),
+            ),
+          ),
         ],
       ),
     );
@@ -574,10 +639,7 @@ class _DetailRow extends StatelessWidget {
   final String label;
   final String value;
 
-  const _DetailRow({
-    required this.label,
-    required this.value,
-  });
+  const _DetailRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -588,7 +650,7 @@ class _DetailRow extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: TextStyle(
+              style: const TextStyle(
                 color: AppColors.primaryBlue,
                 fontSize: 12,
               ),
@@ -596,10 +658,7 @@ class _DetailRow extends StatelessWidget {
           ),
           Text(
             value,
-            style: TextStyle(
-              color: AppColors.dark1,
-              fontSize: 12,
-            ),
+            style: const TextStyle(color: AppColors.dark1, fontSize: 12),
           ),
         ],
       ),

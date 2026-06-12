@@ -14,24 +14,27 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
 
   final notifications = [
     {
+      'section': 'Hari Ini',
       'title': 'Glukosa abnormal - Angelica Sabi Gita',
       'message': 'Glukosa postprandial 187 mg/dL melebihi batas normal.',
-      'time': '09:41',
+      'time': '09:41 • Baru saja',
       'type': 'abnormal',
       'read': false,
     },
     {
+      'section': 'Hari Ini',
       'title': 'Permintaan koneksi baru',
       'message':
           'Wahyu Prasetyo mengajukan permintaan untuk terhubung denganmu.',
-      'time': '08:15',
+      'time': '08:15 • 1 jam lalu',
       'type': 'connection',
       'read': false,
     },
     {
+      'section': 'Kemarin',
       'title': 'Catatan klinis tersimpan',
       'message': 'Catatan klinis Ahmad Barik berhasil disimpan.',
-      'time': 'Kemarin',
+      'time': '6 Jun • 09:41',
       'type': 'note',
       'read': true,
     },
@@ -44,60 +47,33 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
         : notifications.where((item) => item['read'] == false).toList();
 
     return Scaffold(
-      backgroundColor: AppColors.primaryBlue,
-      body: SafeArea(
-        top: false,
-        child: Column(
-          children: [
-            _buildHeader(context),
-            Expanded(
-              child: Container(
-                color: AppColors.background,
-                child: Column(
-                  children: [
-                    _buildTabs(),
-                    Expanded(
-                      child: filtered.isEmpty
-                          ? _emptyState()
-                          : ListView.separated(
-                              padding: const EdgeInsets.fromLTRB(
-                                18,
-                                14,
-                                18,
-                                24,
-                              ),
-                              itemCount: filtered.length,
-                              separatorBuilder: (_, __) =>
-                                  const SizedBox(height: 12),
-                              itemBuilder: (context, index) {
-                                final item = filtered[index];
-
-                                return _NotificationTile(
-                                  title: item['title'] as String,
-                                  message: item['message'] as String,
-                                  time: item['time'] as String,
-                                  type: item['type'] as String,
-                                  read: item['read'] as bool,
-                                  onTap: () {
-                                    if (item['type'] == 'abnormal') {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) =>
-                                              const AbnormalNotificationDetailPage(),
-                                        ),
-                                      );
-                                    }
-                                  },
-                                );
-                              },
-                            ),
-                    ),
-                  ],
+      backgroundColor: AppColors.background,
+      body: Container(
+        color: AppColors.primaryBlue,
+        child: SafeArea(
+          top: false,
+          child: Column(
+            children: [
+              _buildHeader(context),
+              Expanded(
+                child: Container(
+                  color: AppColors.background,
+                  child: ListView(
+                    padding: EdgeInsets.zero,
+                    children: [
+                      _buildTabs(),
+                      if (filtered.isEmpty)
+                        _emptyState()
+                      else ...[
+                        ..._groupedNotifications(filtered),
+                        const SizedBox(height: 24),
+                      ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -108,8 +84,8 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(12, topPad + 12, 20, 20),
-      decoration: const BoxDecoration(color: AppColors.primaryBlue),
+      padding: EdgeInsets.fromLTRB(14, topPad + 12, 20, 18),
+      color: AppColors.primaryBlue,
       child: Row(
         children: [
           IconButton(
@@ -122,7 +98,7 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 20,
+                fontSize: 21,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -135,9 +111,9 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
 
   Widget _buildTabs() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 14, 18, 10),
+      padding: const EdgeInsets.fromLTRB(22, 14, 22, 14),
       child: Container(
-        padding: const EdgeInsets.all(3),
+        height: 40,
         decoration: BoxDecoration(
           color: AppColors.white,
           borderRadius: BorderRadius.circular(24),
@@ -157,16 +133,16 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
       child: GestureDetector(
         onTap: () => setState(() => selectedTab = index),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 9),
+          alignment: Alignment.center,
           decoration: BoxDecoration(
             color: selected ? AppColors.lightBlue : Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(24),
           ),
           child: Text(
             label,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: selected ? AppColors.primaryBlue : AppColors.dark2,
+              color: selected ? AppColors.primaryBlue : AppColors.dark1,
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
@@ -176,38 +152,90 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
     );
   }
 
-  Widget _emptyState() {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 46),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircleAvatar(
-              radius: 42,
-              backgroundColor: AppColors.lightBlue,
-              child: Icon(
-                Icons.notifications_off_outlined,
-                color: AppColors.primaryBlue,
-                size: 42,
-              ),
-            ),
-            SizedBox(height: 18),
-            Text(
-              'Belum ada notifikasi',
-              style: TextStyle(
-                color: AppColors.dark1,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Notifikasi glukosa abnormal, permintaan koneksi, dan aktivitas pasien akan muncul di sini.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.primaryBlue, fontSize: 12),
-            ),
-          ],
+  List<Widget> _groupedNotifications(List<Map<String, Object>> data) {
+    final widgets = <Widget>[];
+    String? lastSection;
+
+    for (final item in data) {
+      final section = item['section'] as String;
+
+      if (section != lastSection) {
+        widgets.add(_sectionHeader(section));
+        lastSection = section;
+      }
+
+      widgets.add(
+        _NotificationTile(
+          title: item['title'] as String,
+          message: item['message'] as String,
+          time: item['time'] as String,
+          type: item['type'] as String,
+          read: item['read'] as bool,
+          onTap: () {
+            if (item['type'] == 'abnormal') {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const AbnormalNotificationDetailPage(),
+                ),
+              );
+            }
+          },
         ),
+      );
+    }
+
+    return widgets;
+  }
+
+  Widget _sectionHeader(String title) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(24, 10, 24, 10),
+      color: AppColors.lightBlue,
+      child: Text(
+        title,
+        style: const TextStyle(
+          color: AppColors.primaryBlue,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _emptyState() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 120),
+      child: Column(
+        children: const [
+          CircleAvatar(
+            radius: 36,
+            backgroundColor: AppColors.lightBlue,
+            child: Icon(
+              Icons.notifications_none_rounded,
+              color: AppColors.primaryBlue,
+              size: 34,
+            ),
+            ),
+          SizedBox(height: 16),
+          Text(
+            'Tidak ada notifikasi',
+            style: TextStyle(
+              color: AppColors.dark1,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+            ),
+          SizedBox(height: 6),
+          Text(
+            'Notifikasi terbaru akan muncul di sini.',
+            style: TextStyle(
+              color: AppColors.dark2,
+              fontSize: 12,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -256,21 +284,38 @@ class _NotificationTile extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: read ? AppColors.white : AppColors.veryLightBlue,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.light1),
-        ),
+        color: read ? AppColors.white : Colors.white.withValues(alpha: 0.55),
+        padding: const EdgeInsets.fromLTRB(22, 14, 18, 14),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundColor: bg,
-              child: Icon(icon, color: color, size: 20),
+            SizedBox(
+              width: 42,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: bg,
+                    child: Icon(icon, color: color, size: 21),
+                  ),
+                  if (!read)
+                    Positioned(
+                      left: -2,
+                      top: -3,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: AppColors.primaryBlue,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -278,40 +323,41 @@ class _NotificationTile extends StatelessWidget {
                   Text(
                     title,
                     style: const TextStyle(
-                      color: AppColors.dark1,
+                      color: AppColors.primaryBlue,
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 5),
                   Text(
                     message,
                     style: const TextStyle(
-                      color: AppColors.dark2,
+                      color: AppColors.dark1,
                       fontSize: 11,
                       height: 1.35,
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Text(
-                    time,
-                    style: const TextStyle(
-                      color: AppColors.primaryBlue,
-                      fontSize: 10,
-                    ),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.access_time,
+                        size: 12,
+                        color: AppColors.primaryBlue,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        time,
+                        style: const TextStyle(
+                          color: AppColors.primaryBlue,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-            if (!read)
-              Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: AppColors.primaryBlue,
-                  shape: BoxShape.circle,
-                ),
-              ),
           ],
         ),
       ),

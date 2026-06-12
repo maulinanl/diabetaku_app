@@ -16,6 +16,7 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
   final TextEditingController _searchController = TextEditingController();
 
   String searchQuery = '';
+  bool hasUnreadNotification = true;
 
   @override
   void dispose() {
@@ -119,8 +120,12 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(14),
                             ),
-                            child: IconButton(
-                              onPressed: () {
+                            child: GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  hasUnreadNotification = false;
+                                });
+
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
@@ -129,9 +134,40 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
                                   ),
                                 );
                               },
-                              icon: const Icon(
-                                Icons.notifications_none_rounded,
-                                color: AppColors.primaryBlue,
+                              child: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  Container(
+                                    width: 48,
+                                    height: 48,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: const Icon(
+                                      Icons.notifications_none_rounded,
+                                      color: AppColors.primaryBlue,
+                                    ),
+                                  ),
+
+                                  if (hasUnreadNotification)
+                                    Positioned(
+                                      top: 9,
+                                      right: 9,
+                                      child: Container(
+                                        width: 9,
+                                        height: 9,
+                                        decoration: BoxDecoration(
+                                          color: AppColors.red,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: Colors.white,
+                                            width: 1.5,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
                           ),

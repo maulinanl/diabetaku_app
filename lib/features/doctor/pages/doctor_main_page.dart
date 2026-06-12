@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'doctor_home_page.dart';
-import 'doctor_request_page.dart';
+import 'doctor_connection_page.dart';
 import 'doctor_history_page.dart';
 import 'doctor_profile_page.dart';
 
@@ -21,7 +21,7 @@ class _DoctorMainPageState extends State<DoctorMainPage> {
   Widget build(BuildContext context) {
     final pages = [
       const DoctorHomePage(showNavbar: false),
-      const DoctorRequestPage(),
+      const DoctorConnectionPage(),
       const DoctorHistoryPage(),
       const DoctorProfilePage(),
     ];

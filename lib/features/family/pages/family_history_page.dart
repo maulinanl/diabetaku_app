@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import 'family_history_detail_page.dart';
+import 'family_recommendation_detail_page.dart';
 
 class FamilyHistoryPage extends StatefulWidget {
   const FamilyHistoryPage({super.key});
@@ -10,6 +11,7 @@ class FamilyHistoryPage extends StatefulWidget {
 }
 
 class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
+  int mainTab = 0;
   int selectedPatientIndex = 0;
   int selectedFilter = 0;
 
@@ -19,7 +21,11 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
       'name': 'Budi Santoso',
       'info': 'Ayah • DM Tipe 2 • 58 th',
     },
-    {'initial': 'SR', 'name': 'Sari Rahayu', 'info': 'Ibu • DM Tipe 2 • 55 th'},
+    {
+      'initial': 'SR',
+      'name': 'Sari Rahayu',
+      'info': 'Ibu • DM Tipe 2 • 55 th',
+    },
   ];
 
   final filters = [
@@ -31,7 +37,7 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
     'Obat',
   ];
 
-  final histories = [
+  final List<Map<String, Object>> histories = [
     {
       'patient': 'Budi Santoso',
       'type': 'Glukosa',
@@ -67,15 +73,40 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
     },
   ];
 
+  final List<Map<String, String>> recommendationHistories = [
+    {
+      'patient': 'Budi Santoso',
+      'doctor': 'dr. Agus Setiawan, Sp.PD',
+      'date': '7 Jun 2025 • 09:41',
+      'status': 'Tidak Stabil',
+      'description':
+          'Glukosa postprandial tinggi. Keluarga diminta membantu memantau pola makan dan kepatuhan obat pasien.',
+      'initial': 'AS',
+    },
+    {
+      'patient': 'Sari Rahayu',
+      'doctor': 'dr. Sarah Puspita, Sp.PD',
+      'date': '1 Jun 2025 • 11:00',
+      'status': 'Stabil',
+      'description':
+          'Kondisi pasien stabil. Tetap bantu pantau aktivitas ringan dan jadwal minum obat pasien.',
+      'initial': 'SP',
+    },
+  ];
+
   @override
   Widget build(BuildContext context) {
     final selectedPatient = patients[selectedPatientIndex];
 
-    final data = histories.where((item) {
+    final healthData = histories.where((item) {
       final samePatient = item['patient'] == selectedPatient['name'];
       final sameFilter =
           selectedFilter == 0 || item['type'] == filters[selectedFilter];
       return samePatient && sameFilter;
+    }).toList();
+
+    final recommendationData = recommendationHistories.where((item) {
+      return item['patient'] == selectedPatient['name'];
     }).toList();
 
     return Container(
@@ -91,60 +122,10 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
                 child: Column(
                   children: [
                     _patientCard(selectedPatient),
-                    _filterChips(),
                     Expanded(
-                      child: ListView(
-                        padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
-                        children: [
-                          const Text(
-                            '7 JUN 2025',
-                            style: TextStyle(
-                              color: AppColors.dark2,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          if (data.isEmpty)
-                            const Padding(
-                              padding: EdgeInsets.only(top: 80),
-                              child: Center(
-                                child: Text(
-                                  'Belum ada riwayat untuk pasien ini',
-                                  style: TextStyle(color: AppColors.dark2),
-                                ),
-                              ),
-                            )
-                          else
-                            ...data.map(
-                              (item) => Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(12),
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => FamilyHistoryDetailPage(
-                                          type: item['type'] as String,
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                  child: _HistoryCard(
-                                    title: item['title'] as String,
-                                    time: item['time'] as String,
-                                    value: item['value'] as String,
-                                    unit: item['unit'] as String,
-                                    status: item['status'] as String,
-                                    icon: item['icon'] as IconData,
-                                    color: item['color'] as Color,
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
+                      child: mainTab == 0
+                          ? _healthContent(healthData)
+                          : _recommendationContent(recommendationData),
                     ),
                   ],
                 ),
@@ -161,7 +142,7 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(20, topPad + 30, 20, 24),
+      padding: EdgeInsets.fromLTRB(24, topPad + 30, 24, 26),
       decoration: const BoxDecoration(
         color: AppColors.primaryBlue,
         borderRadius: BorderRadius.only(
@@ -169,13 +150,55 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
           bottomRight: Radius.circular(22),
         ),
       ),
-      child: const Center(
-        child: Text(
-          'Riwayat',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 21,
-            fontWeight: FontWeight.bold,
+      child: Column(
+        children: [
+          const Text(
+            'Riwayat',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 21,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 28),
+          Container(
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppColors.light1),
+            ),
+            child: Row(
+              children: [
+                _mainTabItem('Data Kesehatan', 0),
+                _mainTabItem('Rekomendasi', 1),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _mainTabItem(String title, int index) {
+    final selected = mainTab == index;
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => mainTab = index),
+        child: Container(
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? AppColors.lightBlue : Colors.transparent,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Text(
+            title,
+            style: TextStyle(
+              color: selected ? AppColors.primaryBlue : AppColors.dark1,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ),
@@ -240,6 +263,118 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
     );
   }
 
+  Widget _healthContent(List<Map<String, Object>> data) {
+    return Column(
+      children: [
+        _filterChips(),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
+            children: [
+              const Text(
+                '7 JUN 2025',
+                style: TextStyle(
+                  color: AppColors.dark2,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 14),
+              if (data.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.only(top: 80),
+                  child: Center(
+                    child: Text(
+                      'Belum ada riwayat untuk pasien ini',
+                      style: TextStyle(color: AppColors.dark2),
+                    ),
+                  ),
+                )
+              else
+                ...data.map(
+                  (item) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => FamilyHistoryDetailPage(
+                              type: item['type'] as String,
+                            ),
+                          ),
+                        );
+                      },
+                      child: _HistoryCard(
+                        title: item['title'] as String,
+                        time: item['time'] as String,
+                        value: item['value'] as String,
+                        unit: item['unit'] as String,
+                        status: item['status'] as String,
+                        icon: item['icon'] as IconData,
+                        color: item['color'] as Color,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _recommendationContent(List<Map<String, String>> data) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 120),
+      children: [
+        const Text(
+          'REKOMENDASI DOKTER',
+          style: TextStyle(
+            color: AppColors.dark2,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 14),
+        if (data.isEmpty)
+          const Padding(
+            padding: EdgeInsets.only(top: 80),
+            child: Center(
+              child: Text(
+                'Belum ada rekomendasi untuk pasien ini',
+                style: TextStyle(color: AppColors.dark2),
+              ),
+            ),
+          )
+        else
+          ...data.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const FamilyRecommendationDetailPage(),
+                    ),
+                  );
+                },
+                child: _RecommendationHistoryCard(
+                  initial: item['initial']!,
+                  doctor: item['doctor']!,
+                  date: item['date']!,
+                  status: item['status']!,
+                  description: item['description']!,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _filterChips() {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -294,9 +429,8 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
 
               return ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: selected
-                      ? AppColors.primaryBlue
-                      : AppColors.lightBlue,
+                  backgroundColor:
+                      selected ? AppColors.primaryBlue : AppColors.lightBlue,
                   child: Text(
                     patient['initial']!,
                     style: TextStyle(
@@ -351,18 +485,7 @@ class _HistoryCard extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.light1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
+      decoration: _cardDecoration(),
       child: Row(
         children: [
           Container(
@@ -437,10 +560,7 @@ class _HistoryCard extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(20),
-      ),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
       child: Text(
         status,
         style: TextStyle(
@@ -449,6 +569,180 @@ class _HistoryCard extends StatelessWidget {
           fontWeight: FontWeight.w600,
         ),
       ),
+    );
+  }
+
+  BoxDecoration _cardDecoration() {
+    return BoxDecoration(
+      color: AppColors.white,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: AppColors.light1),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.06),
+          blurRadius: 8,
+          offset: const Offset(0, 3),
+        ),
+      ],
+    );
+  }
+}
+
+class _RecommendationHistoryCard extends StatelessWidget {
+  final String initial;
+  final String doctor;
+  final String date;
+  final String status;
+  final String description;
+
+  const _RecommendationHistoryCard({
+    required this.initial,
+    required this.doctor,
+    required this.date,
+    required this.status,
+    required this.description,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isStable = status == 'Stabil';
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: _cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 26,
+                backgroundColor: AppColors.lightBlue,
+                child: Text(
+                  initial,
+                  style: const TextStyle(
+                    color: AppColors.primaryBlue,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      doctor,
+                      style: const TextStyle(
+                        color: AppColors.dark1,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      date,
+                      style: const TextStyle(
+                        color: AppColors.dark2,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _badge(
+                text: 'Rekomendasi',
+                bg: AppColors.veryLightBlue,
+                color: AppColors.primaryBlue,
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _badge(
+            text: status,
+            bg: isStable ? const Color(0xFFEAFBF3) : const Color(0xFFFFF4DA),
+            color: isStable ? const Color(0xFF10C878) : Colors.orange,
+            icon: isStable ? Icons.check_rounded : Icons.warning_amber_rounded,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            description,
+            style: const TextStyle(
+              color: AppColors.primaryBlue,
+              fontSize: 13,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Divider(height: 1),
+          const SizedBox(height: 12),
+          const Row(
+            children: [
+              Icon(Icons.send_outlined, color: AppColors.primaryBlue, size: 16),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Rekomendasi diterima keluarga',
+                  style: TextStyle(
+                    color: AppColors.primaryBlue,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              Icon(Icons.chevron_right, color: AppColors.dark3),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _badge({
+    required String text,
+    required Color bg,
+    required Color color,
+    IconData? icon,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, color: color, size: 13),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            text,
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  BoxDecoration _cardDecoration() {
+    return BoxDecoration(
+      color: AppColors.white,
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: AppColors.light1),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.07),
+          blurRadius: 10,
+          offset: const Offset(0, 4),
+        ),
+      ],
     );
   }
 }

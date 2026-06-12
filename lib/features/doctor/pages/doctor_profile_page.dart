@@ -100,18 +100,18 @@ class DoctorProfilePage extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFEAFBF3),
+        color: AppColors.veryLightBlue,
         borderRadius: BorderRadius.circular(20),
       ),
       child: const Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.verified, size: 14, color: Color(0xFF10C878)),
+          Icon(Icons.verified, size: 14, color: AppColors.primaryBlue),
           SizedBox(width: 4),
           Text(
             'Terverifikasi',
             style: TextStyle(
-              color: Color(0xFF10C878),
+              color: AppColors.primaryBlue,
               fontSize: 11,
               fontWeight: FontWeight.w600,
             ),
@@ -330,11 +330,6 @@ class DoctorProfilePage extends StatelessWidget {
             Icons.lock_outline,
             'Ubah kata sandi',
             'Perbarui keamanan akun',
-          ),
-          _menuTile(
-            Icons.notifications_none,
-            'Notifikasi',
-            'Atur preferensi notifikasi',
           ),
           _menuTile(Icons.info_outline, 'Tentang aplikasi', 'Versi 1.0.0'),
         ],
