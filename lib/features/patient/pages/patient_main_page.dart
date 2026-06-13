@@ -6,6 +6,7 @@ import '../widgets/patient_bottom_nav.dart';
 import 'patient_add_data_page.dart';
 import 'patient_history_page.dart';
 import 'patient_profile_page.dart';
+import 'patient_recommendation_detail_page.dart';
 
 class PatientMainPage extends StatefulWidget {
   const PatientMainPage({super.key});
@@ -163,61 +164,49 @@ class _PatientHomePageState extends State<PatientHomePage> {
                   ),
                 ),
               ),
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      hasUnreadNotification = false;
-                    });
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    hasUnreadNotification = false;
+                  });
 
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const PatientNotificationPage(),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const PatientNotificationPage(),
+                    ),
+                  );
+                },
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                    );
-                  },
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: const Icon(
-                          Icons.notifications_none_rounded,
-                          color: AppColors.primaryBlue,
-                        ),
+                      child: const Icon(
+                        Icons.notifications_none_rounded,
+                        color: AppColors.primaryBlue,
                       ),
-
-                      if (hasUnreadNotification)
-                        Positioned(
-                          top: 9,
-                          right: 9,
-                          child: Container(
-                            width: 9,
-                            height: 9,
-                            decoration: BoxDecoration(
-                              color: AppColors.red,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white,
-                                width: 1.5,
-                              ),
-                            ),
+                    ),
+                    if (hasUnreadNotification)
+                      Positioned(
+                        top: 9,
+                        right: 9,
+                        child: Container(
+                          width: 9,
+                          height: 9,
+                          decoration: BoxDecoration(
+                            color: AppColors.red,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 1.5),
                           ),
                         ),
-                    ],
-                  ),
+                      ),
+                  ],
                 ),
               ),
             ],
@@ -262,47 +251,58 @@ class _PatientHomePageState extends State<PatientHomePage> {
   }
 
   Widget _doctorNoteCard() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: _cardDecoration(),
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: AppColors.veryLightBlue,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              Icons.description_outlined,
-              color: AppColors.primaryBlue,
-              size: 20,
-            ),
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const PatientRecommendationDetailPage(),
           ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Catatan klinis baru dari dokter',
-                  style: TextStyle(
-                    color: AppColors.primaryBlue,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: _cardDecoration(),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: AppColors.veryLightBlue,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.description_outlined,
+                color: AppColors.primaryBlue,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Rekomendasi baru dari dokter',
+                    style: TextStyle(
+                      color: AppColors.primaryBlue,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'dr. Agus Setiawan, S.PD • 7 Jun 2025',
-                  style: TextStyle(color: AppColors.dark2, fontSize: 11),
-                ),
-              ],
+                  SizedBox(height: 4),
+                  Text(
+                    'dr. Agus Setiawan, S.PD • 7 Jun 2025',
+                    style: TextStyle(color: AppColors.dark2, fontSize: 11),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const Icon(Icons.chevron_right, color: AppColors.dark3),
-        ],
+            const Icon(Icons.chevron_right, color: AppColors.dark3),
+          ],
+        ),
       ),
     );
   }
