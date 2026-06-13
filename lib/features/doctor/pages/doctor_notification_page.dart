@@ -11,6 +11,7 @@ class DoctorNotificationPage extends StatefulWidget {
 
 class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
   int selectedTab = 0;
+  final searchController = TextEditingController();
 
   final notifications = [
     {
@@ -41,42 +42,75 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    searchController.addListener(() {
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final filtered = selectedTab == 0
-        ? notifications
-        : notifications.where((item) => item['read'] == false).toList();
+    final filtered = _filteredNotifications();
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Container(
-        color: AppColors.primaryBlue,
-        child: SafeArea(
-          top: false,
-          child: Column(
-            children: [
-              _buildHeader(context),
-              Expanded(
-                child: Container(
-                  color: AppColors.background,
-                  child: ListView(
-                    padding: EdgeInsets.zero,
-                    children: [
-                      _buildTabs(),
-                      if (filtered.isEmpty)
-                        _emptyState()
-                      else ...[
-                        ..._groupedNotifications(filtered),
-                        const SizedBox(height: 24),
-                      ],
+      backgroundColor: AppColors.primaryBlue,
+      body: SafeArea(
+        top: false,
+        child: Column(
+          children: [
+            _buildHeader(context),
+            Expanded(
+              child: Container(
+                color: AppColors.background,
+                child: ListView(
+                  padding: EdgeInsets.zero,
+                  children: [
+                    _buildTabs(),
+                    if (filtered.isEmpty)
+                      _emptyState()
+                    else ...[
+                      ..._groupedNotifications(filtered),
+                      const SizedBox(height: 24),
                     ],
-                  ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  List<Map<String, Object>> _filteredNotifications() {
+    final keyword = searchController.text.trim().toLowerCase();
+
+    final tabFiltered = selectedTab == 0
+        ? notifications
+        : notifications.where((item) => item['read'] == false).toList();
+
+    if (keyword.isEmpty) return tabFiltered;
+
+    return tabFiltered.where((item) {
+      final title = item['title'].toString().toLowerCase();
+      final message = item['message'].toString().toLowerCase();
+      final time = item['time'].toString().toLowerCase();
+      final type = item['type'].toString().toLowerCase();
+      final section = item['section'].toString().toLowerCase();
+
+      return title.contains(keyword) ||
+          message.contains(keyword) ||
+          time.contains(keyword) ||
+          type.contains(keyword) ||
+          section.contains(keyword);
+    }).toList();
   }
 
   Widget _buildHeader(BuildContext context) {
@@ -84,27 +118,73 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(14, topPad + 12, 20, 18),
-      color: AppColors.primaryBlue,
-      child: Row(
+      padding: EdgeInsets.fromLTRB(14, topPad + 12, 20, 22),
+      decoration: const BoxDecoration(
+        color: AppColors.primaryBlue,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(22),
+          bottomRight: Radius.circular(22),
+        ),
+      ),
+      child: Column(
         children: [
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-          ),
-          const Expanded(
-            child: Text(
-              'Notifikasi',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 21,
-                fontWeight: FontWeight.bold,
+          Row(
+            children: [
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
               ),
-            ),
+              const Expanded(
+                child: Text(
+                  'Notifikasi',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 21,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 48),
+            ],
           ),
-          const SizedBox(width: 48),
+          const SizedBox(height: 16),
+          _searchBox(),
         ],
+      ),
+    );
+  }
+
+  Widget _searchBox() {
+    final keyword = searchController.text.trim();
+
+    return TextField(
+      controller: searchController,
+      decoration: InputDecoration(
+        hintText: 'Cari notifikasi',
+        hintStyle: const TextStyle(color: AppColors.dark3, fontSize: 12),
+        prefixIcon: const Icon(
+          Icons.search,
+          color: AppColors.primaryBlue,
+          size: 18,
+        ),
+        suffixIcon: keyword.isNotEmpty
+            ? IconButton(
+                onPressed: () => searchController.clear(),
+                icon: const Icon(Icons.close, color: AppColors.dark3, size: 18),
+              )
+            : null,
+        filled: true,
+        fillColor: AppColors.white,
+        contentPadding: const EdgeInsets.symmetric(vertical: 14),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide.none,
+        ),
       ),
     );
   }
@@ -205,35 +285,38 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
   }
 
   Widget _emptyState() {
+    final isSearching = searchController.text.trim().isNotEmpty;
+
     return Padding(
       padding: const EdgeInsets.only(top: 120),
       child: Column(
-        children: const [
+        children: [
           CircleAvatar(
             radius: 36,
             backgroundColor: AppColors.lightBlue,
             child: Icon(
-              Icons.notifications_none_rounded,
+              isSearching
+                  ? Icons.search_off_rounded
+                  : Icons.notifications_none_rounded,
               color: AppColors.primaryBlue,
               size: 34,
             ),
-            ),
-          SizedBox(height: 16),
+          ),
+          const SizedBox(height: 16),
           Text(
-            'Tidak ada notifikasi',
-            style: TextStyle(
+            isSearching ? 'Notifikasi tidak ditemukan' : 'Tidak ada notifikasi',
+            style: const TextStyle(
               color: AppColors.dark1,
               fontSize: 15,
               fontWeight: FontWeight.w600,
             ),
-            ),
-          SizedBox(height: 6),
+          ),
+          const SizedBox(height: 6),
           Text(
-            'Notifikasi terbaru akan muncul di sini.',
-            style: TextStyle(
-              color: AppColors.dark2,
-              fontSize: 12,
-            ),
+            isSearching
+                ? 'Coba gunakan kata kunci lain.'
+                : 'Notifikasi terbaru akan muncul di sini.',
+            style: const TextStyle(color: AppColors.dark2, fontSize: 12),
           ),
         ],
       ),
@@ -473,9 +556,7 @@ class AbnormalNotificationDetailPage extends StatelessWidget {
         const _InfoRow(label: 'Tipe DM', value: 'DM Tipe 2'),
         const _InfoRow(label: 'Usia', value: '47 tahun'),
         const _InfoRow(label: 'Tahun diagnosis', value: '2019'),
-
         const SizedBox(height: 8),
-
         InkWell(
           onTap: () {
             Navigator.push(
@@ -518,9 +599,9 @@ class AbnormalNotificationDetailPage extends StatelessWidget {
   Widget _detectedCard() {
     return _whiteCard(
       title: 'Data Terdeteksi',
-      children: [
+      children: const [
         Row(
-          children: const [
+          children: [
             Expanded(
               child: _DetectedValue(
                 label: 'Tipe pengukuran',
