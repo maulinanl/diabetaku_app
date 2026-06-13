@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import 'patient_threshold_page.dart';
 import 'clinical_note_form_page.dart';
+import 'doctor_prescription_page.dart';
 
 class PatientDetailPage extends StatefulWidget {
   const PatientDetailPage({super.key});
@@ -15,7 +16,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
   int selectedTab = 0;
   int selectedPeriod = 0;
 
-  final tabs = ['Glukosa', 'Fisiologis', 'Perilaku'];
+  final tabs = ['Glukosa', 'Fisiologis', 'Perilaku', 'Resep'];
   final periods = ['7 Hari', '30 Hari', '3 Bulan', 'Kustom'];
 
   DateTimeRange? selectedDateRange;
@@ -29,7 +30,6 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
         child: Column(
           children: [
             _buildHeader(),
-
             Expanded(
               child: Container(
                 color: AppColors.background,
@@ -39,17 +39,31 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 24),
-                      _buildSummaryCards(),
-                      const SizedBox(height: 20),
-                      _buildThresholdSection(),
-                      const SizedBox(height: 20),
+
+                      if (selectedTab != 3) ...[
+                        _buildSummaryCards(),
+                        const SizedBox(height: 20),
+                        _buildThresholdSection(),
+                        const SizedBox(height: 20),
+                      ],
+
                       _buildTabs(),
-                      const SizedBox(height: 14),
-                      _buildPeriods(),
-                      const SizedBox(height: 20),
+
+                      if (selectedTab != 3) ...[
+                        const SizedBox(height: 14),
+                        _buildPeriods(),
+                        const SizedBox(height: 20),
+                      ] else
+                        const SizedBox(height: 20),
+
                       _buildDynamicContent(),
+
+                      if (selectedTab != 3) ...[
+                        const SizedBox(height: 24),
+                        _buildDisconnectButton(),
+                      ],
+
                       const SizedBox(height: 24),
-                      _buildDisconnectButton(),
                     ],
                   ),
                 ),
@@ -63,19 +77,18 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
 
   Widget _buildHeader() {
     final topPad = MediaQuery.of(context).padding.top;
+
     return Container(
       padding: EdgeInsets.fromLTRB(20, topPad + 12, 20, 18),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.primaryBlue,
-        borderRadius: const BorderRadius.only(
+        borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(28),
           bottomRight: Radius.circular(28),
         ),
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          // top row: back icon + centered title
           Row(
             children: [
               IconButton(
@@ -83,22 +96,20 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
               ),
               const Expanded(
-                child: Center(
-                  child: Text(
-                    'Detail Pasien',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                    ),
+                child: Text(
+                  'Detail Pasien',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
-              const SizedBox(width: 48), // spacer supaya title tetap centered
+              const SizedBox(width: 48),
             ],
           ),
           const SizedBox(height: 12),
-          // white card (contains avatar, info, and the blue button)
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -114,7 +125,6 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
               ],
             ),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
@@ -128,13 +138,6 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                           color: AppColors.veryLightBlue,
                           width: 4,
                         ),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 6,
-                            offset: Offset(0, 3),
-                          ),
-                        ],
                       ),
                       child: const Center(
                         child: Text(
@@ -299,7 +302,6 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
     );
   }
 
-  // ...existing code...
   Widget _buildThresholdSection() {
     final rows = [
       ['Glukosa Puasa', '70 - 130', '(mg/dL)'],
@@ -310,19 +312,17 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
     ];
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // header (light blue background, title + edit)
         Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(
             color: AppColors.veryLightBlue,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
             border: Border.all(color: AppColors.light1),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           child: Row(
             children: [
-              Expanded(
+              const Expanded(
                 child: Text(
                   'Batas Normal Pasien',
                   style: TextStyle(
@@ -351,7 +351,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  side: BorderSide(color: AppColors.primaryBlue),
+                  side: const BorderSide(color: AppColors.primaryBlue),
                   foregroundColor: AppColors.primaryBlue,
                   backgroundColor: Colors.white,
                 ),
@@ -359,8 +359,6 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
             ],
           ),
         ),
-
-        // content rows (white background, separated lines)
         Container(
           decoration: BoxDecoration(
             color: AppColors.white,
@@ -397,29 +395,25 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                         ),
                       ),
                     ),
-                    Row(
-                      children: [
-                        Text(
-                          item[1],
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: AppColors.primaryBlue,
-                            fontWeight: FontWeight.w600,
+                    Text(
+                      item[1],
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppColors.primaryBlue,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (item[2].isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 6),
+                        child: Text(
+                          item[2],
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.dark2,
                           ),
                         ),
-                        if (item[2].isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 6),
-                            child: Text(
-                              item[2],
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.dark2,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
+                      ),
                   ],
                 ),
               );
@@ -441,6 +435,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
       child: Row(
         children: List.generate(tabs.length, (index) {
           final selected = selectedTab == index;
+
           return Expanded(
             child: GestureDetector(
               onTap: () => setState(() => selectedTab = index),
@@ -467,16 +462,14 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
     );
   }
 
-  // ...existing code...
   Widget _buildPeriods() {
-    // compact chips: lebih rapat, ukuran chip lebih kecil agar tidak berjauhan
     return Wrap(
       spacing: 6,
       runSpacing: 6,
-      alignment: WrapAlignment.start,
       children: List.generate(periods.length, (index) {
         final selected = selectedPeriod == index;
         final isCustom = index == periods.length - 1;
+
         final label = isCustom && selectedDateRange != null
             ? '${_formatDate(selectedDateRange!.start)} - ${_formatDate(selectedDateRange!.end)}'
             : periods[index];
@@ -509,9 +502,9 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
     );
   }
 
-  // helper untuk memanggil date range picker
   Future<void> _pickCustomRange() async {
     final now = DateTime.now();
+
     final initial =
         selectedDateRange ??
         DateTimeRange(start: now.subtract(const Duration(days: 7)), end: now);
@@ -522,24 +515,13 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
       lastDate: DateTime(2100),
       initialDateRange: initial,
       builder: (context, child) {
-        // kecilkan dan center dialog agar tidak kebesaran
-        final mq = MediaQuery.of(context).size;
-        final maxWidth = mq.width * 0.92;
-        final constrainedWidth = maxWidth > 420 ? 420.0 : maxWidth;
-
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(primary: AppColors.primaryBlue),
-          ),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: constrainedWidth,
-                maxHeight: 560,
-              ),
-              child: Material(color: Colors.transparent, child: child),
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primaryBlue,
             ),
           ),
+          child: child!,
         );
       },
     );
@@ -547,20 +529,23 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
     if (picked != null) {
       setState(() {
         selectedDateRange = picked;
-        selectedPeriod = periods.length - 1; // pilih Kustom
+        selectedPeriod = periods.length - 1;
       });
     }
   }
-  // ...existing code...
 
-  String _formatDate(DateTime d) {
-    return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+  String _formatDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 
   Widget _buildDynamicContent() {
+    if (selectedTab == 3) {
+      return const DoctorPrescriptionPage();
+    }
+
     if (selectedTab == 0) {
       return _buildTrendAndHistory(
-        title: 'Tren 7 Hari Terakhir',
+        title: 'Tren Glukosa',
         spots: const [
           FlSpot(0, 200),
           FlSpot(1, 160),
@@ -622,7 +607,13 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        Text(
+          title,
+          style: const TextStyle(
+            color: AppColors.dark1,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         const SizedBox(height: 12),
         Container(
           height: 170,
@@ -632,61 +623,41 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: AppColors.light1),
           ),
-          child: Column(
-            children: [
-              // optional small subtitle row like in mock
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: const [
-                  Text(
-                    '7 Hari',
-                    style: TextStyle(fontSize: 12, color: AppColors.dark2),
-                  ),
-                  Text(
-                    '',
-                    style: TextStyle(fontSize: 12, color: AppColors.dark2),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Expanded(
-                child: LineChart(
-                  LineChartData(
-                    gridData: const FlGridData(
-                      show: true,
-                      drawVerticalLine: false,
-                    ),
-                    titlesData: const FlTitlesData(
-                      leftTitles: AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                      rightTitles: AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                      topTitles: AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                    ),
-                    borderData: FlBorderData(show: false),
-                    lineBarsData: [
-                      LineChartBarData(
-                        spots: spots,
-                        isCurved: true,
-                        barWidth: 2,
-                        color: AppColors.red,
-                        dotData: const FlDotData(show: false),
-                      ),
-                    ],
-                  ),
+          child: LineChart(
+            LineChartData(
+              gridData: const FlGridData(show: true, drawVerticalLine: false),
+              titlesData: const FlTitlesData(
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                rightTitles: AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
                 ),
               ),
-            ],
+              borderData: FlBorderData(show: false),
+              lineBarsData: [
+                LineChartBarData(
+                  spots: spots,
+                  isCurved: true,
+                  barWidth: 2,
+                  color: AppColors.red,
+                  dotData: const FlDotData(show: false),
+                ),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 18),
         const Text(
           'RIWAYAT DATA',
-          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: AppColors.dark1,
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         const SizedBox(height: 10),
         ...history.map((item) {
@@ -697,13 +668,6 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
               color: AppColors.white,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: AppColors.light1),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 2,
-                  offset: Offset(0, 1),
-                ),
-              ],
             ),
             child: Row(
               children: [
@@ -713,7 +677,10 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                     children: [
                       Text(
                         item[0],
-                        style: const TextStyle(fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.dark1,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -726,19 +693,12 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                     ],
                   ),
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      item[2],
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 2),
-                    const Text(
-                      '',
-                      style: TextStyle(fontSize: 11, color: AppColors.dark2),
-                    ),
-                  ],
+                Text(
+                  item[2],
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primaryBlue,
+                  ),
                 ),
               ],
             ),

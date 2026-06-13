@@ -98,18 +98,24 @@ class PatientProfilePage extends StatelessWidget {
 
   Widget _dmBadge(String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
       ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            text,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -307,15 +313,16 @@ class PatientProfilePage extends StatelessWidget {
 
   Widget _miniBadge(String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFFEAFBF3),
+        color: AppColors.veryLightBlue,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.lightBlue),
       ),
       child: Text(
         text,
         style: const TextStyle(
-          color: Color(0xFF10C878),
+          color: AppColors.primaryBlue,
           fontSize: 9,
           fontWeight: FontWeight.w600,
         ),
@@ -332,11 +339,6 @@ class PatientProfilePage extends StatelessWidget {
             Icons.lock_outline,
             'Ubah kata sandi',
             'Perbarui keamanan akun',
-          ),
-          _menuTile(
-            Icons.notifications_none,
-            'Notifikasi',
-            'Atur preferensi notifikasi',
           ),
           _menuTile(Icons.info_outline, 'Tentang aplikasi', 'Versi 1.0.0'),
         ],

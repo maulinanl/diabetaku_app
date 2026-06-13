@@ -26,7 +26,7 @@ class DoctorProfilePage extends StatelessWidget {
                         children: [
                           Expanded(child: _statCard('12', 'Pasien Aktif')),
                           const SizedBox(width: 12),
-                          Expanded(child: _statCard('47', 'Catatan Klinis')),
+                          Expanded(child: _statCard('3', 'Pasien Abnormal')),
                         ],
                       ),
                       const SizedBox(height: 18),
@@ -98,20 +98,21 @@ class DoctorProfilePage extends StatelessWidget {
 
   Widget _verifiedBadge() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
       decoration: BoxDecoration(
-        color: AppColors.veryLightBlue,
+        color: Colors.white.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
       ),
       child: const Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.verified, size: 14, color: AppColors.primaryBlue),
-          SizedBox(width: 4),
+          Icon(Icons.verified_rounded, size: 14, color: Colors.white),
+          SizedBox(width: 5),
           Text(
             'Terverifikasi',
             style: TextStyle(
-              color: AppColors.primaryBlue,
+              color: Colors.white,
               fontSize: 11,
               fontWeight: FontWeight.w600,
             ),
@@ -125,18 +126,23 @@ class DoctorProfilePage extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFFEAFBF3),
+        color: AppColors.veryLightBlue,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.lightBlue),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.verified, size: 12, color: Color(0xFF10C878)),
+          // const Icon(
+          //   Icons.verified_rounded,
+          //   size: 12,
+          //   color: AppColors.primaryBlue,
+          // ),
           const SizedBox(width: 4),
           Text(
             text,
             style: const TextStyle(
-              color: Color(0xFF10C878),
+              color: AppColors.primaryBlue,
               fontSize: 10,
               fontWeight: FontWeight.w600,
             ),
@@ -308,14 +314,26 @@ class DoctorProfilePage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: const TextStyle(color: AppColors.dark1, fontSize: 13),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        value,
+                        style: const TextStyle(
+                          color: AppColors.dark1,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    if (badge != null) ...[
+                      const SizedBox(width: 6),
+                      _statusBadge(badge),
+                    ],
+                  ],
                 ),
               ],
             ),
           ),
-          if (badge != null) _statusBadge(badge),
         ],
       ),
     );

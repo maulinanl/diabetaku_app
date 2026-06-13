@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/pages/login_page.dart';
+import 'family_edit_profile_page.dart';
 
 class FamilyProfilePage extends StatelessWidget {
   const FamilyProfilePage({super.key});
@@ -103,13 +104,18 @@ class FamilyProfilePage extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
       ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            text,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -148,9 +154,9 @@ class FamilyProfilePage extends StatelessWidget {
           Row(
             children: [
               const Icon(
-                Icons.person,
+                Icons.person_outline,
                 color: AppColors.primaryBlue,
-                size: 18,
+                size: 16,
               ),
               const SizedBox(width: 6),
               const Expanded(
@@ -158,13 +164,19 @@ class FamilyProfilePage extends StatelessWidget {
                   'Data Diri',
                   style: TextStyle(
                     color: AppColors.primaryBlue,
-                    fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
               OutlinedButton.icon(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const FamilyEditProfilePage(),
+                    ),
+                  );
+                },
                 icon: const Icon(Icons.edit, size: 16),
                 label: const Text('Ubah'),
                 style: OutlinedButton.styleFrom(
@@ -175,8 +187,8 @@ class FamilyProfilePage extends StatelessWidget {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  side: const BorderSide(color: AppColors.light1),
-                  foregroundColor: AppColors.dark1,
+                  side: const BorderSide(color: AppColors.primaryBlue),
+                  foregroundColor: AppColors.primaryBlue,
                   backgroundColor: Colors.white,
                 ),
               ),
@@ -194,11 +206,7 @@ class FamilyProfilePage extends StatelessWidget {
             'angelicaSabGit@gmail.com',
             badge: 'Terverifikasi',
           ),
-          _profileItem(
-            Icons.phone_outlined,
-            'Nomor Telepon',
-            '081234567890',
-          ),
+          _profileItem(Icons.phone_outlined, 'Nomor Telepon', '081234567890'),
         ],
       ),
     );
@@ -263,15 +271,16 @@ class FamilyProfilePage extends StatelessWidget {
 
   Widget _miniBadge(String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFFEAFBF3),
+        color: AppColors.veryLightBlue,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.lightBlue),
       ),
       child: Text(
         text,
         style: const TextStyle(
-          color: Color(0xFF10C878),
+          color: AppColors.primaryBlue,
           fontSize: 9,
           fontWeight: FontWeight.w600,
         ),
@@ -290,17 +299,7 @@ class FamilyProfilePage extends StatelessWidget {
             'Perbarui keamanan akun',
           ),
           const Divider(height: 1),
-          _menuTile(
-            Icons.notifications_none,
-            'Notifikasi',
-            'Atur preferensi notifikasi',
-          ),
-          const Divider(height: 1),
-          _menuTile(
-            Icons.info_outline,
-            'Tentang aplikasi',
-            'Versi 1.0.0',
-          ),
+          _menuTile(Icons.info_outline, 'Tentang aplikasi', 'Versi 1.0.0'),
         ],
       ),
     );
