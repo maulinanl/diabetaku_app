@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import 'patient_validation_detail_page.dart';
 
 class PatientNotificationPage extends StatefulWidget {
   const PatientNotificationPage({super.key});
@@ -296,81 +297,109 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
   Widget _notificationTile(Map<String, Object> item) {
     final unread = item['unread'] as bool;
 
-    return Container(
-      color: unread ? const Color(0xFFF3F8FF) : AppColors.white,
-      padding: const EdgeInsets.fromLTRB(18, 16, 22, 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (unread)
+    return InkWell(
+      onTap: () {
+        final title = item['title'] as String;
+
+        if (title == 'Data dari keluarga perlu validasi') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const PatientValidationDetailPage(
+                name: 'Aditya Yoga Saputra',
+                relation: 'Anak',
+                type: 'Glukosa Darah',
+                value: '165 mg/dL',
+                time: '7 Jun 2025 • 08:30',
+                note: 'Diinput oleh keluarga dan menunggu validasi pasien.',
+                icon: Icons.opacity,
+              ),
+            ),
+          );
+        }
+      },
+      child: Container(
+        color: unread ? const Color(0xFFF3F8FF) : AppColors.white,
+        padding: const EdgeInsets.fromLTRB(18, 16, 22, 16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (unread)
+              Container(
+                width: 7,
+                height: 7,
+                margin: const EdgeInsets.only(top: 5, right: 8),
+                decoration: const BoxDecoration(
+                  color: AppColors.primaryBlue,
+                  shape: BoxShape.circle,
+                ),
+              )
+            else
+              const SizedBox(width: 15),
+
             Container(
-              width: 7,
-              height: 7,
-              margin: const EdgeInsets.only(top: 5, right: 8),
-              decoration: const BoxDecoration(
-                color: AppColors.primaryBlue,
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: item['bg'] as Color,
                 shape: BoxShape.circle,
               ),
-            )
-          else
-            const SizedBox(width: 15),
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: item['bg'] as Color,
-              shape: BoxShape.circle,
+              child: Icon(
+                item['icon'] as IconData,
+                color: item['color'] as Color,
+                size: 22,
+              ),
             ),
-            child: Icon(
-              item['icon'] as IconData,
-              color: item['color'] as Color,
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item['title'] as String,
-                  style: const TextStyle(
-                    color: AppColors.primaryBlue,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  item['desc'] as String,
-                  style: const TextStyle(
-                    color: AppColors.dark1,
-                    fontSize: 12,
-                    height: 1.35,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.access_time,
+
+            const SizedBox(width: 14),
+
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item['title'] as String,
+                    style: const TextStyle(
                       color: AppColors.primaryBlue,
-                      size: 13,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      item['time'] as String,
-                      style: const TextStyle(
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    item['desc'] as String,
+                    style: const TextStyle(
+                      color: AppColors.dark1,
+                      fontSize: 12,
+                      height: 1.35,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.access_time,
                         color: AppColors.primaryBlue,
-                        fontSize: 11,
+                        size: 13,
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      const SizedBox(width: 4),
+                      Text(
+                        item['time'] as String,
+                        style: const TextStyle(
+                          color: AppColors.primaryBlue,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+
+            const SizedBox(width: 6),
+            const Icon(Icons.chevron_right, color: AppColors.dark3),
+          ],
+        ),
       ),
     );
   }

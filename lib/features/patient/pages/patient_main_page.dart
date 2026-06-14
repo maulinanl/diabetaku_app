@@ -7,6 +7,7 @@ import 'patient_add_data_page.dart';
 import 'patient_history_page.dart';
 import 'patient_profile_page.dart';
 import 'patient_recommendation_detail_page.dart';
+import 'patient_validation_page.dart';
 
 class PatientMainPage extends StatefulWidget {
   const PatientMainPage({super.key});
@@ -60,9 +61,12 @@ class PatientHomePage extends StatefulWidget {
 
 class _PatientHomePageState extends State<PatientHomePage> {
   bool hasUnreadNotification = true;
+  bool hasPendingValidation = true;
+  int pendingValidationCount = 2;
+
   final dailyChecks = [
     ['Glukosa', Icons.opacity, true],
-    ['Obat', Icons.medication_outlined, true],
+    ['Resep Obat', Icons.medication_outlined, true],
     ['Aktivitas', Icons.directions_run, false],
     ['Makan', Icons.restaurant_outlined, false],
   ];
@@ -123,6 +127,12 @@ class _PatientHomePageState extends State<PatientHomePage> {
                   child: Column(
                     children: [
                       _doctorNoteCard(),
+
+                      if (hasPendingValidation) ...[
+                        const SizedBox(height: 14),
+                        _validationCard(),
+                      ],
+
                       const SizedBox(height: 14),
                       _dailyChecklistCard(),
                       const SizedBox(height: 14),
@@ -195,7 +205,7 @@ class _PatientHomePageState extends State<PatientHomePage> {
                         color: AppColors.primaryBlue,
                       ),
                     ),
-                    if (hasUnreadNotification)
+                    if (hasUnreadNotification || hasPendingValidation)
                       Positioned(
                         top: 9,
                         right: 9,
@@ -303,6 +313,81 @@ class _PatientHomePageState extends State<PatientHomePage> {
                 ],
               ),
             ),
+            const Icon(Icons.chevron_right, color: AppColors.dark3),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _validationCard() {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const PatientValidationPage()),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: _cardDecoration(),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF4DA),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.fact_check_outlined,
+                color: Colors.orange,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$pendingValidationCount data menunggu validasi',
+                    style: const TextStyle(
+                      color: AppColors.primaryBlue,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Data ditambahkan oleh anggota keluarga',
+                    style: TextStyle(color: AppColors.dark2, fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF4DA),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                '$pendingValidationCount',
+                style: const TextStyle(
+                  color: Colors.orange,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+
+            const SizedBox(width: 6),
+
             const Icon(Icons.chevron_right, color: AppColors.dark3),
           ],
         ),

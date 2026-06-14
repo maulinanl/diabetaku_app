@@ -26,8 +26,7 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
       iconBg: Color(0xFFFFF4DA),
       iconColor: Colors.orange,
       title: 'Data dari Anda dikonfirmasi pasien',
-      message:
-          'Angelica Sabi Gita mengonfirmasi data glukosa yang Anda input.',
+      message: 'Angelica Sabi Gita mengonfirmasi data glukosa yang Anda input.',
       time: '08:30 • 1 jam lalu',
       unread: true,
     ),
@@ -165,10 +164,7 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
           border: Border.all(color: AppColors.light1),
         ),
         child: Row(
-          children: [
-            _tabItem('Semua', 0),
-            _tabItem('Belum Dibaca', 1),
-          ],
+          children: [_tabItem('Semua', 0), _tabItem('Belum Dibaca', 1)],
         ),
       ),
     );
@@ -243,10 +239,7 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
           SizedBox(height: 6),
           Text(
             'Notifikasi terbaru akan muncul di sini.',
-            style: TextStyle(
-              color: AppColors.dark2,
-              fontSize: 12,
-            ),
+            style: TextStyle(color: AppColors.dark2, fontSize: 12),
           ),
         ],
       ),
@@ -262,6 +255,7 @@ class _FamilyNotificationItem extends StatelessWidget {
   final String message;
   final String time;
   final bool unread;
+  final VoidCallback? onTap;
 
   const _FamilyNotificationItem({
     required this.icon,
@@ -271,86 +265,92 @@ class _FamilyNotificationItem extends StatelessWidget {
     required this.message,
     required this.time,
     required this.unread,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: unread ? Colors.white.withValues(alpha: 0.55) : Colors.white,
-      padding: const EdgeInsets.fromLTRB(22, 14, 18, 14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 42,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: iconBg,
-                  child: Icon(icon, color: iconColor, size: 21),
-                ),
-                if (unread)
-                  Positioned(
-                    left: -2,
-                    top: -3,
-                    child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: AppColors.primaryBlue,
-                        shape: BoxShape.circle,
+    return InkWell(
+      onTap: onTap ?? () {},
+      child: Container(
+        color: unread ? const Color(0xFFF3F8FF) : AppColors.white,
+        padding: const EdgeInsets.fromLTRB(22, 14, 14, 14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 42,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: iconBg,
+                    child: Icon(icon, color: iconColor, size: 21),
+                  ),
+                  if (unread)
+                    Positioned(
+                      left: -2,
+                      top: -3,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: AppColors.primaryBlue,
+                          shape: BoxShape.circle,
+                        ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: AppColors.primaryBlue,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  message,
-                  style: const TextStyle(
-                    color: AppColors.dark1,
-                    fontSize: 11,
-                    height: 1.35,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.access_time,
-                      size: 12,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
                       color: AppColors.primaryBlue,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      time,
-                      style: const TextStyle(
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    message,
+                    style: const TextStyle(
+                      color: AppColors.dark1,
+                      fontSize: 11,
+                      height: 1.35,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.access_time,
+                        size: 12,
                         color: AppColors.primaryBlue,
-                        fontSize: 10,
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      const SizedBox(width: 4),
+                      Text(
+                        time,
+                        style: const TextStyle(
+                          color: AppColors.primaryBlue,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+            const SizedBox(width: 6),
+            const Icon(Icons.chevron_right, color: AppColors.dark3),
+          ],
+        ),
       ),
     );
   }

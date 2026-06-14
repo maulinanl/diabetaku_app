@@ -430,8 +430,21 @@ class _RequestCard extends StatelessWidget {
 
 class RequestDetailPage extends StatelessWidget {
   final int status;
+  final String initial;
+  final String name;
+  final String info;
+  final String diagnosis;
+  final String time;
 
-  const RequestDetailPage({super.key, required this.status});
+  const RequestDetailPage({
+    super.key,
+    required this.status,
+    this.initial = 'WP',
+    this.name = 'Wahyu Prasetyo',
+    this.info = 'DM Tipe 2 • 47 tahun • Laki-laki',
+    this.diagnosis = '2019',
+    this.time = '08:15',
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -585,22 +598,20 @@ class RequestDetailPage extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.light1),
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          const Text(
             'Data Pasien',
             style: TextStyle(
               color: AppColors.primaryBlue,
               fontWeight: FontWeight.bold,
             ),
           ),
-          SizedBox(height: 14),
-          _DetailRow(label: 'Nama', value: 'Wahyu Prasetyo'),
-          _DetailRow(label: 'Tipe DM', value: 'DM Tipe 2'),
-          _DetailRow(label: 'Usia', value: '47 tahun'),
-          _DetailRow(label: 'Jenis Kelamin', value: 'Laki-laki'),
-          _DetailRow(label: 'Tahun diagnosis', value: '2019'),
+          const SizedBox(height: 14),
+          _DetailRow(label: 'Nama', value: name),
+          _DetailRow(label: 'Informasi', value: info),
+          _DetailRow(label: 'Tahun diagnosis', value: diagnosis),
         ],
       ),
     );
