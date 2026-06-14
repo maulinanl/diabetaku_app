@@ -36,13 +36,27 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
     },
     {
       'type': 'Obat',
-      'title': 'Kepatuhan Obat',
+      'title': 'Metformin 850 mg',
       'time': '7 Jun • 07:00',
       'value': '',
       'unit': '',
       'badge': 'Diminum',
+      'doctor': 'dr. Agus Setiawan, Sp.PD',
+      'prescriptionStatus': 'Resep berlaku',
       'icon': Icons.medication_outlined,
       'color': AppColors.primaryBlue,
+    },
+    {
+      'type': 'Obat',
+      'title': 'Glibenclamide 5 mg',
+      'time': '5 Jun • 20:00',
+      'value': '',
+      'unit': '',
+      'badge': 'Terlewat',
+      'doctor': 'dr. Sarah Puspita, Sp.PD',
+      'prescriptionStatus': 'Tidak berlaku',
+      'icon': Icons.medication_outlined,
+      'color': AppColors.red,
     },
     {
       'type': 'Aktivitas',
@@ -272,11 +286,14 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
                 (item) => Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: _HealthHistoryCard(
+                    type: item['type'] as String,
                     title: item['title'] as String,
                     time: item['time'] as String,
                     value: item['value'] as String,
                     unit: item['unit'] as String,
                     badge: item['badge'] as String,
+                    doctor: item['doctor'] as String?,
+                    prescriptionStatus: item['prescriptionStatus'] as String?,
                     icon: item['icon'] as IconData,
                     color: item['color'] as Color,
                     onTap: () {
@@ -358,7 +375,7 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
                       ),
                     );
                   },
-                  child: _ClinicalHistoryCard(
+                  child: _RecommendationHistoryCard(
                     initial: item['initial']!,
                     doctor: item['doctor']!,
                     date: item['date']!,
@@ -591,21 +608,27 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
 }
 
 class _HealthHistoryCard extends StatelessWidget {
+  final String type;
   final String title;
   final String time;
   final String value;
   final String unit;
   final String badge;
+  final String? doctor;
+  final String? prescriptionStatus;
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
 
   const _HealthHistoryCard({
+    required this.type,
     required this.title,
     required this.time,
     required this.value,
     required this.unit,
     required this.badge,
+    this.doctor,
+    this.prescriptionStatus,
     required this.icon,
     required this.color,
     required this.onTap,
@@ -614,6 +637,7 @@ class _HealthHistoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasValue = value.isNotEmpty;
+    final isInactivePrescription = prescriptionStatus == 'Tidak berlaku';
 
     return InkWell(
       onTap: onTap,
@@ -622,6 +646,7 @@ class _HealthHistoryCard extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         decoration: _cardDecoration(),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
               width: 38,
@@ -653,6 +678,28 @@ class _HealthHistoryCard extends StatelessWidget {
                       fontSize: 12,
                     ),
                   ),
+                  if (type == 'Obat' && doctor != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Resep dari $doctor',
+                      style: const TextStyle(
+                        color: AppColors.primaryBlue,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      prescriptionStatus ?? '',
+                      style: TextStyle(
+                        color: isInactivePrescription
+                            ? AppColors.red
+                            : const Color(0xFF10C878),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -719,14 +766,14 @@ class _HealthHistoryCard extends StatelessWidget {
   }
 }
 
-class _ClinicalHistoryCard extends StatelessWidget {
+class _RecommendationHistoryCard extends StatelessWidget {
   final String initial;
   final String doctor;
   final String date;
   final String status;
   final String description;
 
-  const _ClinicalHistoryCard({
+  const _RecommendationHistoryCard({
     required this.initial,
     required this.doctor,
     required this.date,
@@ -960,18 +1007,21 @@ class PatientHealthDetailPage extends StatelessWidget {
       return {
         'title': 'Kepatuhan Obat',
         'icon': Icons.medication_outlined,
-        'value': 'Metformin 850mg',
-        'unit': 'Dosis malam',
-        'date': '7 Juni 2025 • 08:20',
+        'value': 'Metformin 850 mg',
+        'unit': 'Jadwal pagi',
+        'date': '7 Juni 2025 • 07:00',
         'status': 'Diminum',
         'sections': [
           ['Nama Obat', 'Metformin'],
           ['Dosis', '850 mg'],
           ['Jadwal', 'Pagi'],
           ['Status konsumsi', 'Diminum'],
-          ['Waktu aktual minum', '08:00'],
+          ['Waktu aktual checklist', '07:00'],
+          ['Resep dari', 'dr. Agus Setiawan, Sp.PD'],
+          ['Status resep', 'Resep berlaku'],
+          ['Mulai berlaku', '1 Juni 2025'],
         ],
-        'note': 'Tidak ada catatan',
+        'note': 'Timestamp otomatis tercatat saat pasien melakukan checklist.',
       };
     }
 
@@ -1122,9 +1172,9 @@ class PatientHealthDetailPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            _getDetailTitle(data['title']),
-            style: const TextStyle(
+          const Text(
+            'Detail data',
+            style: TextStyle(
               color: AppColors.primaryBlue,
               fontSize: 12,
               fontWeight: FontWeight.w700,

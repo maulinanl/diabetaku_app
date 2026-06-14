@@ -193,27 +193,17 @@ class PatientAddDataPage extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(16, topPad + 14, 16, 18),
+      padding: EdgeInsets.fromLTRB(20, topPad + 14, 20, 18),
       color: AppColors.primaryBlue,
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
+      child: const Center(
+        child: Text(
+          'Tambah Data',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 21,
+            fontWeight: FontWeight.bold,
           ),
-          const Expanded(
-            child: Text(
-              'Tambah Data',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 21,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          const SizedBox(width: 48),
-        ],
+        ),
       ),
     );
   }

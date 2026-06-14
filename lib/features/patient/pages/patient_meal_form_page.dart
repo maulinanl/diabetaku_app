@@ -10,6 +10,7 @@ class PatientMealFormPage extends StatefulWidget {
 
 class _PatientMealFormPageState extends State<PatientMealFormPage> {
   final carbCtr = TextEditingController();
+  final calorieCtr = TextEditingController();
   final descriptionCtr = TextEditingController();
 
   DateTime selectedDate = DateTime(2025, 6, 7);
@@ -24,20 +25,20 @@ class _PatientMealFormPageState extends State<PatientMealFormPage> {
     ['Snack', Icons.cookie_outlined],
   ];
 
-  bool get isValid =>
-      carbCtr.text.trim().isNotEmpty &&
-      descriptionCtr.text.trim().isNotEmpty;
+  bool get isValid => true;
 
   @override
   void initState() {
     super.initState();
     carbCtr.addListener(() => setState(() {}));
+    calorieCtr.addListener(() => setState(() {}));
     descriptionCtr.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
     carbCtr.dispose();
+    calorieCtr.dispose();
     descriptionCtr.dispose();
     super.dispose();
   }
@@ -164,8 +165,6 @@ class _PatientMealFormPageState extends State<PatientMealFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    final showError = descriptionCtr.text.isEmpty && carbCtr.text.isNotEmpty;
-
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -209,11 +208,11 @@ class _PatientMealFormPageState extends State<PatientMealFormPage> {
                       itemCount: mealTypes.length,
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 4,
-                        mainAxisSpacing: 8,
-                        crossAxisSpacing: 8,
-                        childAspectRatio: 0.95,
-                      ),
+                            crossAxisCount: 4,
+                            mainAxisSpacing: 8,
+                            crossAxisSpacing: 8,
+                            childAspectRatio: 0.95,
+                          ),
                       itemBuilder: (context, index) {
                         final item = mealTypes[index];
                         final title = item[0] as String;
@@ -261,27 +260,25 @@ class _PatientMealFormPageState extends State<PatientMealFormPage> {
                       },
                     ),
 
-                    _label('Estimasi karbohidrat (gram)*'),
+                    _label('Estimasi karbohidrat (gram)'),
                     _input(
                       controller: carbCtr,
                       hint: 'Masukkan estimasi karbohidrat',
                       keyboardType: TextInputType.number,
                     ),
 
-                    _label('Deskripsi makanan*'),
+                    _label('Estimasi kalori (kkal)'),
+                    _input(
+                      controller: calorieCtr,
+                      hint: 'Masukkan estimasi kalori',
+                      keyboardType: TextInputType.number,
+                    ),
+
+                    _label('Deskripsi makanan'),
                     _input(
                       controller: descriptionCtr,
                       hint: 'Tulis makanan yang dikonsumsi',
-                      error: showError,
                     ),
-
-                    if (showError) ...[
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Deskripsi makanan wajib diisi',
-                        style: TextStyle(color: AppColors.red, fontSize: 11),
-                      ),
-                    ],
 
                     const SizedBox(height: 26),
 
@@ -414,7 +411,6 @@ class _PatientMealFormPageState extends State<PatientMealFormPage> {
     required TextEditingController controller,
     required String hint,
     TextInputType? keyboardType,
-    bool error = false,
   }) {
     return TextField(
       controller: controller,
@@ -430,12 +426,12 @@ class _PatientMealFormPageState extends State<PatientMealFormPage> {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6),
-          borderSide: BorderSide(color: error ? AppColors.red : AppColors.light1),
+          borderSide: const BorderSide(color: AppColors.light1),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6),
-          borderSide: BorderSide(
-            color: error ? AppColors.red : AppColors.primaryBlue,
+          borderSide: const BorderSide(
+            color: AppColors.primaryBlue,
             width: 1.4,
           ),
         ),

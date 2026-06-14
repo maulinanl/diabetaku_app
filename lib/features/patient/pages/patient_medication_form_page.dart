@@ -10,86 +10,60 @@ class PatientMedicationFormPage extends StatefulWidget {
 }
 
 class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
-  final medicineCtr = TextEditingController();
-  final dosageCtr = TextEditingController();
   final noteCtr = TextEditingController();
 
-  DateTime selectedDate = DateTime(2025, 6, 7);
-  TimeOfDay selectedTime = const TimeOfDay(hour: 17, minute: 30);
+  String selectedSchedule = 'Pagi';
 
-  String selectedStatus = 'Diminum';
+  final schedules = ['Pagi', 'Siang', 'Malam'];
 
-  final statuses = ['Diminum', 'Terlambat', 'Terlewat'];
+  final prescriptions = [
+    {
+      'medicine': 'Metformin',
+      'dosage': '500 mg',
+      'instruction': '1 tablet setelah makan',
+      'schedule': 'Pagi',
+      'doctor': 'dr. Agus Setiawan, Sp.PD',
+      'checked': false,
+    },
+    {
+      'medicine': 'Glimepiride',
+      'dosage': '2 mg',
+      'instruction': '1 tablet sebelum makan',
+      'schedule': 'Pagi',
+      'doctor': 'dr. Agus Setiawan, Sp.PD',
+      'checked': false,
+    },
+    {
+      'medicine': 'Metformin',
+      'dosage': '500 mg',
+      'instruction': '1 tablet setelah makan',
+      'schedule': 'Malam',
+      'doctor': 'dr. Agus Setiawan, Sp.PD',
+      'checked': false,
+    },
+  ];
 
-  bool get isValid =>
-      medicineCtr.text.trim().isNotEmpty &&
-      dosageCtr.text.trim().isNotEmpty &&
-      selectedStatus.isNotEmpty;
-
-  @override
-  void initState() {
-    super.initState();
-    medicineCtr.addListener(() => setState(() {}));
-    dosageCtr.addListener(() => setState(() {}));
+  bool get hasCheckedMedicine {
+    return prescriptions.any(
+      (item) => item['schedule'] == selectedSchedule && item['checked'] == true,
+    );
   }
 
   @override
   void dispose() {
-    medicineCtr.dispose();
-    dosageCtr.dispose();
     noteCtr.dispose();
     super.dispose();
   }
 
-  String get dateText {
-    return '${selectedDate.day.toString().padLeft(2, '0')}/${selectedDate.month.toString().padLeft(2, '0')}/${selectedDate.year}';
-  }
-
-  String get timeText {
-    return '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
-  }
-
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: selectedDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.primaryBlue,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (picked != null) setState(() => selectedDate = picked);
-  }
-
-  Future<void> _pickTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: selectedTime,
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.primaryBlue,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (picked != null) setState(() => selectedTime = picked);
+  void _toggleMedicine(int index, bool? value) {
+    setState(() {
+      prescriptions[index]['checked'] = value ?? false;
+    });
   }
 
   void _save() {
+    final now = DateTime.now();
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -110,7 +84,7 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
               ),
               const SizedBox(height: 18),
               const Text(
-                'Data berhasil disimpan',
+                'Kepatuhan obat tersimpan',
                 style: TextStyle(
                   color: AppColors.primaryBlue,
                   fontSize: 20,
@@ -118,10 +92,14 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Data kepatuhan obat berhasil tersimpan.',
+              Text(
+                'Obat yang diminum pada jadwal $selectedSchedule berhasil dicatat otomatis pada ${_formatTimestamp(now)}.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.dark2, fontSize: 13),
+                style: const TextStyle(
+                  color: AppColors.dark2,
+                  fontSize: 13,
+                  height: 1.4,
+                ),
               ),
               const SizedBox(height: 22),
               SizedBox(
@@ -161,8 +139,24 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
     );
   }
 
+  String _formatTimestamp(DateTime date) {
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final year = date.year;
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+
+    return '$day/$month/$year $hour:$minute';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final filteredPrescriptions = prescriptions
+        .asMap()
+        .entries
+        .where((entry) => entry.value['schedule'] == selectedSchedule)
+        .toList();
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -177,48 +171,26 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _sectionTitle('Kepatuhan Obat'),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Checklist obat sesuai resep aktif dari dokter. Waktu minum akan dicatat otomatis saat kamu menyimpan data.',
+                      style: TextStyle(
+                        color: AppColors.dark2,
+                        fontSize: 12,
+                        height: 1.45,
+                      ),
+                    ),
 
-                    _label('Tanggal dan waktu*'),
+                    _label('Waktu minum*'),
                     Row(
-                      children: [
-                        Expanded(
-                          child: _dateTimeBox(
-                            text: dateText,
-                            icon: Icons.calendar_today_outlined,
-                            onTap: _pickDate,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _dateTimeBox(
-                            text: timeText,
-                            icon: Icons.access_time,
-                            onTap: _pickTime,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    _label('Nama obat*'),
-                    _input(
-                      controller: medicineCtr,
-                      hint: 'Masukkan nama obat',
-                    ),
-
-                    _label('Dosis*'),
-                    _input(
-                      controller: dosageCtr,
-                      hint: 'Contoh: 500 mg / 1 tablet',
-                    ),
-
-                    _label('Status konsumsi*'),
-                    Row(
-                      children: statuses.map((item) {
-                        final selected = selectedStatus == item;
+                      children: schedules.map((item) {
+                        final selected = selectedSchedule == item;
 
                         return Expanded(
                           child: GestureDetector(
-                            onTap: () => setState(() => selectedStatus = item),
+                            onTap: () {
+                              setState(() => selectedSchedule = item);
+                            },
                             child: Container(
                               height: 42,
                               margin: const EdgeInsets.only(right: 8),
@@ -246,10 +218,34 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
                       }).toList(),
                     ),
 
+                    _label('Daftar obat dari resep dokter*'),
+
+                    if (filteredPrescriptions.isEmpty)
+                      _emptyPrescription()
+                    else
+                      Column(
+                        children: filteredPrescriptions.map((entry) {
+                          final index = entry.key;
+                          final item = entry.value;
+
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _medicineCard(
+                              index: index,
+                              medicine: item['medicine'] as String,
+                              dosage: item['dosage'] as String,
+                              instruction: item['instruction'] as String,
+                              doctor: item['doctor'] as String,
+                              checked: item['checked'] as bool,
+                            ),
+                          );
+                        }).toList(),
+                      ),
+
                     _label('Catatan (opsional)'),
                     _input(
                       controller: noteCtr,
-                      hint: 'Tambahkan catatan obat',
+                      hint: 'Contoh: obat diminum setelah makan',
                     ),
 
                     const SizedBox(height: 26),
@@ -258,7 +254,7 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
                       width: double.infinity,
                       height: 48,
                       child: ElevatedButton(
-                        onPressed: isValid ? _save : null,
+                        onPressed: hasCheckedMedicine ? _save : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryBlue,
                           disabledBackgroundColor: const Color(0xFFAFCBEA),
@@ -269,7 +265,7 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
                           ),
                         ),
                         child: const Text(
-                          'Simpan',
+                          'Simpan Checklist',
                           style: TextStyle(fontWeight: FontWeight.w600),
                         ),
                       ),
@@ -290,6 +286,115 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _medicineCard({
+    required int index,
+    required String medicine,
+    required String dosage,
+    required String instruction,
+    required String doctor,
+    required bool checked,
+  }) {
+    return InkWell(
+      onTap: () => _toggleMedicine(index, !checked),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: checked ? AppColors.primaryBlue : AppColors.light1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Checkbox(
+              value: checked,
+              activeColor: AppColors.primaryBlue,
+              onChanged: (value) => _toggleMedicine(index, value),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    medicine,
+                    style: const TextStyle(
+                      color: AppColors.dark1,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '$dosage • $instruction',
+                    style: const TextStyle(
+                      color: AppColors.primaryBlue,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Resep dari $doctor',
+                    style: const TextStyle(
+                      color: AppColors.dark2,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _emptyPrescription() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.light1),
+      ),
+      child: const Column(
+        children: [
+          Icon(
+            Icons.medication_outlined,
+            color: AppColors.primaryBlue,
+            size: 34,
+          ),
+          SizedBox(height: 10),
+          Text(
+            'Tidak ada obat pada jadwal ini',
+            style: TextStyle(
+              color: AppColors.dark1,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          SizedBox(height: 4),
+          Text(
+            'Obat akan muncul sesuai resep aktif dari dokter.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppColors.dark2, fontSize: 12, height: 1.4),
+          ),
+        ],
       ),
     );
   }
@@ -349,44 +454,12 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
     );
   }
 
-  Widget _dateTimeBox({
-    required String text,
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 48,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: AppColors.light1),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                text,
-                style: const TextStyle(color: AppColors.dark1, fontSize: 13),
-              ),
-            ),
-            Icon(icon, color: AppColors.primaryBlue, size: 18),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _input({
     required TextEditingController controller,
     required String hint,
-    TextInputType? keyboardType,
   }) {
     return TextField(
       controller: controller,
-      keyboardType: keyboardType,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(color: AppColors.dark4, fontSize: 13),

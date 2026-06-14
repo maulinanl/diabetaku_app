@@ -17,10 +17,12 @@ class PatientMainPage extends StatefulWidget {
 
 class _PatientMainPageState extends State<PatientMainPage> {
   int currentIndex = 0;
+  bool isAddPage = false;
 
   final pages = const [
     PatientHomePage(),
     PatientConnectionPage(),
+    PatientAddDataPage(),
     PatientHistoryPage(),
     PatientProfilePage(),
   ];
@@ -29,19 +31,20 @@ class _PatientMainPageState extends State<PatientMainPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: pages[currentIndex],
+      body: isAddPage ? const PatientAddDataPage() : pages[currentIndex],
       bottomNavigationBar: PatientBottomNavBar(
         currentIndex: currentIndex,
+        isAddSelected: isAddPage,
         onTap: (index) {
           setState(() {
             currentIndex = index;
+            isAddPage = false;
           });
         },
         onAddTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const PatientAddDataPage()),
-          );
+          setState(() {
+            isAddPage = true;
+          });
         },
       ),
     );

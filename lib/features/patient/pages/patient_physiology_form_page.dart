@@ -17,10 +17,7 @@ class _PatientPhysiologyFormPageState extends State<PatientPhysiologyFormPage> {
   DateTime selectedDate = DateTime(2025, 6, 7);
   TimeOfDay selectedTime = const TimeOfDay(hour: 7, minute: 26);
 
-  bool get isValid =>
-      systolicCtr.text.trim().isNotEmpty &&
-      diastolicCtr.text.trim().isNotEmpty &&
-      weightCtr.text.trim().isNotEmpty;
+  bool get isValid => weightCtr.text.trim().isNotEmpty;
 
   double get estimatedBmi {
     final weight = double.tryParse(weightCtr.text.trim()) ?? 0;
@@ -189,7 +186,7 @@ class _PatientPhysiologyFormPageState extends State<PatientPhysiologyFormPage> {
                       ],
                     ),
 
-                    _label('Tekanan Darah*'),
+                    _label('Tekanan Darah (opsional)'),
                     Row(
                       children: [
                         Expanded(

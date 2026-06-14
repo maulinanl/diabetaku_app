@@ -24,8 +24,7 @@ class PatientProfilePage extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          Expanded(child: _statCard('47', 'Data Input')),
-                          const SizedBox(width: 12),
+                          Expanded(child: _statCard('3', 'Resep Aktif')),
                           Expanded(child: _statCard('2', 'Dokter Aktif')),
                         ],
                       ),
