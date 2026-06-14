@@ -64,44 +64,50 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
     super.dispose();
   }
 
-  void _openNotificationDetail(Map<String, Object> item) {
-    final type = item['type'] as String;
+  Future<void> _openNotificationDetail(Map<String, Object> item) async {
+  setState(() {
+    item['read'] = true;
+  });
 
-    if (type == 'abnormal') {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const AbnormalNotificationDetailPage(),
+  final type = item['type'] as String;
+
+  if (type == 'abnormal') {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const AbnormalNotificationDetailPage(),
+      ),
+    );
+  } else if (type == 'connection') {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const RequestDetailPage(
+          status: 0,
+          initial: 'WP',
+          name: 'Wahyu Prasetyo',
+          info: 'DM Tipe 2 • 47 tahun • Laki-laki',
+          diagnosis: '2019',
+          time: '08:15',
         ),
-      );
-    } else if (type == 'connection') {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const RequestDetailPage(
-            status: 0,
-            initial: 'WP',
-            name: 'Wahyu Prasetyo',
-            info: 'DM Tipe 2 • 47 tahun • Laki-laki',
-            diagnosis: '2019',
-            time: '08:15',
-          ),
-        ),
-      );
-    } else if (type == 'note') {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const ClinicalNoteDetailPage()),
-      );
-    } else if (type == 'disconnected') {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const DisconnectedNotificationDetailPage(),
-        ),
-      );
-    }
+      ),
+    );
+  } else if (type == 'note') {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const ClinicalNoteDetailPage(),
+      ),
+    );
+  } else if (type == 'disconnected') {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const DisconnectedNotificationDetailPage(),
+      ),
+    );
   }
+}
 
   @override
   Widget build(BuildContext context) {

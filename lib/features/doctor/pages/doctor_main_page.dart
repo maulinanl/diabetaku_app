@@ -65,6 +65,7 @@ class _DoctorHomeContentState extends State<DoctorHomeContent> {
       'glucose': '187',
       'status': 'Abnormal',
       'isNormal': false,
+      'isConnected': true,
       'lastUpdate': 'Update terakhir: 7 Jun 2025 • 13:04',
     },
     {
@@ -75,6 +76,7 @@ class _DoctorHomeContentState extends State<DoctorHomeContent> {
       'glucose': '185',
       'status': 'Abnormal',
       'isNormal': false,
+      'isConnected': true,
       'lastUpdate': 'Update terakhir: 7 Jun 2025 • 12:30',
     },
     {
@@ -85,6 +87,7 @@ class _DoctorHomeContentState extends State<DoctorHomeContent> {
       'glucose': '112',
       'status': 'Normal',
       'isNormal': true,
+      'isConnected': true,
       'lastUpdate': 'Update terakhir: 7 Jun 2025 • 08:10',
     },
     {
@@ -95,7 +98,19 @@ class _DoctorHomeContentState extends State<DoctorHomeContent> {
       'glucose': '118',
       'status': 'Normal',
       'isNormal': true,
+      'isConnected': true,
       'lastUpdate': 'Update terakhir: 6 Jun 2025 • 19:45',
+    },
+    {
+      'initial': 'HG',
+      'name': 'Hendra Gunawan',
+      'info': '50 tahun • Laki-laki',
+      'type': 'DM Tipe 2',
+      'glucose': '142',
+      'status': 'Normal',
+      'isNormal': true,
+      'isConnected': false,
+      'lastUpdate': 'Data terakhir: 6 Jun 2025 • 09:00',
     },
   ];
 
@@ -131,7 +146,7 @@ class _DoctorHomeContentState extends State<DoctorHomeContent> {
                         padding: const EdgeInsets.fromLTRB(18, 18, 18, 120),
                         children: [
                           Text(
-                            'DAFTAR PASIEN - ${filteredPatients.length} AKTIF',
+                            'DAFTAR PASIEN - ${filteredPatients.length} DATA',
                             style: const TextStyle(
                               color: AppColors.primaryBlue,
                               fontSize: 11,
@@ -152,6 +167,7 @@ class _DoctorHomeContentState extends State<DoctorHomeContent> {
                                 status: patient['status'] as String,
                                 isNormal: patient['isNormal'] as bool,
                                 lastUpdate: patient['lastUpdate'] as String,
+                                isConnected: patient['isConnected'] as bool,
                                 onTap: () {
                                   Navigator.push(
                                     context,
@@ -245,10 +261,7 @@ class _DoctorHomeContentState extends State<DoctorHomeContent> {
                           decoration: BoxDecoration(
                             color: AppColors.red,
                             shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.white,
-                              width: 1.5,
-                            ),
+                            border: Border.all(color: Colors.white, width: 1.5),
                           ),
                         ),
                       ),
@@ -347,6 +360,7 @@ class _PatientCard extends StatelessWidget {
   final bool isNormal;
   final String lastUpdate;
   final VoidCallback onTap;
+  final bool isConnected;
 
   const _PatientCard({
     required this.initials,
@@ -358,12 +372,20 @@ class _PatientCard extends StatelessWidget {
     required this.isNormal,
     required this.lastUpdate,
     required this.onTap,
+    required this.isConnected,
   });
 
   @override
   Widget build(BuildContext context) {
     final statusColor = isNormal ? const Color(0xFF10C878) : AppColors.red;
     final statusBg = isNormal ? const Color(0xFFEAFBF3) : AppColors.lightRed;
+
+    final mainTextColor = isConnected ? AppColors.dark1 : AppColors.dark4;
+    final subTextColor = isConnected ? AppColors.dark2 : AppColors.dark4;
+    final avatarBg = isConnected ? AppColors.lightBlue : AppColors.light4;
+    final avatarTextColor = isConnected
+        ? AppColors.primaryBlue
+        : AppColors.dark4;
 
     return InkWell(
       onTap: onTap,
@@ -376,11 +398,11 @@ class _PatientCard extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 28,
-              backgroundColor: AppColors.lightBlue,
+              backgroundColor: avatarBg,
               child: Text(
                 initials,
-                style: const TextStyle(
-                  color: AppColors.primaryBlue,
+                style: TextStyle(
+                  color: avatarTextColor,
                   fontWeight: FontWeight.bold,
                   fontSize: 15,
                 ),
@@ -393,8 +415,8 @@ class _PatientCard extends StatelessWidget {
                 children: [
                   Text(
                     name,
-                    style: const TextStyle(
-                      color: AppColors.dark1,
+                    style: TextStyle(
+                      color: mainTextColor,
                       fontWeight: FontWeight.w700,
                       fontSize: 13.5,
                     ),
@@ -402,10 +424,7 @@ class _PatientCard extends StatelessWidget {
                   const SizedBox(height: 5),
                   Text(
                     info,
-                    style: const TextStyle(
-                      color: AppColors.dark2,
-                      fontSize: 11,
-                    ),
+                    style: TextStyle(color: subTextColor, fontSize: 11),
                   ),
                   const SizedBox(height: 8),
                   Wrap(
@@ -414,25 +433,31 @@ class _PatientCard extends StatelessWidget {
                     children: [
                       _statusBadge(
                         text: type,
-                        bg: AppColors.veryLightBlue,
-                        textColor: AppColors.primaryBlue,
+                        bg: isConnected
+                            ? AppColors.veryLightBlue
+                            : AppColors.light4,
+                        textColor: isConnected
+                            ? AppColors.primaryBlue
+                            : AppColors.dark4,
                         icon: Icons.opacity,
                       ),
-                      _statusBadge(
-                        text: status,
-                        bg: statusBg,
-                        textColor: statusColor,
-                        icon: isNormal
-                            ? Icons.check_circle
-                            : Icons.warning_amber_rounded,
-                      ),
+                      if (isConnected)
+                        _statusBadge(
+                          text: status,
+                          bg: statusBg,
+                          textColor: statusColor,
+                          icon: isNormal
+                              ? Icons.check_circle
+                              : Icons.warning_amber_rounded,
+                        )
+                      else
+                        _statusBadge(
+                          text: 'Tidak Terhubung',
+                          bg: AppColors.light4,
+                          textColor: AppColors.dark4,
+                          icon: Icons.link_off_rounded,
+                        ),
                     ],
-                  ),
-                  const SizedBox(height: 10),
-                  _glucoseBox(
-                    glucose: glucose,
-                    statusColor: statusColor,
-                    lastUpdate: lastUpdate,
                   ),
                 ],
               ),
@@ -442,66 +467,12 @@ class _PatientCard extends StatelessWidget {
               padding: EdgeInsets.only(top: 30),
               child: Icon(
                 Icons.chevron_right,
-                color: AppColors.dark3,
+                color: AppColors.dark4,
                 size: 24,
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _glucoseBox({
-    required String glucose,
-    required Color statusColor,
-    required String lastUpdate,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.veryLightBlue,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.monitor_heart_outlined, size: 13, color: statusColor),
-          const SizedBox(width: 6),
-          RichText(
-            text: TextSpan(
-              text: glucose,
-              style: TextStyle(
-                color: statusColor,
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-              ),
-              children: const [
-                TextSpan(
-                  text: ' mg/dL',
-                  style: TextStyle(
-                    color: AppColors.primaryBlue,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              lastUpdate,
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: AppColors.primaryBlue,
-                fontSize: 9.5,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
