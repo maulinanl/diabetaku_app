@@ -930,15 +930,6 @@ class PatientHealthDetailPage extends StatelessWidget {
 
   const PatientHealthDetailPage({super.key, required this.type});
 
-  String _getDetailTitle(String title) {
-    if (title == 'Data Glukosa') return 'Informasi pengukuran';
-    if (title == 'Data Fisiologis') return 'Data fisiologis';
-    if (title == 'Aktivitas Fisik') return 'Detail aktivitas';
-    if (title == 'Pola Makan') return 'Detail konsumsi';
-    if (title == 'Kepatuhan Obat') return 'Detail obat';
-    return 'Detail data';
-  }
-
   @override
   Widget build(BuildContext context) {
     final data = _getDetailData(type);
