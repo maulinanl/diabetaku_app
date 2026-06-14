@@ -1167,7 +1167,6 @@ class PatientHealthDetailPage extends StatelessWidget {
             'Detail data',
             style: TextStyle(
               color: AppColors.primaryBlue,
-              fontSize: 12,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -1219,7 +1218,6 @@ class PatientHealthDetailPage extends StatelessWidget {
             'Catatan',
             style: TextStyle(
               color: AppColors.primaryBlue,
-              fontSize: 12,
               fontWeight: FontWeight.w700,
             ),
           ),

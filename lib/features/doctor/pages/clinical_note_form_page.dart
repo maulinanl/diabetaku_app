@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import 'recommendation_form_page.dart';
 
 class ClinicalNoteFormPage extends StatefulWidget {
   const ClinicalNoteFormPage({super.key});
@@ -56,17 +57,93 @@ class _ClinicalNoteFormPageState extends State<ClinicalNoteFormPage> {
   }
 
   void _save() {
-    if (!_formKey.currentState!.validate()) return;
+  if (!_formKey.currentState!.validate()) return;
 
-    final data = {
-      'kondisi': _kondisi,
-      'catatan': _catatanCtr.text.trim(),
-      'rencana': _rencanaCtr.text.trim(),
-      'followUp': _followUpDate?.toIso8601String(),
-    };
+  _showSavedSheet();
+}
 
-    Navigator.of(context).pop(data);
-  }
+void _showSavedSheet() {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    isDismissible: false,
+    enableDrag: false,
+    builder: (sheetContext) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircleAvatar(
+              radius: 36,
+              backgroundColor: Color(0xFFEAFBF3),
+              child: Icon(Icons.check, color: Color(0xFF10C878), size: 36),
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              'Catatan Klinis Tersimpan',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.primaryBlue,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Catatan klinis berhasil disimpan. Referensi data klinis terkait telah dilampirkan.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.dark2,
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 22),
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(sheetContext);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const RecommendationFormPage(),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryBlue,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+                child: const Text('Tambah Rekomendasi'),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(sheetContext);
+                Navigator.pop(context);
+              },
+              child: const Text(
+                'Kembali ke Beranda',
+                style: TextStyle(color: AppColors.primaryBlue),
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
 
   String _formatDate(DateTime d) =>
       '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
@@ -426,7 +503,7 @@ class _ClinicalNoteFormPageState extends State<ClinicalNoteFormPage> {
               const Expanded(
                 child: Center(
                   child: Text(
-                    'Batas Normal Pasien',
+                    'Buat Catatan Klinis',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 22,
@@ -435,11 +512,11 @@ class _ClinicalNoteFormPageState extends State<ClinicalNoteFormPage> {
                   ),
                 ),
               ),
-              const SizedBox(width: 48), // spacer supaya title tetap centered
+              const SizedBox(width: 48),
             ],
           ),
           const SizedBox(height: 12),
-          // white card (contains avatar, info, and the blue button)
+
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),

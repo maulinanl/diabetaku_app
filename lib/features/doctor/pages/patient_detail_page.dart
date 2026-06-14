@@ -6,7 +6,9 @@ import 'clinical_note_form_page.dart';
 import 'doctor_prescription_page.dart';
 
 class PatientDetailPage extends StatefulWidget {
-  const PatientDetailPage({super.key});
+  final bool isConnected;
+
+  const PatientDetailPage({super.key, this.isConnected = true});
 
   @override
   State<PatientDetailPage> createState() => _PatientDetailPageState();
@@ -42,6 +44,11 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                     children: [
                       const SizedBox(height: 24),
 
+                      if (!widget.isConnected) ...[
+                        _disconnectedBanner(),
+                        const SizedBox(height: 20),
+                      ],
+
                       if (selectedTab != 3) ...[
                         _buildSummaryCards(),
                         const SizedBox(height: 20),
@@ -60,7 +67,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
 
                       _buildDynamicContent(),
 
-                      if (selectedTab != 3) ...[
+                      if (selectedTab != 3 && widget.isConnected) ...[
                         const SizedBox(height: 24),
                         _buildDisconnectButton(),
                       ],
@@ -112,6 +119,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
             ],
           ),
           const SizedBox(height: 12),
+
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -134,18 +142,22 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                       width: 64,
                       height: 64,
                       decoration: BoxDecoration(
-                        color: AppColors.lightBlue,
+                        color: widget.isConnected
+                            ? AppColors.lightBlue
+                            : AppColors.light1,
                         shape: BoxShape.circle,
                         border: Border.all(
                           color: AppColors.veryLightBlue,
                           width: 4,
                         ),
                       ),
-                      child: const Center(
+                      child: Center(
                         child: Text(
                           'AS',
                           style: TextStyle(
-                            color: AppColors.primaryBlue,
+                            color: widget.isConnected
+                                ? AppColors.primaryBlue
+                                : AppColors.dark4,
                             fontWeight: FontWeight.bold,
                             fontSize: 18,
                           ),
@@ -153,6 +165,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                       ),
                     ),
                     const SizedBox(width: 14),
+
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -173,59 +186,127 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.veryLightBlue,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Text(
-                              'DM Tipe 2',
-                              style: TextStyle(
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: [
+                              _badge(
+                                text: 'DM Tipe 2',
+                                bg: AppColors.veryLightBlue,
                                 color: AppColors.primaryBlue,
-                                fontSize: 12,
+                                icon: Icons.opacity,
                               ),
-                            ),
+                              if (!widget.isConnected)
+                                _badge(
+                                  text: 'Tidak Terhubung',
+                                  bg: AppColors.light1,
+                                  color: AppColors.dark4,
+                                  icon: Icons.link_off_rounded,
+                                ),
+                            ],
                           ),
                         ],
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  height: 46,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ClinicalNoteFormPage(),
+
+                if (widget.isConnected) ...[
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 46,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ClinicalNoteFormPage(),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryBlue,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryBlue,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
                       ),
-                    ),
-                    child: const Text(
-                      'Buat Catatan Klinis',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                      child: const Text(
+                        'Buat Catatan Klinis',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _disconnectedBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: AppColors.light1,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.dark4.withValues(alpha: 0.18)),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline, color: AppColors.dark4, size: 18),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Pasien ini sudah tidak terhubung. Dokter hanya dapat melihat data lama sebelum relasi terputus.',
+              style: TextStyle(
+                color: AppColors.dark4,
+                fontSize: 12,
+                height: 1.4,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _badge({
+    required String text,
+    required Color bg,
+    required Color color,
+    IconData? icon,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 11, color: color),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            text,
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -253,7 +334,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
       ),
       itemBuilder: (context, index) {
         final item = items[index];
-        final color = item[4] as Color;
+        final color = widget.isConnected ? item[4] as Color : AppColors.dark4;
 
         return Container(
           padding: const EdgeInsets.all(12),
@@ -334,30 +415,31 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                   ),
                 ),
               ),
-              OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const PatientThresholdPage(),
+              if (widget.isConnected)
+                OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const PatientThresholdPage(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.edit, size: 16),
+                  label: const Text('Ubah'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
                     ),
-                  );
-                },
-                icon: const Icon(Icons.edit, size: 16),
-                label: const Text('Ubah'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    side: const BorderSide(color: AppColors.primaryBlue),
+                    foregroundColor: AppColors.primaryBlue,
+                    backgroundColor: Colors.white,
                   ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  side: const BorderSide(color: AppColors.primaryBlue),
-                  foregroundColor: AppColors.primaryBlue,
-                  backgroundColor: Colors.white,
                 ),
-              ),
             ],
           ),
         ),
@@ -506,14 +588,14 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
 
   Widget _buildDynamicContent() {
     if (selectedTab == 3) {
-      return const DoctorPrescriptionPage();
+      return DoctorPrescriptionPage(isConnected: widget.isConnected);
     }
 
     if (selectedTab == 0) {
       return _buildTrendAndHistory(
         title: 'Tren Glukosa',
         unitLabel: 'mg/dL',
-        lineColor: AppColors.red,
+        lineColor: widget.isConnected ? AppColors.red : AppColors.dark4,
         spots: const [
           FlSpot(0, 200),
           FlSpot(1, 160),
@@ -535,7 +617,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
       return _buildTrendAndHistory(
         title: 'Tren Tekanan Darah Sistolik',
         unitLabel: 'mmHg',
-        lineColor: Colors.orange,
+        lineColor: widget.isConnected ? Colors.orange : AppColors.dark4,
         spots: const [
           FlSpot(0, 120),
           FlSpot(1, 122),
@@ -562,67 +644,44 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
       children: [
         _buildBehaviorTabs(),
         const SizedBox(height: 18),
-
-        if (selectedBehaviorTab == 0)
-          _buildTrendAndHistory(
-            title: 'Tren Aktivitas Fisik',
-            unitLabel: 'menit',
-            lineColor: AppColors.primaryBlue,
-            spots: const [
-              FlSpot(0, 30),
-              FlSpot(1, 45),
-              FlSpot(2, 20),
-              FlSpot(3, 60),
-              FlSpot(4, 35),
-              FlSpot(5, 50),
-              FlSpot(6, 40),
-            ],
-            history: [
-              ['Jalan kaki', '7 Jun 2026 • 06:30', '30 menit'],
-              ['Senam ringan', '6 Jun 2026 • 07:00', '45 menit'],
-              ['Bersepeda', '5 Jun 2026 • 16:20', '20 menit'],
-            ],
-          )
-        else if (selectedBehaviorTab == 1)
-          _buildTrendAndHistory(
-            title: 'Tren Estimasi Karbohidrat',
-            unitLabel: 'gram',
-            lineColor: Colors.orange,
-            spots: const [
-              FlSpot(0, 180),
-              FlSpot(1, 200),
-              FlSpot(2, 170),
-              FlSpot(3, 220),
-              FlSpot(4, 190),
-              FlSpot(5, 210),
-              FlSpot(6, 185),
-            ],
-            history: [
-              ['Sarapan', 'Nasi merah, telur, sayur', '45 gr'],
-              ['Makan siang', 'Nasi putih, ayam, tempe', '70 gr'],
-              ['Makan malam', 'Sup ayam dan kentang', '55 gr'],
-            ],
-          )
-        else
-          _buildTrendAndHistory(
-            title: 'Tren Kepatuhan Obat',
-            unitLabel: 'dosis',
-            lineColor: const Color(0xFF10C878),
-            spots: const [
-              FlSpot(0, 3),
-              FlSpot(1, 2),
-              FlSpot(2, 3),
-              FlSpot(3, 3),
-              FlSpot(4, 1),
-              FlSpot(5, 3),
-              FlSpot(6, 3),
-            ],
-            history: [
-              ['Metformin 500 mg', '7 Jun 2026 • 07:00', 'Diminum'],
-              ['Metformin 500 mg', '6 Jun 2026 • 19:00', 'Diminum'],
-              ['Metformin 500 mg', '5 Jun 2026 • 07:00', 'Terlambat'],
-            ],
-          ),
+        _buildTrendAndHistory(
+          title: selectedBehaviorTab == 0
+              ? 'Tren Aktivitas Fisik'
+              : selectedBehaviorTab == 1
+              ? 'Tren Estimasi Karbohidrat'
+              : 'Tren Kepatuhan Obat',
+          unitLabel: selectedBehaviorTab == 0
+              ? 'menit'
+              : selectedBehaviorTab == 1
+              ? 'gram'
+              : 'dosis',
+          lineColor: widget.isConnected
+              ? AppColors.primaryBlue
+              : AppColors.dark4,
+          spots: const [
+            FlSpot(0, 30),
+            FlSpot(1, 45),
+            FlSpot(2, 20),
+            FlSpot(3, 60),
+            FlSpot(4, 35),
+            FlSpot(5, 50),
+            FlSpot(6, 40),
+          ],
+          history: selectedBehaviorTab == 0
+              ? [
+                  ['Jalan kaki', '7 Jun 2026 • 06:30', '30 menit'],
+                  ['Senam ringan', '6 Jun 2026 • 07:00', '45 menit'],
+                ]
+              : selectedBehaviorTab == 1
+              ? [
+                  ['Sarapan', 'Nasi merah, telur, sayur', '45 gr'],
+                  ['Makan siang', 'Nasi putih, ayam, tempe', '70 gr'],
+                ]
+              : [
+                  ['Metformin 500 mg', '7 Jun 2026 • 07:00', 'Diminum'],
+                  ['Metformin 500 mg', '6 Jun 2026 • 19:00', 'Diminum'],
+                ],
+        ),
       ],
     );
   }
@@ -695,12 +754,14 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
             children: [
               Row(
                 children: [
-                  const Expanded(
-                    child: Text(
-                      '7 Hari Terakhir',
-                      style: TextStyle(color: AppColors.dark2, fontSize: 12),
+                  Text(
+                    widget.isConnected ? '7 Hari Terakhir' : 'Data Lama',
+                    style: const TextStyle(
+                      color: AppColors.dark2,
+                      fontSize: 12,
                     ),
                   ),
+                  const Spacer(),
                   Text(
                     unitLabel,
                     style: const TextStyle(
@@ -791,9 +852,11 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                 ),
                 Text(
                   item[2],
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: AppColors.primaryBlue,
+                    color: widget.isConnected
+                        ? AppColors.primaryBlue
+                        : AppColors.dark4,
                   ),
                 ),
               ],

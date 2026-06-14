@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import 'doctor_prescription_detail_page.dart';
 
 class DoctorPrescriptionPage extends StatefulWidget {
-  const DoctorPrescriptionPage({super.key});
+  final bool isConnected;
+
+  const DoctorPrescriptionPage({super.key, this.isConnected = true});
 
   @override
   State<DoctorPrescriptionPage> createState() => _DoctorPrescriptionPageState();
@@ -157,8 +160,25 @@ class _DoctorPrescriptionPageState extends State<DoctorPrescriptionPage> {
               doctor: item['doctor'] as String,
               date: item['date'] as String,
               isMine: item['isMine'] as bool,
-              onEdit: () => _showPrescriptionForm(context, editMode: true),
-              onStop: () => _showStopConfirmation(context),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => DoctorPrescriptionDetailPage(
+                      medicine: item['medicine'] as String,
+                      dose: item['dose'] as String,
+                      form: item['form'] as String,
+                      schedule: item['schedule'] as String,
+                      rule: item['rule'] as String,
+                      note: item['note'] as String,
+                      doctor: item['doctor'] as String,
+                      date: item['date'] as String,
+                      isMine: item['isMine'] as bool,
+                      isConnected: widget.isConnected,
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         ),
@@ -359,6 +379,7 @@ class _DoctorPrescriptionPageState extends State<DoctorPrescriptionPage> {
     );
   }
 
+  // ignore: unused_element
   void _showStopConfirmation(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -491,8 +512,7 @@ class _PrescriptionCard extends StatelessWidget {
   final String doctor;
   final String date;
   final bool isMine;
-  final VoidCallback onEdit;
-  final VoidCallback onStop;
+  final VoidCallback onTap;
 
   const _PrescriptionCard({
     required this.medicine,
@@ -504,96 +524,59 @@ class _PrescriptionCard extends StatelessWidget {
     required this.doctor,
     required this.date,
     required this.isMine,
-    required this.onEdit,
-    required this.onStop,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: _cardDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const CircleAvatar(
-                radius: 22,
-                backgroundColor: AppColors.veryLightBlue,
-                child: Icon(
-                  Icons.medication_outlined,
-                  color: AppColors.primaryBlue,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  medicine,
-                  style: const TextStyle(
-                    color: AppColors.dark1,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: _cardDecoration(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const CircleAvatar(
+                  radius: 22,
+                  backgroundColor: AppColors.veryLightBlue,
+                  child: Icon(
+                    Icons.medication_outlined,
+                    color: AppColors.primaryBlue,
+                    size: 22,
                   ),
                 ),
-              ),
-              _badge(isMine ? 'Resep Saya' : 'Dokter Lain'),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _infoRow('Dosis', '$dose • $form'),
-          _infoRow('Jadwal', schedule),
-          _infoRow('Aturan', rule),
-          _infoRow('Catatan', note),
-          const Divider(height: 24),
-          Text(
-            '$doctor • $date',
-            style: const TextStyle(color: AppColors.dark2, fontSize: 11),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: SizedBox(
-                  height: 40,
-                  child: ElevatedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.edit_outlined, size: 16),
-                    label: const Text('Ubah'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryBlue,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
-                      ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    medicine,
+                    style: const TextStyle(
+                      color: AppColors.dark1,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: SizedBox(
-                  height: 40,
-                  child: OutlinedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.block, size: 16),
-                    label: const Text('Hentikan'),
-                    style: OutlinedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: AppColors.red,
-                      side: const BorderSide(color: AppColors.red),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
+                _badge(isMine ? 'Resep Saya' : 'Dokter Lain'),
+                const SizedBox(width: 6),
+                const Icon(Icons.chevron_right, color: AppColors.dark3),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _infoRow('Dosis', '$dose • $form'),
+            _infoRow('Jadwal', schedule),
+            _infoRow('Aturan', rule),
+            _infoRow('Catatan', note),
+            const Divider(height: 24),
+            Text(
+              '$doctor • $date',
+              style: const TextStyle(color: AppColors.dark2, fontSize: 11),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -632,9 +615,9 @@ class _PrescriptionCard extends StatelessWidget {
         color: AppColors.veryLightBlue,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: const Text(
-        'Resep Dokter Lain',
-        style: TextStyle(
+      child: Text(
+        text,
+        style: const TextStyle(
           color: AppColors.primaryBlue,
           fontSize: 10,
           fontWeight: FontWeight.w600,

@@ -15,59 +15,105 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
   bool selectedFamily1 = true;
   bool selectedFamily2 = false;
 
-  final TextEditingController recommendationController =
-      TextEditingController(
+  final List<Map<String, String>> addedRecommendations = [];
+
+  void _addRecommendation() {
+    final text = recommendationController.text.trim();
+
+    if (text.isEmpty) return;
+
+    setState(() {
+      addedRecommendations.add({'category': selectedCategory, 'text': text});
+
+      recommendationController.clear();
+      selectedCategory = 'Obat';
+    });
+  }
+
+  void _removeRecommendation(int index) {
+    setState(() {
+      addedRecommendations.removeAt(index);
+    });
+  }
+
+  final TextEditingController recommendationController = TextEditingController(
     text:
         'Tingkatkan dosis Metformin dari 500mg menjadi 850mg, dikonsumsi 2x sehari setelah makan. Monitor gula darah harian.',
   );
 
   @override
+  void dispose() {
+    recommendationController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final isValid = selectedCategory.isNotEmpty &&
-        recommendationController.text.trim().isNotEmpty;
+    final isValid = addedRecommendations.isNotEmpty;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.primaryBlue,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            children: [
-              _buildHeader(context),
-              const SizedBox(height: 18),
-              _buildPatientCard(),
-              const SizedBox(height: 18),
-              _buildCategorySection(),
-              const SizedBox(height: 16),
-              _buildRecommendationInput(),
-              const SizedBox(height: 16),
-              _buildAddedRecommendation(),
-              const SizedBox(height: 16),
-              _buildFamilySwitch(),
-              const SizedBox(height: 16),
-              if (sendToFamily) _buildRecipientSection(),
-              const SizedBox(height: 24),
-              CustomButton(
-                text: 'Kirim Rekomendasi',
-                onPressed: isValid ? () => _showSuccessDialog(context) : null,
+        top: false,
+        child: Column(
+          children: [
+            _buildHeader(context),
+            Expanded(
+              child: Container(
+                color: AppColors.background,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildCategorySection(),
+                      const SizedBox(height: 16),
+                      _buildRecommendationInput(),
+                      const SizedBox(height: 16),
+                      _buildAddedRecommendation(),
+                      const SizedBox(height: 16),
+                      _buildFamilySwitch(),
+                      const SizedBox(height: 16),
+                      if (sendToFamily) _buildRecipientSection(),
+                      const SizedBox(height: 24),
+                      CustomButton(
+                        text: 'Kirim Rekomendasi',
+                        onPressed: isValid
+                            ? () => _showSuccessDialog(context)
+                            : null,
+                      ),
+                      Center(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text(
+                            'Batal',
+                            style: TextStyle(color: AppColors.primaryBlue),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Batal'),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildHeader(BuildContext context) {
+    final topPad = MediaQuery.of(context).padding.top;
+
     return Container(
-      padding: const EdgeInsets.fromLTRB(4, 22, 4, 24),
-      decoration: BoxDecoration(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(20, topPad + 14, 20, 24),
+      decoration: const BoxDecoration(
         color: AppColors.primaryBlue,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(26),
+          bottomRight: Radius.circular(26),
+        ),
       ),
       child: Column(
         children: [
@@ -83,7 +129,7 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 18,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -92,49 +138,67 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
             ],
           ),
           const SizedBox(height: 12),
-          _buildPatientCard(inner: true),
+          _buildPatientCard(),
         ],
       ),
     );
   }
 
-  Widget _buildPatientCard({bool inner = false}) {
+  Widget _buildPatientCard() {
     return Container(
-      margin: inner ? const EdgeInsets.symmetric(horizontal: 18) : null,
-      padding: const EdgeInsets.all(14),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 10,
+            offset: Offset(0, 6),
+          ),
+        ],
       ),
       child: const Row(
         children: [
           CircleAvatar(
-            radius: 26,
+            radius: 28,
             backgroundColor: AppColors.lightBlue,
             child: Text(
               'AS',
               style: TextStyle(
                 color: AppColors.primaryBlue,
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ),
-          SizedBox(width: 12),
+          SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Angelica Sabi Gita',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: AppColors.dark1,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
+                SizedBox(height: 4),
                 Text(
                   '32 tahun • Perempuan',
-                  style: TextStyle(fontSize: 12, color: AppColors.dark2),
+                  style: TextStyle(color: AppColors.dark2, fontSize: 13),
                 ),
+                SizedBox(height: 4),
                 Text(
                   'DM Tipe 2',
-                  style: TextStyle(fontSize: 11, color: AppColors.primaryBlue),
+                  style: TextStyle(
+                    color: AppColors.primaryBlue,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
@@ -155,6 +219,7 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
           style: TextStyle(
             color: AppColors.primaryBlue,
             fontSize: 13,
+            fontWeight: FontWeight.w600,
           ),
         ),
         const SizedBox(height: 10),
@@ -164,7 +229,9 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
 
             return Expanded(
               child: Padding(
-                padding: const EdgeInsets.only(right: 8),
+                padding: EdgeInsets.only(
+                  right: category == categories.last ? 0 : 8,
+                ),
                 child: GestureDetector(
                   onTap: () {
                     setState(() {
@@ -172,10 +239,9 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
                     });
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
-                      color:
-                          selected ? AppColors.primaryBlue : AppColors.white,
+                      color: selected ? AppColors.primaryBlue : AppColors.white,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: AppColors.light1),
                     ),
@@ -185,6 +251,9 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
                       style: TextStyle(
                         color: selected ? Colors.white : AppColors.dark2,
                         fontSize: 12,
+                        fontWeight: selected
+                            ? FontWeight.w600
+                            : FontWeight.w500,
                       ),
                     ),
                   ),
@@ -203,7 +272,11 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
       children: [
         const Text(
           'Isi rekomendasi *',
-          style: TextStyle(color: AppColors.primaryBlue, fontSize: 13),
+          style: TextStyle(
+            color: AppColors.primaryBlue,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         const SizedBox(height: 8),
         TextFormField(
@@ -213,15 +286,17 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
           onChanged: (_) => setState(() {}),
           decoration: InputDecoration(
             hintText: 'Tulis rekomendasi untuk pasien...',
+            hintStyle: const TextStyle(color: AppColors.dark3, fontSize: 12),
             filled: true,
             fillColor: AppColors.white,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppColors.light1),
-            ),
+            contentPadding: const EdgeInsets.all(14),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: AppColors.light1),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppColors.primaryBlue),
             ),
           ),
         ),
@@ -233,87 +308,97 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          '+ Rekomendasi yang ditambahkan',
-          style: TextStyle(
-            color: AppColors.primaryBlue,
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
+        SizedBox(
+          width: double.infinity,
+          height: 44,
+          child: OutlinedButton.icon(
+            onPressed: _addRecommendation,
+            icon: const Icon(Icons.add, size: 16),
+            label: const Text('Tambahkan Rekomendasi'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.primaryBlue,
+              side: const BorderSide(color: AppColors.primaryBlue),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
           ),
         ),
-        const SizedBox(height: 10),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.veryLightBlue,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.lightBlue),
+
+        if (addedRecommendations.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          const Text(
+            'Rekomendasi yang ditambahkan',
+            style: TextStyle(
+              color: AppColors.primaryBlue,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          child: Stack(
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(right: 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryBlue,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        selectedCategory,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
+          const SizedBox(height: 10),
+
+          ...List.generate(addedRecommendations.length, (index) {
+            final item = addedRecommendations[index];
+
+            return Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.veryLightBlue,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.lightBlue),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryBlue,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            item['category']!,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 10),
+                        Text(
+                          item['text']!,
+                          style: const TextStyle(
+                            color: AppColors.dark2,
+                            fontSize: 12,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      recommendationController.text,
-                      style: const TextStyle(
-                        color: AppColors.dark2,
-                        fontSize: 12,
-                      ),
+                  ),
+                  IconButton(
+                    onPressed: () => _removeRecommendation(index),
+                    icon: const Icon(
+                      Icons.close,
+                      color: AppColors.dark3,
+                      size: 18,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              Positioned(
-                right: 0,
-                top: 0,
-                child: IconButton(
-                  icon: const Icon(Icons.close, size: 18),
-                  onPressed: () {},
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 10),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: AppColors.light1,
-              style: BorderStyle.solid,
-            ),
-          ),
-          child: const Center(
-            child: Text(
-              '+ Tambah kategori lain',
-              style: TextStyle(color: AppColors.dark2),
-            ),
-          ),
-        ),
+            );
+          }),
+        ],
       ],
     );
   }
@@ -382,7 +467,10 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
               const Expanded(
                 child: Text(
                   'Pilih penerima',
-                  style: TextStyle(color: AppColors.primaryBlue),
+                  style: TextStyle(
+                    color: AppColors.primaryBlue,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               OutlinedButton(
@@ -392,16 +480,13 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
                     selectedFamily2 = true;
                   });
                 },
-                child: const Text(
-                  'Pilih Semua',
-                  style: TextStyle(fontSize: 11),
-                ),
+                child: const Text('Pilih Semua'),
               ),
             ],
           ),
           const SizedBox(height: 10),
           _recipientTile(
-            initials: 'SD',
+            initials: 'YS',
             name: 'Yeni Dewi Sinta',
             relation: 'Istri',
             selected: selectedFamily1,
@@ -417,7 +502,6 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
             name: 'Agus Santoso',
             relation: 'Anak',
             selected: selectedFamily2,
-            disabled: false,
             onTap: () {
               setState(() {
                 selectedFamily2 = !selectedFamily2;
@@ -434,26 +518,26 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
     required String name,
     required String relation,
     required bool selected,
-    bool disabled = false,
     required VoidCallback onTap,
   }) {
     return GestureDetector(
-      onTap: disabled ? null : onTap,
+      onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: disabled ? AppColors.light4 : AppColors.white,
+          color: AppColors.white,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: selected ? AppColors.primaryBlue : AppColors.light1,
-            width: selected ? 2 : 1,
+            width: selected ? 1.5 : 1,
           ),
         ),
         child: Row(
           children: [
             CircleAvatar(
-              backgroundColor:
-                  selected ? AppColors.primaryBlue : AppColors.veryLightBlue,
+              backgroundColor: selected
+                  ? AppColors.primaryBlue
+                  : AppColors.veryLightBlue,
               child: Text(
                 initials,
                 style: TextStyle(
@@ -467,7 +551,14 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name),
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      color: AppColors.dark1,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   Text(
                     relation,
                     style: const TextStyle(
@@ -506,11 +597,7 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
                 const CircleAvatar(
                   radius: 34,
                   backgroundColor: Color(0xFFE7F8EF),
-                  child: Icon(
-                    Icons.check,
-                    color: Colors.green,
-                    size: 36,
-                  ),
+                  child: Icon(Icons.check, color: Colors.green, size: 36),
                 ),
                 const SizedBox(height: 18),
                 const Text(
@@ -560,10 +647,7 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
       ),
       child: Text(
         name,
-        style: const TextStyle(
-          color: AppColors.primaryBlue,
-          fontSize: 12,
-        ),
+        style: const TextStyle(color: AppColors.primaryBlue, fontSize: 12),
       ),
     );
   }
