@@ -2,108 +2,89 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 
 class ClinicalNoteDetailPage extends StatelessWidget {
-  final bool isConnected;
+  final bool hasRecommendation;
 
-  const ClinicalNoteDetailPage({super.key, this.isConnected = true});
+  const ClinicalNoteDetailPage({super.key, this.hasRecommendation = false});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.primaryBlue,
       body: SafeArea(
         top: false,
         child: Column(
           children: [
             _buildHeader(context),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
-                child: Column(
-                  children: [
-                    if (!isConnected) ...[
-                      _disconnectedInfo(),
-                      const SizedBox(height: 12),
+              child: Container(
+                color: AppColors.background,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    children: [
+                      _infoCard(
+                        icon: Icons.favorite_border,
+                        title: 'Kondisi Pasien',
+                        child: _statusChip('Abnormal'),
+                      ),
+                      const SizedBox(height: 14),
+                      _infoCard(
+                        icon: Icons.description_outlined,
+                        title: 'Catatan Dokter',
+                        child: const Text(
+                          'Pasien datang dengan keluhan glukosa postprandial tinggi mencapai 187 mg/dL. BMI 27.4 menunjukkan overweight. Kepatuhan obat 82% dalam 7 hari terakhir, perlu ditingkatkan. Tekanan darah masih terkontrol di 128/82 mmHg.',
+                          style: TextStyle(
+                            color: AppColors.dark2,
+                            fontSize: 13,
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      _infoCard(
+                        icon: Icons.notes_outlined,
+                        title: 'Rencana Penanganan',
+                        child: const Text(
+                          'Meningkatkan dosis Metformin 500mg ke 850mg. Konsultasi gizi untuk pola makan rendah karbohidrat. Olahraga aerobik minimal 30 menit, 3x seminggu.',
+                          style: TextStyle(
+                            color: AppColors.dark2,
+                            fontSize: 13,
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      _infoCard(
+                        icon: Icons.calendar_today_outlined,
+                        title: 'Follow Up',
+                        child: const Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '7 Juli 2025',
+                              style: TextStyle(
+                                color: AppColors.dark1,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            SizedBox(height: 6),
+                            Text(
+                              '30 hari lagi',
+                              style: TextStyle(
+                                color: AppColors.primaryBlue,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      if (hasRecommendation) ...[
+                        const SizedBox(height: 18),
+                        _recommendationSection(),
+                      ],
                     ],
-                    _infoCard(
-                      icon: Icons.description_outlined,
-                      title: 'Referensi Data Klinis',
-                      child: Column(
-                        children: const [
-                          _ReferenceRow(
-                            label: 'Glukosa Postprandial',
-                            value: '187 mg/dL',
-                          ),
-                          _ReferenceRow(
-                            label: 'Tekanan Darah',
-                            value: '128/82 mmHg',
-                          ),
-                          _ReferenceRow(label: 'BMI', value: '27.4'),
-                          _ReferenceRow(label: 'Kepatuhan Obat', value: '82%'),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    _infoCard(
-                      icon: Icons.favorite,
-                      title: 'Kondisi Pasien',
-                      child: _statusChip('Tidak Stabil'),
-                    ),
-                    const SizedBox(height: 12),
-                    _infoCard(
-                      icon: Icons.sticky_note_2,
-                      title: 'Catatan Dokter',
-                      child: const Text(
-                        'Pasien datang dengan keluhan glukosa postprandial tinggi mencapai 187 mg/dL. BMI 27.4 menunjukkan overweight. Kepatuhan obat 82% dalam 7 hari terakhir, perlu ditingkatkan. Tekanan darah masih terkontrol di 128/82 mmHg.',
-                        style: TextStyle(
-                          color: AppColors.dark2,
-                          fontSize: 13,
-                          height: 1.5,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    _infoCard(
-                      icon: Icons.notes_outlined,
-                      title: 'Rencana Penanganan',
-                      child: const Text(
-                        'Meningkatkan dosis Metformin 500 mg ke 850 mg. Konsultasi gizi untuk pola makan rendah karbohidrat. Olahraga aerobik minimal 30 menit, 3x seminggu.',
-                        style: TextStyle(
-                          color: AppColors.dark2,
-                          fontSize: 13,
-                          height: 1.5,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    _infoCard(
-                      icon: Icons.calendar_today_outlined,
-                      title: 'Jadwal Kontrol',
-                      child: const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '07/07/2025',
-                            style: TextStyle(
-                              color: AppColors.dark1,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          SizedBox(height: 6),
-                          Text(
-                            '30 hari lagi',
-                            style: TextStyle(
-                              color: AppColors.primaryBlue,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    _recommendationSection(),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -113,17 +94,191 @@ class ClinicalNoteDetailPage extends StatelessWidget {
     );
   }
 
+  Widget _recommendationSection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: _cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(
+                Icons.recommend_outlined,
+                size: 16,
+                color: AppColors.primaryBlue,
+              ),
+              SizedBox(width: 6),
+              Text(
+                'Rekomendasi Dokter',
+                style: TextStyle(
+                  color: AppColors.primaryBlue,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _recommendationItem(
+            category: 'Obat',
+            description:
+                'Tingkatkan dosis Metformin dari 500mg menjadi 850mg, dikonsumsi 2x sehari setelah makan. Monitor gula darah harian.',
+          ),
+          const SizedBox(height: 10),
+          _recommendationItem(
+            category: 'Pola Makan',
+            description:
+                'Kurangi konsumsi karbohidrat sederhana dan perbanyak sayur rendah indeks glikemik.',
+          ),
+          const SizedBox(height: 14),
+          const Divider(),
+          const SizedBox(height: 12),
+
+          const Row(
+            children: [
+              Icon(
+                Icons.groups_outlined,
+                size: 16,
+                color: AppColors.primaryBlue,
+              ),
+              SizedBox(width: 6),
+              Text(
+                'Rekomendasi Dikirim Kepada',
+                style: TextStyle(
+                  color: AppColors.primaryBlue,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 10),
+
+          _wrapRecipient(name: 'Angelica Sabi Gita', relation: 'Pasien'),
+
+          const SizedBox(height: 8),
+
+          _wrapRecipient(name: 'Yeni Dewi Sinta', relation: 'Istri'),
+
+          const SizedBox(height: 8),
+
+          _wrapRecipient(name: 'Agus Santoso', relation: 'Anak'),
+        ],
+      ),
+    );
+  }
+
+  Widget _recommendationItem({
+    required String category,
+    required String description,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.veryLightBlue,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.lightBlue),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: AppColors.primaryBlue,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              category,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            description,
+            style: const TextStyle(
+              color: AppColors.dark2,
+              fontSize: 12,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _wrapRecipient({required String name, required String relation}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.veryLightBlue,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.lightBlue),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: AppColors.primaryBlue,
+            child: Text(
+              name.split(' ').take(2).map((e) => e[0]).join(),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              name,
+              style: const TextStyle(
+                color: AppColors.dark1,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              relation,
+              style: const TextStyle(
+                color: AppColors.primaryBlue,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildHeader(BuildContext context) {
     final topPad = MediaQuery.of(context).padding.top;
 
     return Container(
-      width: double.infinity,
       padding: EdgeInsets.fromLTRB(20, topPad + 16, 20, 22),
       decoration: const BoxDecoration(
         color: AppColors.primaryBlue,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(28),
-          bottomRight: Radius.circular(28),
+          bottomLeft: Radius.circular(26),
+          bottomRight: Radius.circular(26),
         ),
       ),
       child: Column(
@@ -140,8 +295,8 @@ class ClinicalNoteDetailPage extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 21,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
@@ -150,79 +305,45 @@ class ClinicalNoteDetailPage extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.white,
               borderRadius: BorderRadius.circular(12),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 10,
-                  offset: Offset(0, 6),
-                ),
-              ],
             ),
             child: Row(
               children: [
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: isConnected ? AppColors.lightBlue : AppColors.light1,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: AppColors.veryLightBlue,
-                      width: 4,
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      'AS',
-                      style: TextStyle(
-                        color: isConnected
-                            ? AppColors.primaryBlue
-                            : AppColors.dark4,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
+                const CircleAvatar(
+                  radius: 26,
+                  backgroundColor: AppColors.lightBlue,
+                  child: Text(
+                    'AS',
+                    style: TextStyle(
+                      color: AppColors.primaryBlue,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
                         'Angelica Sabi Gita',
-                        style: TextStyle(
-                          color: AppColors.dark1,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
-                        ),
+                        style: TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(height: 6),
                       const Text(
                         '32 tahun • Perempuan',
-                        style: TextStyle(fontSize: 13, color: AppColors.dark2),
+                        style: TextStyle(color: AppColors.dark2, fontSize: 12),
                       ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
+                      const SizedBox(height: 4),
+                      Row(
                         children: [
-                          _smallBadge(
-                            text: 'DM Tipe 2',
-                            bg: AppColors.veryLightBlue,
-                            color: AppColors.primaryBlue,
-                          ),
-                          if (!isConnected)
-                            _smallBadge(
-                              text: 'Tidak Terhubung',
-                              bg: AppColors.light1,
-                              color: AppColors.dark4,
-                            ),
+                          _miniBadge('DM Tipe 2'),
+                          if (hasRecommendation) ...[
+                            const SizedBox(width: 6),
+                            _miniBadge('+ Rekomendasi'),
+                          ],
                         ],
                       ),
                     ],
@@ -236,120 +357,21 @@ class ClinicalNoteDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _recommendationSection() {
-    final recommendations = [
-      {
-        'category': 'Obat',
-        'content':
-            'Tingkatkan dosis Metformin dari 500 mg menjadi 850 mg, dikonsumsi 2x sehari setelah makan.',
-        'sentTo': 'Pasien dan keluarga',
-      },
-      {
-        'category': 'Pola Makan',
-        'content':
-            'Kurangi konsumsi karbohidrat sederhana dan perbanyak sayur tinggi serat.',
-        'sentTo': 'Pasien',
-      },
-    ];
-
+  Widget _miniBadge(String text) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.light1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        color: AppColors.veryLightBlue,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.lightBlue),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.send_outlined, size: 17, color: AppColors.primaryBlue),
-              SizedBox(width: 8),
-              Text(
-                'Rekomendasi Terkait',
-                style: TextStyle(
-                  color: AppColors.primaryBlue,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          ...recommendations.map((item) {
-            return Container(
-              width: double.infinity,
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.veryLightBlue,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.lightBlue),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryBlue,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      item['category']!,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    item['content']!,
-                    style: const TextStyle(
-                      color: AppColors.dark1,
-                      fontSize: 12,
-                      height: 1.45,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.notifications_none_rounded,
-                        size: 14,
-                        color: AppColors.primaryBlue,
-                      ),
-                      const SizedBox(width: 5),
-                      Text(
-                        'Dikirim ke ${item['sentTo']}',
-                        style: const TextStyle(
-                          color: AppColors.primaryBlue,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            );
-          }),
-        ],
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: AppColors.primaryBlue,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -362,36 +384,25 @@ class ClinicalNoteDetailPage extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.light1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
+      decoration: _cardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, size: 17, color: AppColors.primaryBlue),
-              const SizedBox(width: 8),
+              Icon(icon, size: 16, color: AppColors.primaryBlue),
+              const SizedBox(width: 6),
               Text(
                 title,
                 style: const TextStyle(
                   color: AppColors.primaryBlue,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                   fontSize: 13,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           child,
         ],
       ),
@@ -400,11 +411,10 @@ class ClinicalNoteDetailPage extends StatelessWidget {
 
   Widget _statusChip(String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: AppColors.lightRed,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.red.withValues(alpha: 0.18)),
       ),
       child: Text(
         text,
@@ -417,85 +427,18 @@ class ClinicalNoteDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _smallBadge({
-    required String text,
-    required Color bg,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: color,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
+  BoxDecoration _cardDecoration() {
+    return BoxDecoration(
+      color: AppColors.white,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: AppColors.light1),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.06),
+          blurRadius: 8,
+          offset: const Offset(0, 3),
         ),
-      ),
-    );
-  }
-
-  Widget _disconnectedInfo() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(13),
-      decoration: BoxDecoration(
-        color: AppColors.light1,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.dark4.withValues(alpha: 0.18)),
-      ),
-      child: const Row(
-        children: [
-          Icon(Icons.info_outline, color: AppColors.dark4, size: 18),
-          SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Pasien sudah tidak terhubung. Catatan klinis hanya dapat dilihat sebagai data lama.',
-              style: TextStyle(
-                color: AppColors.dark4,
-                fontSize: 12,
-                height: 1.35,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ReferenceRow extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _ReferenceRow({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 9),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(color: AppColors.dark2, fontSize: 12),
-            ),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              color: AppColors.primaryBlue,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
+      ],
     );
   }
 }

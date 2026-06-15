@@ -155,7 +155,11 @@ class _DoctorHistoryPageState extends State<DoctorHistoryPage> {
                                           context,
                                           MaterialPageRoute(
                                             builder: (_) =>
-                                                const ClinicalNoteDetailPage(),
+                                                ClinicalNoteDetailPage(
+                                                  hasRecommendation:
+                                                      item['type'] ==
+                                                      'Rekomendasi',
+                                                ),
                                           ),
                                         );
                                       },

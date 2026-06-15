@@ -943,29 +943,33 @@ class PatientHealthDetailPage extends StatelessWidget {
             _header(context, data),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
                 child: Column(
                   children: [
                     _detailSection(data),
                     const SizedBox(height: 14),
                     _noteSection(data),
                     const SizedBox(height: 18),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 46,
-                      child: ElevatedButton(
-                        onPressed: () => _showDeleteSheet(context),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.red,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
+
+                    if (type != 'Obat')
+                      SizedBox(
+                        width: double.infinity,
+                        height: 46,
+                        child: ElevatedButton(
+                          onPressed: () => _showDeleteSheet(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.red,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
                           ),
+                          child: const Text('Hapus data ini'),
                         ),
-                        child: const Text('Hapus data ini'),
-                      ),
-                    ),
+                      )
+                    else
+                      _readonlyInfo(),
                   ],
                 ),
               ),
@@ -996,7 +1000,7 @@ class PatientHealthDetailPage extends StatelessWidget {
 
     if (type == 'Obat') {
       return {
-        'title': 'Kepatuhan Obat',
+        'title': 'Detail Obat',
         'icon': Icons.medication_outlined,
         'value': 'Metformin 850 mg',
         'unit': 'Jadwal pagi',
@@ -1005,14 +1009,17 @@ class PatientHealthDetailPage extends StatelessWidget {
         'sections': [
           ['Nama Obat', 'Metformin'],
           ['Dosis', '850 mg'],
+          ['Bentuk', 'Tablet'],
           ['Jadwal', 'Pagi'],
-          ['Status konsumsi', 'Diminum'],
-          ['Waktu aktual checklist', '07:00'],
-          ['Resep dari', 'dr. Agus Setiawan, Sp.PD'],
-          ['Status resep', 'Resep berlaku'],
-          ['Mulai berlaku', '1 Juni 2025'],
+          ['Aturan Minum', 'Sesudah makan'],
+          ['Status Konsumsi', 'Diminum'],
+          ['Waktu Aktual Checklist', '07:00'],
+          ['Dokter', 'dr. Agus Setiawan, Sp.PD'],
+          ['Status Resep', 'Berlaku'],
+          ['Mulai Berlaku', '1 Juni 2025'],
         ],
-        'note': 'Timestamp otomatis tercatat saat pasien melakukan checklist.',
+        'note':
+            'Timestamp otomatis tercatat saat pasien melakukan checklist obat.',
       };
     }
 
@@ -1077,7 +1084,7 @@ class PatientHealthDetailPage extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(16, topPad + 12, 16, 24),
+      padding: EdgeInsets.fromLTRB(16, topPad + 12, 16, 28),
       color: AppColors.primaryBlue,
       child: Column(
         children: [
@@ -1089,60 +1096,57 @@ class PatientHealthDetailPage extends StatelessWidget {
               ),
               const Expanded(
                 child: Text(
-                  'Riwayat',
+                  'Detail Riwayat',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
+                    fontSize: 20,
                   ),
                 ),
               ),
               const SizedBox(width: 48),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            data['title'],
-            style: const TextStyle(color: Colors.white, fontSize: 13),
-          ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
           CircleAvatar(
-            radius: 20,
-            backgroundColor: Colors.white.withValues(alpha: 0.18),
-            child: Icon(data['icon'], color: Colors.white, size: 20),
+            radius: 30,
+            backgroundColor: AppColors.lightBlue,
+            child: Icon(data['icon'], color: AppColors.primaryBlue, size: 30),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 16),
           Text(
             data['value'],
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 32,
+              fontSize: 30,
               fontWeight: FontWeight.bold,
             ),
           ),
+          const SizedBox(height: 6),
           Text(
             data['unit'],
-            style: const TextStyle(color: Colors.white, fontSize: 12),
+            style: const TextStyle(color: Colors.white, fontSize: 13),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
             data['date'],
             style: const TextStyle(color: Colors.white, fontSize: 11),
           ),
           if ((data['status'] as String).isNotEmpty) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: isBad ? AppColors.lightRed : const Color(0xFFEAFBF3),
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
                 data['status'],
                 style: TextStyle(
-                  color: isBad ? AppColors.red : const Color(0xFF10C878),
-                  fontSize: 10,
+                  color: isBad ? AppColors.red : AppColors.primaryBlue,
+                  fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -1158,23 +1162,24 @@ class PatientHealthDetailPage extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: _cardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Detail data',
+            'Detail Data',
             style: TextStyle(
               color: AppColors.primaryBlue,
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           ...sections.map(
             (row) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.only(bottom: 12),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: Text(
@@ -1185,12 +1190,16 @@ class PatientHealthDetailPage extends StatelessWidget {
                       ),
                     ),
                   ),
-                  Text(
-                    row[1],
-                    style: const TextStyle(
-                      color: AppColors.primaryBlue,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      row[1],
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        color: AppColors.primaryBlue,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],
@@ -1209,7 +1218,7 @@ class PatientHealthDetailPage extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: _cardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1231,7 +1240,38 @@ class PatientHealthDetailPage extends StatelessWidget {
             ),
             child: Text(
               note,
-              style: const TextStyle(color: AppColors.dark1, fontSize: 12),
+              style: const TextStyle(
+                color: AppColors.dark1,
+                fontSize: 12,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _readonlyInfo() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: AppColors.veryLightBlue,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.info_outline, color: AppColors.primaryBlue, size: 18),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Data obat berasal dari checklist kepatuhan pasien. Riwayat ini hanya dapat dilihat dan tidak dapat diubah dari halaman ini.',
+              style: TextStyle(
+                color: AppColors.primaryBlue,
+                fontSize: 12,
+                height: 1.35,
+              ),
             ),
           ),
         ],
@@ -1273,32 +1313,32 @@ class PatientHealthDetailPage extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Data yang dihapus tidak dapat dikembalikan. Pastikan Anda yakin sebelum melanjutkan.',
+                'Data yang dihapus tidak dapat dikembalikan.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppColors.dark2, fontSize: 13),
               ),
               const SizedBox(height: 22),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(sheetContext);
-                  _showDeletedSuccess(context);
-                },
-                child: const Text(
-                  'Hapus',
-                  style: TextStyle(color: AppColors.primaryBlue),
-                ),
-              ),
               SizedBox(
                 width: double.infinity,
                 height: 46,
                 child: ElevatedButton(
-                  onPressed: () => Navigator.pop(sheetContext),
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    _showDeletedSuccess(context);
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.red,
                     foregroundColor: Colors.white,
                     elevation: 0,
                   ),
-                  child: const Text('Batal'),
+                  child: const Text('Hapus'),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(sheetContext),
+                child: const Text(
+                  'Batal',
+                  style: TextStyle(color: AppColors.primaryBlue),
                 ),
               ),
             ],
@@ -1336,12 +1376,6 @@ class PatientHealthDetailPage extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Data yang dipilih telah dihapus dari riwayatmu.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.dark2, fontSize: 13),
-              ),
               const SizedBox(height: 22),
               SizedBox(
                 width: double.infinity,
@@ -1369,8 +1403,15 @@ class PatientHealthDetailPage extends StatelessWidget {
   BoxDecoration _cardDecoration() {
     return BoxDecoration(
       color: AppColors.white,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(12),
       border: Border.all(color: AppColors.light1),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.06),
+          blurRadius: 8,
+          offset: const Offset(0, 3),
+        ),
+      ],
     );
   }
 }
