@@ -5,7 +5,8 @@ import 'doctor_history_page.dart';
 import 'doctor_profile_page.dart';
 import 'doctor_notification_page.dart';
 import 'patient_detail_page.dart';
-
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../data/services/api_service.dart';
 import '../widgets/doctor_bottom_nav.dart';
 
 class DoctorMainPage extends StatefulWidget {
@@ -56,63 +57,51 @@ class _DoctorHomeContentState extends State<DoctorHomeContent> {
   String searchQuery = '';
   bool hasUnreadNotification = true;
 
-  final patients = [
-    {
-      'initial': 'AS',
-      'name': 'Angelica Sabi Gita',
-      'info': '32 tahun • Perempuan',
-      'type': 'DM Tipe 2',
-      'glucose': '187',
-      'status': 'Abnormal',
-      'isNormal': false,
-      'isConnected': true,
-      'lastUpdate': 'Update terakhir: 7 Jun 2025 • 13:04',
-    },
-    {
-      'initial': 'RY',
-      'name': 'Restu Yuda Eka',
-      'info': '55 tahun • Laki-laki',
-      'type': 'DM Tipe 1',
-      'glucose': '185',
-      'status': 'Abnormal',
-      'isNormal': false,
-      'isConnected': true,
-      'lastUpdate': 'Update terakhir: 7 Jun 2025 • 12:30',
-    },
-    {
-      'initial': 'DH',
-      'name': 'Dayat Heru S.',
-      'info': '45 tahun • Laki-laki',
-      'type': 'DM Tipe 1',
-      'glucose': '112',
-      'status': 'Normal',
-      'isNormal': true,
-      'isConnected': true,
-      'lastUpdate': 'Update terakhir: 7 Jun 2025 • 08:10',
-    },
-    {
-      'initial': 'SP',
-      'name': 'Suryo Prasta',
-      'info': '40 tahun • Laki-laki',
-      'type': 'DM Tipe 2',
-      'glucose': '118',
-      'status': 'Normal',
-      'isNormal': true,
-      'isConnected': true,
-      'lastUpdate': 'Update terakhir: 6 Jun 2025 • 19:45',
-    },
-    {
-      'initial': 'HG',
-      'name': 'Hendra Gunawan',
-      'info': '50 tahun • Laki-laki',
-      'type': 'DM Tipe 2',
-      'glucose': '142',
-      'status': 'Normal',
-      'isNormal': true,
-      'isConnected': false,
-      'lastUpdate': 'Data terakhir: 6 Jun 2025 • 09:00',
-    },
-  ];
+  List<Map<String, dynamic>> patients = [];
+  bool isLoading = true;
+  String? errorMessage;
+
+  String _getInitials(String name) {
+    final parts = name.trim().split(' ');
+    if (parts.isEmpty) return '-';
+
+    if (parts.length == 1) {
+      return parts.first.substring(0, 1).toUpperCase();
+    }
+
+    return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() {
+      setState(() => searchQuery = _searchController.text);
+    });
+    _fetchPatients();
+  }
+
+  Future<void> _fetchPatients() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // sementara pakai doctor_id = 1 dulu
+      // nanti kita rapikan supaya doctor_id disimpan dari login
+      final doctorId = prefs.getInt('doctor_id') ?? 1;
+
+      final data = await ApiService.getDoctorPatients(doctorId);
+
+      setState(() {
+        patients = data;
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        errorMessage = e.toString().replaceFirst('Exception: ', '');
+        isLoading = false;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -122,9 +111,20 @@ class _DoctorHomeContentState extends State<DoctorHomeContent> {
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return Container(
+        color: AppColors.background,
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (errorMessage != null) {
+      return Center(child: Text(errorMessage!));
+    }
+
     final filteredPatients = patients.where((patient) {
-      final name = patient['name']!.toString().toLowerCase();
-      final type = patient['type']!.toString().toLowerCase();
+      final name = (patient['full_name'] ?? '').toString().toLowerCase();
+      final type = (patient['diabetes_type'] ?? '').toString().toLowerCase();
 
       return name.contains(searchQuery.toLowerCase()) ||
           type.contains(searchQuery.toLowerCase());
@@ -155,30 +155,44 @@ class _DoctorHomeContentState extends State<DoctorHomeContent> {
                             ),
                           ),
                           const SizedBox(height: 12),
-                          ...filteredPatients.map(
-                            (patient) => Padding(
+                          ...filteredPatients.map((patient) {
+                            final name =
+                                patient['full_name']?.toString() ?? '-';
+                            final gender = patient['gender']?.toString() ?? '-';
+                            final type =
+                                patient['diabetes_type']?.toString() ?? '-';
+                            final initials = _getInitials(name);
+
+                            return Padding(
                               padding: const EdgeInsets.only(bottom: 14),
                               child: _PatientCard(
-                                initials: patient['initial'] as String,
-                                name: patient['name'] as String,
-                                info: patient['info'] as String,
-                                type: patient['type'] as String,
-                                glucose: patient['glucose'] as String,
-                                status: patient['status'] as String,
-                                isNormal: patient['isNormal'] as bool,
-                                lastUpdate: patient['lastUpdate'] as String,
-                                isConnected: patient['isConnected'] as bool,
-                                onTap: () {
-                                  Navigator.push(
+                                initials: initials,
+                                name: name,
+                                info: gender,
+                                type: type,
+                                glucose: '-',
+                                status: 'Belum Ada Data',
+                                isNormal: true,
+                                lastUpdate: 'Belum ada update',
+                                isConnected: true,
+                                onTap: () async {
+                                  final result = await Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (_) => const PatientDetailPage(),
+                                      builder: (_) => PatientDetailPage(
+                                        patientId: int.parse(patient['patient_id'].toString()),
+                                        isConnected: true,
+                                      ),
                                     ),
                                   );
+
+                                  if (result == true) {
+                                    _fetchPatients();
+                                  }
                                 },
                               ),
-                            ),
-                          ),
+                            );
+                          }),
                         ],
                       ),
               ),

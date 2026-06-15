@@ -122,7 +122,9 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
                                               context,
                                               MaterialPageRoute(
                                                 builder: (_) =>
-                                                    const PatientDetailPage(),
+                                                    const PatientDetailPage(
+                                                      patientId: 1,
+                                                    ),
                                               ),
                                             );
                                           } else {

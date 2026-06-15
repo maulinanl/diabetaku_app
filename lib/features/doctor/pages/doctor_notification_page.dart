@@ -65,49 +65,47 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
   }
 
   Future<void> _openNotificationDetail(Map<String, Object> item) async {
-  setState(() {
-    item['read'] = true;
-  });
+    setState(() {
+      item['read'] = true;
+    });
 
-  final type = item['type'] as String;
+    final type = item['type'] as String;
 
-  if (type == 'abnormal') {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const AbnormalNotificationDetailPage(),
-      ),
-    );
-  } else if (type == 'connection') {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const RequestDetailPage(
-          status: 0,
-          initial: 'WP',
-          name: 'Wahyu Prasetyo',
-          info: 'DM Tipe 2 • 47 tahun • Laki-laki',
-          diagnosis: '2019',
-          time: '08:15',
+    if (type == 'abnormal') {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const AbnormalNotificationDetailPage(),
         ),
-      ),
-    );
-  } else if (type == 'note') {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const ClinicalNoteDetailPage(),
-      ),
-    );
-  } else if (type == 'disconnected') {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const DisconnectedNotificationDetailPage(),
-      ),
-    );
+      );
+    } else if (type == 'connection') {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const RequestDetailPage(
+            status: 0,
+            initial: 'WP',
+            name: 'Wahyu Prasetyo',
+            info: 'DM Tipe 2 • 47 tahun • Laki-laki',
+            diagnosis: '2019',
+            time: '08:15',
+          ),
+        ),
+      );
+    } else if (type == 'note') {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ClinicalNoteDetailPage()),
+      );
+    } else if (type == 'disconnected') {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const DisconnectedNotificationDetailPage(),
+        ),
+      );
+    }
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -723,7 +721,9 @@ Widget _detailPatientLink(BuildContext context, String text) {
     onTap: () {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => const PatientDetailPage()),
+        MaterialPageRoute(
+          builder: (_) => const PatientDetailPage(patientId: 1),
+        ),
       );
     },
     child: Row(

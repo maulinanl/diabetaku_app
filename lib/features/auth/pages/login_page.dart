@@ -5,6 +5,7 @@ import '../../doctor/pages/doctor_main_page.dart';
 import '../../patient/pages/patient_main_page.dart';
 import '../../family/pages/family_main_page.dart';
 import 'forgot_password_page.dart';
+import '../../../data/services/api_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -19,44 +20,73 @@ class _LoginPageState extends State<LoginPage> {
 
   bool obscurePassword = true;
   bool isFormValid = false;
+  bool isLoading = false;
 
   bool showPendingVerification = false;
   bool showLoginError = false;
 
-  void _handleLogin() {
-    final email = emailController.text.trim().toLowerCase();
+  Future<void> _handleLogin() async {
+    setState(() {
+      isLoading = true;
+      showLoginError = false;
+      showPendingVerification = false;
+    });
 
-    if (email.contains('dokter')) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const DoctorMainPage()),
+    try {
+      final result = await ApiService.login(
+        email: emailController.text.trim(),
+        password: passwordController.text.trim(),
       );
-    } else if (email.contains('pasien')) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const PatientMainPage()),
-      );
-    } else if (email.contains('keluarga') || email.contains('family')) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const FamilyMainPage()),
-      );
-    } else {
+
+      final roleId = result['user']['role_id'];
+
+      if (!mounted) return;
+
+      if (roleId == 2) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const DoctorMainPage()),
+        );
+      } else if (roleId == 3) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const PatientMainPage()),
+        );
+      } else if (roleId == 4) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const FamilyMainPage()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Role pengguna tidak dikenali')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      final errorMessage = e.toString().replaceFirst('Exception: ', '');
+
       setState(() {
-        showLoginError = true;
-        showPendingVerification = false;
+        if (errorMessage.contains('menunggu verifikasi') ||
+            errorMessage.contains('belum aktif')) {
+          showPendingVerification = true;
+          showLoginError = false;
+        } else {
+          showLoginError = true;
+          showPendingVerification = false;
+        }
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Demo login:\n'
-            'dokter@gmail.com\n'
-            'pasien@gmail.com\n'
-            'keluarga@gmail.com',
-          ),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(errorMessage)));
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
@@ -214,17 +244,7 @@ class _LoginPageState extends State<LoginPage> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: isFormValid ? _handleLogin : null,
-                  // onPressed: isFormValid
-                  //     ? () {
-                  //         Navigator.pushReplacement(
-                  //           context,
-                  //           MaterialPageRoute(
-                  //             builder: (_) => const DoctorMainPage(),
-                  //           ),
-                  //         );
-                  //       }
-                  //     : null,
+                  onPressed: isFormValid && !isLoading ? _handleLogin : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryBlue,
                     disabledBackgroundColor: const Color(0xFFAFCBEA),
@@ -235,10 +255,19 @@ class _LoginPageState extends State<LoginPage> {
                       borderRadius: BorderRadius.circular(6),
                     ),
                   ),
-                  child: const Text(
-                    'Masuk',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          'Masuk',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
                 ),
               ),
 

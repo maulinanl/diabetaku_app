@@ -1,61 +1,90 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/services/api_service.dart';
 
 class PatientThresholdPage extends StatefulWidget {
-  const PatientThresholdPage({super.key});
+  final int patientId;
+  final Map<String, dynamic> patientProfile;
+  final Future<void> Function()? onThresholdChanged;
+
+  const PatientThresholdPage({
+    super.key,
+    required this.patientId,
+    required this.patientProfile,
+    this.onThresholdChanged,
+  });
 
   @override
   State<PatientThresholdPage> createState() => _PatientThresholdPageState();
 }
 
 class _PatientThresholdPageState extends State<PatientThresholdPage> {
-  final List<_ThresholdItem> _items = [
-    _ThresholdItem(
-      title: 'Glukosa Puasa',
-      lower: '70',
-      upper: '130',
-      unit: 'mg/dL',
-      defaultLower: '70',
-      defaultUpper: '130',
-    ),
-    _ThresholdItem(
-      title: 'Glukosa Postprandial',
-      lower: '70',
-      upper: '180',
-      unit: 'mg/dL',
-      defaultLower: '70',
-      defaultUpper: '180',
-    ),
-    _ThresholdItem(
-      title: 'Tekanan Darah Sistolik',
-      lower: '90',
-      upper: '140',
-      unit: 'mmHg',
-      defaultLower: '90',
-      defaultUpper: '140',
-    ),
-    _ThresholdItem(
-      title: 'Tekanan Darah Diastolik',
-      lower: '60',
-      upper: '85',
-      unit: 'mmHg',
-      defaultLower: '60',
-      defaultUpper: '85',
-    ),
-    _ThresholdItem(
-      title: 'BMI',
-      lower: '18.5',
-      upper: '25.0',
-      unit: '',
-      defaultLower: '18.5',
-      defaultUpper: '25.0',
-    ),
-  ];
+  bool isLoading = true;
+  bool _hasChanges = false;
+  String? errorMessage;
+  final List<_ThresholdItem> _items = [];
 
   int? _editingIndex;
   final Map<int, TextEditingController> _lowerCtrls = {};
   final Map<int, TextEditingController> _upperCtrls = {};
   String? _errorText;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchThresholds();
+  }
+
+  Future<void> _fetchThresholds() async {
+    try {
+      final data = await ApiService.getPatientThresholds(widget.patientId);
+
+      setState(() {
+        _items.clear();
+
+        for (final item in data) {
+          final lower =
+              double.tryParse(
+                (item['custom_min'] ?? item['default_min'] ?? '').toString(),
+              )?.toStringAsFixed(2) ??
+              '';
+
+          final upper =
+              double.tryParse(
+                (item['custom_max'] ?? item['default_max'] ?? '').toString(),
+              )?.toStringAsFixed(2) ??
+              '';
+
+          _items.add(
+            _ThresholdItem(
+              parameterId: item['parameter_id'],
+              title: item['parameter_name']?.toString() ?? '-',
+              lower: lower,
+              upper: upper,
+              unit: item['unit']?.toString() ?? '',
+              defaultLower:
+                  double.tryParse(
+                    (item['default_min'] ?? '').toString(),
+                  )?.toStringAsFixed(2) ??
+                  '',
+              defaultUpper:
+                  double.tryParse(
+                    (item['default_max'] ?? '').toString(),
+                  )?.toStringAsFixed(2) ??
+                  '',
+            ),
+          );
+        }
+
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        errorMessage = e.toString().replaceFirst('Exception: ', '');
+        isLoading = false;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -88,9 +117,10 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
     });
   }
 
-  void _saveEdit(int index) {
+  Future<void> _saveEdit(int index) async {
     final low = _lowerCtrls[index]!.text.trim();
     final up = _upperCtrls[index]!.text.trim();
+
     final lowVal = double.tryParse(low.replaceAll(',', '.'));
     final upVal = double.tryParse(up.replaceAll(',', '.'));
 
@@ -98,6 +128,7 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
       setState(() => _errorText = 'Masukkan angka yang valid');
       return;
     }
+
     if (upVal <= lowVal) {
       setState(
         () => _errorText = 'Batas atas harus lebih besar dari batas bawah',
@@ -105,16 +136,130 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
       return;
     }
 
-    setState(() {
-      _items[index].lower = low;
-      _items[index].upper = up;
-      _editingIndex = null;
-      _errorText = null;
-      _lowerCtrls[index]?.dispose();
-      _upperCtrls[index]?.dispose();
-      _lowerCtrls.remove(index);
-      _upperCtrls.remove(index);
-    });
+    try {
+      await ApiService.updatePatientThreshold(
+        patientId: widget.patientId,
+        parameterId: _items[index].parameterId,
+        minValue: lowVal,
+        maxValue: upVal,
+      );
+
+      await _fetchThresholds();
+
+      if (widget.onThresholdChanged != null) {
+        await widget.onThresholdChanged!();
+      }
+
+      setState(() {
+        _items[index].lower = lowVal.toStringAsFixed(2);
+        _items[index].upper = upVal.toStringAsFixed(2);
+        _hasChanges = true;
+
+        _editingIndex = null;
+        _errorText = null;
+
+        _lowerCtrls[index]?.dispose();
+        _upperCtrls[index]?.dispose();
+        _lowerCtrls.remove(index);
+        _upperCtrls.remove(index);
+      });
+
+      if (mounted) {
+        _showSuccessBottomSheet();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+        );
+      }
+    }
+  }
+
+  void _showSuccessBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isDismissible: true,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return SafeArea(
+          child: SingleChildScrollView(
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(24, 10, 24, 22),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 48,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD9D9D9),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  Container(
+                    width: 96,
+                    height: 96,
+                    decoration: const BoxDecoration(
+                      color: AppColors.veryLightBlue,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.check_circle_outline,
+                      color: AppColors.primaryBlue,
+                      size: 56,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Batas Normal Berhasil Disimpan',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryBlue,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Perubahan batas normal pasien sudah tersimpan dan akan digunakan pada proses monitoring berikutnya.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      height: 1.45,
+                      color: AppColors.dark2,
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryBlue,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text('OK'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _resetToDefault(int index) {
@@ -126,6 +271,19 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (errorMessage != null) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(child: Text(errorMessage!)),
+      );
+    }
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -456,13 +614,48 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
     );
   }
 
+  String _getInitials(String name) {
+    final parts = name.trim().split(' ');
+    if (parts.isEmpty || name.trim().isEmpty) return '-';
+
+    if (parts.length == 1) return parts.first[0].toUpperCase();
+
+    return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+  }
+
+  int _calculateAge(String? birthDate) {
+    if (birthDate == null) return 0;
+
+    final date = DateTime.tryParse(birthDate);
+    if (date == null) return 0;
+
+    final now = DateTime.now();
+    int age = now.year - date.year;
+
+    if (now.month < date.month ||
+        (now.month == date.month && now.day < date.day)) {
+      age--;
+    }
+
+    return age;
+  }
+
   Widget _buildHeader() {
+    final name = widget.patientProfile['full_name']?.toString() ?? '-';
+    final gender = widget.patientProfile['gender']?.toString() ?? '-';
+    final diabetesType =
+        widget.patientProfile['diabetes_type']?.toString() ?? '-';
+    final age = _calculateAge(
+      widget.patientProfile['date_of_birth']?.toString(),
+    );
+    final initials = _getInitials(name);
+
     return Container(
       height: 210,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.primaryBlue,
-        borderRadius: const BorderRadius.only(
+        borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(28),
           bottomRight: Radius.circular(28),
         ),
@@ -473,7 +666,7 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
           Row(
             children: [
               IconButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.pop(context, _hasChanges),
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
               ),
               const Expanded(
@@ -492,6 +685,7 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
             ],
           ),
           const SizedBox(height: 12),
+
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -506,82 +700,77 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
                 ),
               ],
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 64,
-                      height: 90,
-                      decoration: BoxDecoration(
-                        color: AppColors.lightBlue,
-                        shape: BoxShape.circle,
-                        border: Border.all(
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: AppColors.lightBlue,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppColors.veryLightBlue,
+                      width: 4,
+                    ),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 6,
+                        offset: Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Text(
+                      initials,
+                      style: const TextStyle(
+                        color: AppColors.primaryBlue,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '$age tahun • $gender',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.dark2,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
                           color: AppColors.veryLightBlue,
-                          width: 4,
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 6,
-                            offset: Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: const Center(
                         child: Text(
-                          'AS',
-                          style: TextStyle(
+                          diabetesType,
+                          style: const TextStyle(
                             color: AppColors.primaryBlue,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
+                            fontSize: 12,
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Angelica Sabi Gita',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          const Text(
-                            '32 tahun • Perempuan',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: AppColors.dark2,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.veryLightBlue,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Text(
-                              'DM Tipe 2',
-                              style: TextStyle(
-                                color: AppColors.primaryBlue,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -593,6 +782,7 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
 }
 
 class _ThresholdItem {
+  final int parameterId;
   String title;
   String lower;
   String upper;
@@ -601,6 +791,7 @@ class _ThresholdItem {
   final String defaultUpper;
 
   _ThresholdItem({
+    required this.parameterId,
     required this.title,
     required this.lower,
     required this.upper,
