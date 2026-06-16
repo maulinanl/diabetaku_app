@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/services/api_service.dart';
 import 'patient_detail_page.dart';
 
 class DoctorConnectionPage extends StatefulWidget {
@@ -11,45 +13,121 @@ class DoctorConnectionPage extends StatefulWidget {
 
 class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
   int selectedTab = 0;
-
   final tabs = ['Menunggu', 'Diterima', 'Ditolak'];
 
-  final pendingRequests = [
-    {
-      'initial': 'WP',
-      'name': 'Wahyu Prasetyo',
-      'info': 'DM Tipe 2 • 47 tahun • Laki-laki',
-      'diagnosis': 'Diagnosis: 2019',
-      'time': '2 jam lalu',
-    },
-    {
-      'initial': 'MP',
-      'name': 'Maya Putri Sari',
-      'info': 'DM Tipe 1 • 28 tahun • Perempuan',
-      'diagnosis': 'Diagnosis: 2020',
-      'time': '5 jam lalu',
-    },
-  ];
+  bool isLoading = true;
+  String? errorMessage;
+  int doctorId = 1;
 
-  final acceptedRequests = [
-    {
-      'initial': 'WP',
-      'name': 'Wahyu Prasetyo',
-      'info': 'DM Tipe 2 • 47 tahun • Laki-laki',
-      'diagnosis': 'Diterima: 7 Jun 2025',
-      'time': '2 jam lalu',
-    },
-  ];
+  List<Map<String, dynamic>> pendingRequests = [];
+  List<Map<String, dynamic>> acceptedRequests = [];
+  List<Map<String, dynamic>> rejectedRequests = [];
 
-  final rejectedRequests = [
-    {
-      'initial': 'WP',
-      'name': 'Wahyu Prasetyo',
-      'info': 'DM Tipe 2 • 47 tahun • Laki-laki',
-      'diagnosis': 'Diagnosis: 2018',
-      'time': '2 jam lalu',
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  String _getInitials(String name) {
+    final parts = name.trim().split(' ');
+    if (parts.isEmpty || name.trim().isEmpty) return '-';
+    if (parts.length == 1) return parts.first[0].toUpperCase();
+    return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+  }
+
+  int _calculateAge(String? birthDate) {
+    if (birthDate == null) return 0;
+    final date = DateTime.tryParse(birthDate);
+    if (date == null) return 0;
+
+    final now = DateTime.now();
+    int age = now.year - date.year;
+
+    if (now.month < date.month ||
+        (now.month == date.month && now.day < date.day)) {
+      age--;
+    }
+
+    return age;
+  }
+
+  String _formatDiabetesType(dynamic value) {
+    final type = value?.toString() ?? '-';
+    if (type.contains('1')) return 'Tipe 1';
+    if (type.contains('2')) return 'Tipe 2';
+    return type.replaceAll('_', ' ');
+  }
+
+  Future<void> _loadData() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      doctorId = prefs.getInt('doctor_id') ?? 1;
+
+      final pending = await ApiService.getDoctorConnectionRequests(doctorId);
+      final accepted = await ApiService.getDoctorPatients(doctorId);
+      final rejected = await ApiService.getRejectedConnectionRequests(doctorId);
+
+      setState(() {
+        pendingRequests = pending;
+        acceptedRequests = accepted;
+        rejectedRequests = rejected;
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        errorMessage = e.toString().replaceFirst('Exception: ', '');
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _acceptRequest(int patientId) async {
+    try {
+      await ApiService.acceptConnectionRequest(
+        doctorId: doctorId,
+        patientId: patientId,
+      );
+
+      _showConnectionResultSheet(
+        title: 'Permintaan Diterima',
+        message: 'Pasien berhasil terhubung dan masuk ke daftar pasien.',
+        icon: Icons.check_circle_outline,
+        iconColor: const Color(0xFF10C878),
+        iconBg: const Color(0xFFEAFBF3),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
+  }
+
+  Future<void> _rejectRequest(int patientId) async {
+    try {
+      await ApiService.rejectConnectionRequest(
+        doctorId: doctorId,
+        patientId: patientId,
+      );
+
+      _showConnectionResultSheet(
+        title: 'Permintaan Ditolak',
+        message: 'Permintaan koneksi pasien berhasil ditolak.',
+        icon: Icons.cancel_outlined,
+        iconColor: AppColors.red,
+        iconBg: AppColors.lightRed,
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,82 +147,171 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
             Expanded(
               child: Container(
                 color: AppColors.background,
-                child: Column(
-                  children: [
-                    _buildTabs(),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 18),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          selectedTab == 0
-                              ? 'KONEKSI MENUNGGU - ${data.length}'
-                              : selectedTab == 1
-                              ? 'KONEKSI DITERIMA - ${data.length}'
-                              : 'KONEKSI DITOLAK - ${data.length}',
-                          style: const TextStyle(
-                            color: AppColors.primaryBlue,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Expanded(
-                      child: data.isEmpty
-                          ? _emptyState()
-                          : ListView.separated(
-                              padding: const EdgeInsets.fromLTRB(
-                                18,
-                                0,
-                                18,
-                                120,
+                child: isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : errorMessage != null
+                    ? Center(child: Text(errorMessage!))
+                    : Column(
+                        children: [
+                          _buildTabs(),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 18),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                selectedTab == 0
+                                    ? 'KONEKSI MENUNGGU - ${data.length}'
+                                    : selectedTab == 1
+                                    ? 'KONEKSI DITERIMA - ${data.length}'
+                                    : 'KONEKSI DITOLAK - ${data.length}',
+                                style: const TextStyle(
+                                  color: AppColors.primaryBlue,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
-                              itemCount: data.length,
-                              separatorBuilder: (_, __) =>
-                                  const SizedBox(height: 14),
-                              itemBuilder: (context, index) {
-                                final item = data[index];
-
-                                return _RequestCard(
-                                  initial: item['initial']!,
-                                  name: item['name']!,
-                                  info: item['info']!,
-                                  diagnosis: item['diagnosis']!,
-                                  time: item['time']!,
-                                  status: selectedTab,
-                                  onDetail: selectedTab == 2
-                                      ? null
-                                      : () {
-                                          if (selectedTab == 1) {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) =>
-                                                    const PatientDetailPage(
-                                                      patientId: 1,
-                                                    ),
-                                              ),
-                                            );
-                                          } else {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) =>
-                                                    RequestDetailPage(
-                                                      status: selectedTab,
-                                                    ),
-                                              ),
-                                            );
-                                          }
-                                        },
-                                );
-                              },
                             ),
-                    ),
-                  ],
-                ),
+                          ),
+                          const SizedBox(height: 10),
+                          Expanded(
+                            child: data.isEmpty
+                                ? _emptyState()
+                                : RefreshIndicator(
+                                    onRefresh: _loadData,
+                                    child: ListView.separated(
+                                      padding: const EdgeInsets.fromLTRB(
+                                        18,
+                                        0,
+                                        18,
+                                        120,
+                                      ),
+                                      itemCount: data.length,
+                                      separatorBuilder: (_, __) =>
+                                          const SizedBox(height: 14),
+                                      itemBuilder: (context, index) {
+                                        final item = data[index];
+
+                                        final patientId = int.parse(
+                                          item['patient_id'].toString(),
+                                        );
+
+                                        final name =
+                                            item['full_name']?.toString() ??
+                                            '-';
+                                        final gender =
+                                            item['gender']?.toString() ?? '-';
+                                        final age = _calculateAge(
+                                          item['date_of_birth']?.toString(),
+                                        );
+                                        final type = _formatDiabetesType(
+                                          item['diabetes_type'],
+                                        );
+
+                                        final diagnosis = selectedTab == 0
+                                            ? 'Menunggu persetujuan dokter'
+                                            : selectedTab == 1
+                                            ? 'Koneksi diterima'
+                                            : 'Koneksi ditolak';
+
+                                        return _RequestCard(
+                                          initial: _getInitials(name),
+                                          name: name,
+                                          info:
+                                              'DM $type • $age tahun • $gender',
+                                          diagnosis: diagnosis,
+                                          status: selectedTab,
+                                          onDetail: () {
+                                            if (selectedTab == 1) {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      PatientDetailPage(
+                                                        patientId: patientId,
+                                                        isConnected: true,
+                                                      ),
+                                                ),
+                                              );
+                                            } else {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) => RequestDetailPage(
+                                                    patientId: patientId,
+                                                    status: selectedTab,
+                                                    name: name,
+                                                    age: age,
+                                                    gender: gender,
+                                                    diabetesType: 'DM $type',
+                                                    connectionStatus: diagnosis,
+                                                    onAccept: selectedTab == 0
+                                                        ? () => _showConnectionConfirmSheet(
+                                                            title:
+                                                                'Terima Permintaan?',
+                                                            message:
+                                                                'Pasien akan terhubung dengan dokter dan masuk ke daftar pasien.',
+                                                            confirmText:
+                                                                'Ya, Terima',
+                                                            confirmColor:
+                                                                AppColors
+                                                                    .primaryBlue,
+                                                            onConfirm: () =>
+                                                                _acceptRequest(
+                                                                  patientId,
+                                                                ),
+                                                          )
+                                                        : null,
+                                                    onReject: selectedTab == 0
+                                                        ? () => _showConnectionConfirmSheet(
+                                                            title:
+                                                                'Tolak Permintaan?',
+                                                            message:
+                                                                'Permintaan koneksi pasien akan ditolak dan tidak masuk ke daftar pasien.',
+                                                            confirmText:
+                                                                'Ya, Tolak',
+                                                            confirmColor:
+                                                                AppColors.red,
+                                                            onConfirm: () =>
+                                                                _rejectRequest(
+                                                                  patientId,
+                                                                ),
+                                                          )
+                                                        : null,
+                                                  ),
+                                                ),
+                                              );
+                                            }
+                                          },
+                                          onAccept: selectedTab == 0
+                                              ? () => _showConnectionConfirmSheet(
+                                                  title: 'Terima Permintaan?',
+                                                  message:
+                                                      'Pasien akan terhubung dengan dokter dan masuk ke daftar pasien.',
+                                                  confirmText: 'Ya, Terima',
+                                                  confirmColor:
+                                                      AppColors.primaryBlue,
+                                                  onConfirm: () =>
+                                                      _acceptRequest(patientId),
+                                                )
+                                              : null,
+                                          onReject: selectedTab == 0
+                                              ? () => _showConnectionConfirmSheet(
+                                                  title: 'Tolak Permintaan?',
+                                                  message:
+                                                      'Permintaan koneksi pasien akan ditolak dan tidak masuk ke daftar pasien.',
+                                                  confirmText: 'Ya, Tolak',
+                                                  confirmColor: AppColors.red,
+                                                  onConfirm: () =>
+                                                      _rejectRequest(patientId),
+                                                )
+                                              : null,
+                                        );
+                                      },
+                                    ),
+                                  ),
+                          ),
+                        ],
+                      ),
               ),
             ),
           ],
@@ -220,35 +387,200 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
     return const Center(
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: 44),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircleAvatar(
-              radius: 38,
-              backgroundColor: AppColors.veryLightBlue,
-              child: Icon(
-                Icons.person_add_alt_1_rounded,
-                size: 42,
-                color: AppColors.primaryBlue,
-              ),
-            ),
-            SizedBox(height: 18),
-            Text(
-              'Tidak ada Permintaan',
-              style: TextStyle(
-                color: AppColors.dark1,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Pasien yang ingin terhubung denganmu akan muncul di sini untuk kamu terima atau tolak.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.primaryBlue, fontSize: 12),
-            ),
-          ],
+        child: Text(
+          'Tidak ada permintaan koneksi.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: AppColors.primaryBlue, fontSize: 12),
         ),
       ),
+    );
+  }
+
+  void _showConnectionConfirmSheet({
+    required String title,
+    required String message,
+    required String confirmText,
+    required Color confirmColor,
+    required VoidCallback onConfirm,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 28),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 50,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD9D9D9),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              const SizedBox(height: 24),
+              const CircleAvatar(
+                radius: 42,
+                backgroundColor: AppColors.veryLightBlue,
+                child: Icon(
+                  Icons.help_outline_rounded,
+                  color: AppColors.primaryBlue,
+                  size: 48,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppColors.primaryBlue,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppColors.dark2,
+                  fontSize: 14,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 26),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    onConfirm();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: confirmColor,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    confirmText,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(sheetContext),
+                child: const Text(
+                  'Batal',
+                  style: TextStyle(color: AppColors.dark2),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showConnectionResultSheet({
+    required String title,
+    required String message,
+    required IconData icon,
+    required Color iconColor,
+    required Color iconBg,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 28),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 50,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD9D9D9),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              const SizedBox(height: 28),
+              CircleAvatar(
+                radius: 46,
+                backgroundColor: iconBg,
+                child: Icon(icon, color: iconColor, size: 54),
+              ),
+              const SizedBox(height: 22),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppColors.primaryBlue,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppColors.dark2,
+                  fontSize: 14,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 26),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+
+                    if (Navigator.canPop(context)) {
+                      Navigator.pop(context);
+                    }
+
+                    _loadData();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryBlue,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Selesai',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -258,18 +590,20 @@ class _RequestCard extends StatelessWidget {
   final String name;
   final String info;
   final String diagnosis;
-  final String time;
   final int status;
   final VoidCallback? onDetail;
+  final VoidCallback? onAccept;
+  final VoidCallback? onReject;
 
   const _RequestCard({
     required this.initial,
     required this.name,
     required this.info,
     required this.diagnosis,
-    required this.time,
     required this.status,
     required this.onDetail,
+    this.onAccept,
+    this.onReject,
   });
 
   @override
@@ -331,25 +665,20 @@ class _RequestCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         info,
-                        style: TextStyle(
-                          color: isRejected
-                              ? AppColors.red
-                              : AppColors.primaryBlue,
+                        style: const TextStyle(
+                          color: AppColors.primaryBlue,
                           fontSize: 12,
                         ),
                       ),
                     ],
                   ),
                 ),
-                Text(time, style: TextStyle(color: statusColor, fontSize: 11)),
-                if (!isRejected) ...[
-                  const SizedBox(width: 4),
+                if (onDetail != null)
                   const Icon(
                     Icons.chevron_right,
                     size: 18,
                     color: AppColors.dark3,
                   ),
-                ],
               ],
             ),
             const SizedBox(height: 12),
@@ -367,7 +696,7 @@ class _RequestCard extends StatelessWidget {
                         ? Icons.check_circle_outline
                         : isRejected
                         ? Icons.cancel_outlined
-                        : Icons.calendar_today_outlined,
+                        : Icons.hourglass_bottom_rounded,
                     size: 13,
                     color: statusColor,
                   ),
@@ -387,7 +716,7 @@ class _RequestCard extends StatelessWidget {
                     child: SizedBox(
                       height: 40,
                       child: ElevatedButton.icon(
-                        onPressed: () {},
+                        onPressed: onAccept,
                         icon: const Icon(Icons.check, size: 16),
                         label: const Text('Terima'),
                         style: ElevatedButton.styleFrom(
@@ -406,7 +735,7 @@ class _RequestCard extends StatelessWidget {
                     child: SizedBox(
                       height: 40,
                       child: OutlinedButton.icon(
-                        onPressed: () {},
+                        onPressed: onReject,
                         icon: const Icon(Icons.close, size: 16),
                         label: const Text('Tolak'),
                         style: OutlinedButton.styleFrom(
@@ -431,20 +760,29 @@ class _RequestCard extends StatelessWidget {
 }
 
 class RequestDetailPage extends StatelessWidget {
+  final int patientId;
   final int status;
-  final String initial;
+  final VoidCallback? onAccept;
+  final VoidCallback? onReject;
+
   final String name;
-  final String info;
-  final String diagnosis;
+  final int age;
+  final String gender;
+  final String diabetesType;
+  final String connectionStatus;
   final String time;
 
   const RequestDetailPage({
     super.key,
+    required this.patientId,
     required this.status,
-    this.initial = 'WP',
-    this.name = 'Wahyu Prasetyo',
-    this.info = 'DM Tipe 2 • 47 tahun • Laki-laki',
-    this.diagnosis = '2019',
+    required this.name,
+    required this.age,
+    required this.gender,
+    required this.diabetesType,
+    required this.connectionStatus,
+    this.onAccept,
+    this.onReject,
     this.time = '08:15',
   });
 
@@ -474,16 +812,16 @@ class RequestDetailPage extends StatelessWidget {
                           width: double.infinity,
                           height: 44,
                           child: ElevatedButton(
-                            onPressed: () {},
+                            onPressed: onAccept,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primaryBlue,
                               foregroundColor: Colors.white,
                               elevation: 0,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6),
+                                borderRadius: BorderRadius.circular(8),
                               ),
                             ),
-                            child: const Text('Terima permintaan'),
+                            child: const Text('Terima Permintaan'),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -491,15 +829,15 @@ class RequestDetailPage extends StatelessWidget {
                           width: double.infinity,
                           height: 44,
                           child: OutlinedButton(
-                            onPressed: () {},
+                            onPressed: onReject,
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.red,
                               side: const BorderSide(color: AppColors.red),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6),
+                                borderRadius: BorderRadius.circular(8),
                               ),
                             ),
-                            child: const Text('Tolak permintaan'),
+                            child: const Text('Tolak Permintaan'),
                           ),
                         ),
                       ] else if (isRejected) ...[
@@ -507,7 +845,7 @@ class RequestDetailPage extends StatelessWidget {
                         _infoBox(
                           icon: Icons.cancel_outlined,
                           text:
-                              'Permintaan koneksi ini telah ditolak. Pasien tidak memiliki akses pemantauan dengan dokter.',
+                              'Permintaan koneksi ini telah ditolak. Pasien tidak terhubung dengan dokter.',
                           color: AppColors.red,
                           bg: AppColors.lightRed,
                         ),
@@ -549,7 +887,8 @@ class RequestDetailPage extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -579,9 +918,13 @@ class RequestDetailPage extends StatelessWidget {
                 Expanded(
                   child: Text(
                     isRejected
-                        ? 'Permintaan koneksi ditolak\n7 Jun 2025\n08:15'
-                        : 'Permintaan koneksi baru\n7 Jun 2025\n08:15',
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                        ? 'Permintaan koneksi ditolak\n$time'
+                        : 'Permintaan koneksi baru\n$time',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
                   ),
                 ),
               ],
@@ -594,10 +937,11 @@ class RequestDetailPage extends StatelessWidget {
 
   Widget _dataPatientCard() {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.light1),
       ),
       child: Column(
@@ -607,13 +951,16 @@ class RequestDetailPage extends StatelessWidget {
             'Data Pasien',
             style: TextStyle(
               color: AppColors.primaryBlue,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
             ),
           ),
           const SizedBox(height: 14),
           _DetailRow(label: 'Nama', value: name),
-          _DetailRow(label: 'Informasi', value: info),
-          _DetailRow(label: 'Tahun diagnosis', value: diagnosis),
+          _DetailRow(label: 'Usia', value: '$age tahun'),
+          _DetailRow(label: 'Jenis Kelamin', value: gender),
+          _DetailRow(label: 'Tipe Diabetes', value: diabetesType),
+          _DetailRow(label: 'Status', value: connectionStatus),
         ],
       ),
     );

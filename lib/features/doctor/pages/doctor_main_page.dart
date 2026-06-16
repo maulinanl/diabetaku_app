@@ -171,6 +171,18 @@ class _DoctorHomeContentState extends State<DoctorHomeContent> {
     }).toList();
 
     filteredPatients.sort((a, b) {
+      final aStatus =
+          a['relation_status']?.toString().toLowerCase() ?? 'diterima';
+      final bStatus =
+          b['relation_status']?.toString().toLowerCase() ?? 'diterima';
+
+      final aConnected = aStatus == 'diterima';
+      final bConnected = bStatus == 'diterima';
+
+      if (aConnected != bConnected) {
+        return aConnected ? -1 : 1;
+      }
+
       final aAbnormal = _isPatientAbnormal(a);
       final bAbnormal = _isPatientAbnormal(b);
 
@@ -223,6 +235,14 @@ class _DoctorHomeContentState extends State<DoctorHomeContent> {
                             final isAbnormal = _isPatientAbnormal(patient);
                             final status = isAbnormal ? 'Abnormal' : 'Normal';
 
+                            final relationStatus =
+                                patient['relation_status']
+                                    ?.toString()
+                                    .toLowerCase() ??
+                                'diterima';
+
+                            final isConnected = relationStatus == 'diterima';
+
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 14),
                               child: _PatientCard(
@@ -230,9 +250,11 @@ class _DoctorHomeContentState extends State<DoctorHomeContent> {
                                 name: name,
                                 info: '$age tahun • $gender',
                                 type: type,
-                                status: status,
+                                status: isConnected
+                                    ? status
+                                    : 'Tidak Terhubung',
                                 isNormal: !isAbnormal,
-                                isConnected: true,
+                                isConnected: isConnected,
                                 onTap: () async {
                                   final result = await Navigator.push(
                                     context,
@@ -241,7 +263,7 @@ class _DoctorHomeContentState extends State<DoctorHomeContent> {
                                         patientId: int.parse(
                                           patient['patient_id'].toString(),
                                         ),
-                                        isConnected: true,
+                                        isConnected: isConnected,
                                       ),
                                     ),
                                   );
@@ -462,7 +484,7 @@ class _PatientCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-        decoration: _cardDecoration(isNormal),
+        decoration: _cardDecoration(isNormal, isConnected),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -580,18 +602,20 @@ class _PatientCard extends StatelessWidget {
     );
   }
 
-  BoxDecoration _cardDecoration(bool isNormal) {
+  BoxDecoration _cardDecoration(bool isNormal, bool isConnected) {
     return BoxDecoration(
-      color: AppColors.white,
+      color: isConnected ? AppColors.white : const Color(0xFFF1F3F5),
       borderRadius: BorderRadius.circular(12),
       border: Border.all(
-        color: isNormal
-            ? AppColors.light1
-            : AppColors.red.withValues(alpha: 0.35),
+        color: isConnected
+            ? (isNormal
+                  ? AppColors.light1
+                  : AppColors.red.withValues(alpha: 0.35))
+            : AppColors.dark4.withValues(alpha: 0.25),
       ),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withValues(alpha: 0.12),
+          color: Colors.black.withValues(alpha: isConnected ? 0.12 : 0.04),
           blurRadius: 8,
           offset: const Offset(0, 4),
         ),

@@ -83,11 +83,13 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
         context,
         MaterialPageRoute(
           builder: (_) => const RequestDetailPage(
+            patientId: 18,
             status: 0,
-            initial: 'WP',
             name: 'Wahyu Prasetyo',
-            info: 'DM Tipe 2 • 47 tahun • Laki-laki',
-            diagnosis: '2019',
+            age: 47,
+            gender: 'Laki-laki',
+            diabetesType: 'DM Tipe 2',
+            connectionStatus: 'Menunggu persetujuan dokter',
             time: '08:15',
           ),
         ),

@@ -1645,7 +1645,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                     'Yakin ingin putus relasi?',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 28,
+                      fontSize: 22,
                       fontWeight: FontWeight.w700,
                       color: AppColors.primaryBlue,
                     ),
@@ -1657,7 +1657,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                     'Dokter tidak akan lagi terhubung dengan pasien ini. Data lama tetap dapat dilihat sesuai riwayat.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 15,
+                      fontSize: 14,
                       height: 1.5,
                       color: AppColors.dark2,
                     ),
@@ -1737,87 +1737,96 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
       context: context,
       isDismissible: false,
       enableDrag: false,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
-        return Container(
-          padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 50,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: Color(0xFFD9D9D9),
-                  borderRadius: BorderRadius.circular(20),
-                ),
+        return SafeArea(
+          child: SingleChildScrollView(
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
               ),
-              const SizedBox(height: 28),
-
-              Container(
-                width: 110,
-                height: 110,
-                decoration: BoxDecoration(
-                  color: AppColors.veryLightBlue,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.check_circle_outline,
-                  color: AppColors.primaryBlue,
-                  size: 62,
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              const Text(
-                'Relasi Berhasil Diputus',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primaryBlue,
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              const Text(
-                'Pasien telah dihapus dari daftar pasien aktif dokter.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 15,
-                  height: 1.5,
-                  color: AppColors.dark2,
-                ),
-              ),
-
-              const SizedBox(height: 28),
-
-              SizedBox(
-                width: double.infinity,
-                height: 54,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(sheetContext),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryBlue,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 50,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD9D9D9),
+                      borderRadius: BorderRadius.circular(20),
                     ),
                   ),
-                  child: const Text(
-                    'OK',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  const SizedBox(height: 24),
+
+                  Container(
+                    width: 96,
+                    height: 96,
+                    decoration: const BoxDecoration(
+                      color: AppColors.veryLightBlue,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.check_circle_outline,
+                      color: AppColors.primaryBlue,
+                      size: 54,
+                    ),
                   ),
-                ),
+
+                  const SizedBox(height: 22),
+
+                  const Text(
+                    'Relasi Berhasil Diputus',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryBlue,
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  const Text(
+                    'Pasien telah dihapus dari daftar pasien aktif dokter.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      height: 1.5,
+                      color: AppColors.dark2,
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(sheetContext),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryBlue,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'OK',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         );
       },

@@ -249,9 +249,13 @@ class ApiService {
   }
 
   static Future<void> disconnectDoctorPatient(int patientId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final doctorId = prefs.getInt('doctor_id') ?? 1;
+
     final response = await http.delete(
       Uri.parse('$baseUrl/doctor/patients/$patientId'),
       headers: await _authHeaders(),
+      body: jsonEncode({'doctor_id': doctorId}),
     );
 
     final data = jsonDecode(response.body);
@@ -332,5 +336,73 @@ class ApiService {
     }
 
     throw Exception(data['message'] ?? 'Gagal mengambil data keluarga pasien');
+  }
+
+  static Future<List<Map<String, dynamic>>> getDoctorConnectionRequests(
+    int doctorId,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/doctor/connection-requests/$doctorId'),
+      headers: await _authHeaders(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(data['data']);
+    }
+
+    throw Exception(data['message'] ?? 'Gagal mengambil permintaan koneksi');
+  }
+
+  static Future<void> acceptConnectionRequest({
+    required int doctorId,
+    required int patientId,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/doctor/connection-requests/$patientId/accept'),
+      headers: await _authHeaders(),
+      body: jsonEncode({'doctor_id': doctorId}),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Gagal menerima permintaan koneksi');
+    }
+  }
+
+  static Future<void> rejectConnectionRequest({
+    required int doctorId,
+    required int patientId,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/doctor/connection-requests/$patientId/reject'),
+      headers: await _authHeaders(),
+      body: jsonEncode({'doctor_id': doctorId}),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Gagal menolak permintaan koneksi');
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getRejectedConnectionRequests(
+    int doctorId,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/doctor/connection-requests/$doctorId/rejected'),
+      headers: await _authHeaders(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(data['data']);
+    }
+
+    throw Exception(data['message'] ?? 'Gagal mengambil koneksi ditolak');
   }
 }
