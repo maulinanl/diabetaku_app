@@ -340,7 +340,10 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => const ClinicalNoteFormPage(),
+                            builder: (_) => ClinicalNoteFormPage(
+                              patientId: widget.patientId,
+                              patientProfile: profile,
+                            ),
                           ),
                         );
                       },

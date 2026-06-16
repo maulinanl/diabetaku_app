@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import 'recommendation_form_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../data/services/api_service.dart';
 
 class ClinicalNoteFormPage extends StatefulWidget {
-  const ClinicalNoteFormPage({super.key});
+  final int patientId;
+  final Map<String, dynamic> patientProfile;
+
+  const ClinicalNoteFormPage({
+    super.key,
+    required this.patientId,
+    required this.patientProfile,
+  });
 
   @override
   State<ClinicalNoteFormPage> createState() => _ClinicalNoteFormPageState();
@@ -11,11 +20,35 @@ class ClinicalNoteFormPage extends StatefulWidget {
 
 class _ClinicalNoteFormPageState extends State<ClinicalNoteFormPage> {
   final _formKey = GlobalKey<FormState>();
-  // kondisi pasien: 0 = tidak stabil, 1 = stabil, 2 = memburuk, 3 = membaik
+
   int _kondisi = 1;
   final TextEditingController _catatanCtr = TextEditingController();
   final TextEditingController _rencanaCtr = TextEditingController();
   DateTime? _followUpDate;
+  
+
+  String _getInitials(String name) {
+    final parts = name.trim().split(' ');
+    if (parts.isEmpty || name.trim().isEmpty) return '-';
+    if (parts.length == 1) return parts.first[0].toUpperCase();
+    return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+  }
+
+  int _calculateAge(String? birthDate) {
+    if (birthDate == null) return 0;
+    final date = DateTime.tryParse(birthDate);
+    if (date == null) return 0;
+
+    final now = DateTime.now();
+    int age = now.year - date.year;
+
+    if (now.month < date.month ||
+        (now.month == date.month && now.day < date.day)) {
+      age--;
+    }
+
+    return age;
+  }
 
   @override
   void dispose() {
@@ -56,94 +89,143 @@ class _ClinicalNoteFormPageState extends State<ClinicalNoteFormPage> {
     }
   }
 
-  void _save() {
-  if (!_formKey.currentState!.validate()) return;
+  int? _clinicalNoteId;
+  bool _isSaving = false;
 
-  _showSavedSheet();
-}
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
 
-void _showSavedSheet() {
-  showModalBottomSheet(
-    context: context,
-    backgroundColor: Colors.transparent,
-    isDismissible: false,
-    enableDrag: false,
-    builder: (sheetContext) {
-      return Container(
-        padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircleAvatar(
-              radius: 36,
-              backgroundColor: Color(0xFFEAFBF3),
-              child: Icon(Icons.check, color: Color(0xFF10C878), size: 36),
-            ),
-            const SizedBox(height: 18),
-            const Text(
-              'Catatan Klinis Tersimpan',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.primaryBlue,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+    setState(() => _isSaving = true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final doctorId = prefs.getInt('doctor_id') ?? 1;
+
+      final clinicalNoteId = await ApiService.storeClinicalNote(
+        patientId: widget.patientId,
+        doctorId: doctorId,
+        patientCondition: _getKondisiText(),
+        doctorNote: _catatanCtr.text.trim(),
+        treatmentPlan: _rencanaCtr.text.trim(),
+        followUpDate: _followUpDate,
+      );
+
+      setState(() {
+        _clinicalNoteId = clinicalNoteId;
+        _isSaving = false;
+      });
+
+      _showSavedSheet();
+    } catch (e) {
+      setState(() => _isSaving = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
+  }
+
+  String _getKondisiText() {
+    switch (_kondisi) {
+      case 0:
+        return 'Tidak Stabil';
+      case 1:
+        return 'Stabil';
+      case 2:
+        return 'Memburuk';
+      case 3:
+        return 'Membaik';
+      default:
+        return 'Stabil';
+    }
+  }
+
+  void _showSavedSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isDismissible: false,
+      enableDrag: false,
+      builder: (sheetContext) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircleAvatar(
+                radius: 36,
+                backgroundColor: Color(0xFFEAFBF3),
+                child: Icon(Icons.check, color: Color(0xFF10C878), size: 36),
               ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Catatan klinis berhasil disimpan. Referensi data klinis terkait telah dilampirkan.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.dark2,
-                fontSize: 13,
-                height: 1.4,
+              const SizedBox(height: 18),
+              const Text(
+                'Catatan Klinis Tersimpan',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.primaryBlue,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            const SizedBox(height: 22),
-            SizedBox(
-              width: double.infinity,
-              height: 46,
-              child: ElevatedButton(
+              const SizedBox(height: 8),
+              const Text(
+                'Catatan klinis berhasil disimpan. Referensi data klinis terkait telah dilampirkan.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.dark2,
+                  fontSize: 13,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 22),
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => RecommendationFormPage(
+                          patientId: widget.patientId,
+                          patientProfile: widget.patientProfile,
+                          clinicalNoteId: _clinicalNoteId!,
+                        ),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryBlue,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                  child: const Text('Tambah Rekomendasi'),
+                ),
+              ),
+              TextButton(
                 onPressed: () {
                   Navigator.pop(sheetContext);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const RecommendationFormPage(),
-                    ),
-                  );
+                  Navigator.pop(context, true);
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryBlue,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
-                  ),
+                child: const Text(
+                  'Selesai',
+                  style: TextStyle(color: AppColors.primaryBlue),
                 ),
-                child: const Text('Tambah Rekomendasi'),
               ),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(sheetContext);
-                Navigator.pop(context);
-              },
-              child: const Text(
-                'Kembali ke Beranda',
-                style: TextStyle(color: AppColors.primaryBlue),
-              ),
-            ),
-          ],
-        ),
-      );
-    },
-  );
-}
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   String _formatDate(DateTime d) =>
       '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
@@ -186,7 +268,7 @@ void _showSavedSheet() {
                         width: double.infinity,
                         height: 52,
                         child: ElevatedButton(
-                          onPressed: _save,
+                          onPressed: _isSaving ? null : _save,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primaryBlue,
                             elevation: 2,
@@ -194,14 +276,23 @@ void _showSavedSheet() {
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: const Text(
-                            'Simpan Catatan',
-                            style: TextStyle(
-                              color: AppColors.background,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
+                          child: _isSaving
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text(
+                                  'Simpan Catatan',
+                                  style: TextStyle(
+                                    color: AppColors.background,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -387,6 +478,7 @@ void _showSavedSheet() {
                 maxLines: null,
                 minLines: 4,
                 maxLength: maxLength,
+                onChanged: (_) => setState(() {}),
                 decoration: InputDecoration(
                   hintText: hint,
                   filled: true,
@@ -480,8 +572,19 @@ void _showSavedSheet() {
   }
 
   Widget _buildHeader() {
+    final name = widget.patientProfile['full_name']?.toString() ?? '-';
+    final gender = widget.patientProfile['gender']?.toString() ?? '-';
+
+    String diabetesType =
+        widget.patientProfile['diabetes_type']?.toString() ?? '-';
+    diabetesType = diabetesType.replaceAll('_', ' ').toUpperCase();
+
+    final age = _calculateAge(
+      widget.patientProfile['date_of_birth']?.toString(),
+    );
+    final initials = _getInitials(name);
     return Container(
-      height: 210,
+      constraints: const BoxConstraints(minHeight: 210),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       decoration: BoxDecoration(
         color: AppColors.primaryBlue,
@@ -493,7 +596,6 @@ void _showSavedSheet() {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // top row: back icon + centered title
           Row(
             children: [
               IconButton(
@@ -538,7 +640,7 @@ void _showSavedSheet() {
                   children: [
                     Container(
                       width: 64,
-                      height: 90,
+                      height: 64,
                       decoration: BoxDecoration(
                         color: AppColors.lightBlue,
                         shape: BoxShape.circle,
@@ -554,10 +656,10 @@ void _showSavedSheet() {
                           ),
                         ],
                       ),
-                      child: const Center(
+                      child: Center(
                         child: Text(
-                          'AS',
-                          style: TextStyle(
+                          initials,
+                          style: const TextStyle(
                             color: AppColors.primaryBlue,
                             fontWeight: FontWeight.bold,
                             fontSize: 18,
@@ -570,17 +672,17 @@ void _showSavedSheet() {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Angelica Sabi Gita',
-                            style: TextStyle(
+                          Text(
+                            name,
+                            style: const TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 16,
                             ),
                           ),
                           const SizedBox(height: 6),
-                          const Text(
-                            '32 tahun • Perempuan',
-                            style: TextStyle(
+                          Text(
+                            '$age tahun • $gender',
+                            style: const TextStyle(
                               fontSize: 13,
                               color: AppColors.dark2,
                             ),
@@ -595,9 +697,9 @@ void _showSavedSheet() {
                               color: AppColors.veryLightBlue,
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Text(
-                              'DM Tipe 2',
-                              style: TextStyle(
+                            child: Text(
+                              diabetesType,
+                              style: const TextStyle(
                                 color: AppColors.primaryBlue,
                                 fontSize: 12,
                               ),

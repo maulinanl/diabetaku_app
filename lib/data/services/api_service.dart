@@ -260,4 +260,77 @@ class ApiService {
       throw Exception(data['message'] ?? 'Gagal memutus relasi pasien');
     }
   }
+
+  static Future<int> storeClinicalNote({
+    required int patientId,
+    required int doctorId,
+    required String patientCondition,
+    required String doctorNote,
+    required String treatmentPlan,
+    DateTime? followUpDate,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/doctor/patients/$patientId/clinical-notes'),
+      headers: await _authHeaders(),
+      body: jsonEncode({
+        'doctor_id': doctorId,
+        'patient_condition': patientCondition,
+        'doctor_note': doctorNote,
+        'treatment_plan': treatmentPlan,
+        'follow_up_date': followUpDate == null
+            ? null
+            : followUpDate.toIso8601String().split('T').first,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      return data['data']['clinical_note_id'];
+    }
+
+    throw Exception(data['message'] ?? 'Gagal menyimpan catatan klinis');
+  }
+
+  static Future<void> storeRecommendation({
+    required int clinicalNoteId,
+    required String category,
+    required String recommendationText,
+    required List<int> recipientUserIds,
+  }) async {
+    final response = await http.post(
+      Uri.parse(
+        '$baseUrl/doctor/clinical-notes/$clinicalNoteId/recommendation',
+      ),
+      headers: await _authHeaders(),
+      body: jsonEncode({
+        'category': category,
+        'recommendation_text': recommendationText,
+        'recipient_user_ids': recipientUserIds,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 201 && response.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Gagal mengirim rekomendasi');
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getPatientFamilies(
+    int patientId,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/doctor/patients/$patientId/families'),
+      headers: await _authHeaders(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(data['data']);
+    }
+
+    throw Exception(data['message'] ?? 'Gagal mengambil data keluarga pasien');
+  }
 }

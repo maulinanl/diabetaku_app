@@ -72,6 +72,46 @@ class _DoctorHomeContentState extends State<DoctorHomeContent> {
     return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
   }
 
+  int _calculateAge(String? birthDate) {
+    if (birthDate == null) return 0;
+
+    final date = DateTime.tryParse(birthDate);
+    if (date == null) return 0;
+
+    final now = DateTime.now();
+    int age = now.year - date.year;
+
+    if (now.month < date.month ||
+        (now.month == date.month && now.day < date.day)) {
+      age--;
+    }
+
+    return age;
+  }
+
+  String? _getBirthDate(Map<String, dynamic> patient) {
+    return patient['date_of_birth']?.toString();
+  }
+
+  String _formatDiabetesType(dynamic value) {
+    final type = value?.toString().toLowerCase() ?? '-';
+
+    if (type.contains('1')) return 'Tipe 1';
+    if (type.contains('2')) return 'Tipe 2';
+
+    return type.replaceAll('_', ' ').toUpperCase();
+  }
+
+  bool _isPatientAbnormal(Map<String, dynamic> patient) {
+    final abnormal = patient['is_abnormal'];
+    final status = patient['status']?.toString().toLowerCase();
+
+    return abnormal == true ||
+        abnormal == 1 ||
+        abnormal?.toString() == '1' ||
+        status == 'abnormal';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -130,6 +170,20 @@ class _DoctorHomeContentState extends State<DoctorHomeContent> {
           type.contains(searchQuery.toLowerCase());
     }).toList();
 
+    filteredPatients.sort((a, b) {
+      final aAbnormal = _isPatientAbnormal(a);
+      final bAbnormal = _isPatientAbnormal(b);
+
+      if (aAbnormal != bAbnormal) {
+        return aAbnormal ? -1 : 1;
+      }
+
+      final nameA = (a['full_name'] ?? '').toString().toLowerCase();
+      final nameB = (b['full_name'] ?? '').toString().toLowerCase();
+
+      return nameA.compareTo(nameB);
+    });
+
     return Container(
       color: AppColors.primaryBlue,
       child: SafeArea(
@@ -159,28 +213,34 @@ class _DoctorHomeContentState extends State<DoctorHomeContent> {
                             final name =
                                 patient['full_name']?.toString() ?? '-';
                             final gender = patient['gender']?.toString() ?? '-';
-                            final type =
-                                patient['diabetes_type']?.toString() ?? '-';
+                            final birthDate = _getBirthDate(patient);
+                            final age = _calculateAge(birthDate);
+                            final type = _formatDiabetesType(
+                              patient['diabetes_type'],
+                            );
                             final initials = _getInitials(name);
+
+                            final isAbnormal = _isPatientAbnormal(patient);
+                            final status = isAbnormal ? 'Abnormal' : 'Normal';
 
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 14),
                               child: _PatientCard(
                                 initials: initials,
                                 name: name,
-                                info: gender,
+                                info: '$age tahun • $gender',
                                 type: type,
-                                glucose: '-',
-                                status: 'Belum Ada Data',
-                                isNormal: true,
-                                lastUpdate: 'Belum ada update',
+                                status: status,
+                                isNormal: !isAbnormal,
                                 isConnected: true,
                                 onTap: () async {
                                   final result = await Navigator.push(
                                     context,
                                     MaterialPageRoute(
                                       builder: (_) => PatientDetailPage(
-                                        patientId: int.parse(patient['patient_id'].toString()),
+                                        patientId: int.parse(
+                                          patient['patient_id'].toString(),
+                                        ),
                                         isConnected: true,
                                       ),
                                     ),
@@ -369,10 +429,8 @@ class _PatientCard extends StatelessWidget {
   final String name;
   final String info;
   final String type;
-  final String glucose;
   final String status;
   final bool isNormal;
-  final String lastUpdate;
   final VoidCallback onTap;
   final bool isConnected;
 
@@ -381,10 +439,8 @@ class _PatientCard extends StatelessWidget {
     required this.name,
     required this.info,
     required this.type,
-    required this.glucose,
     required this.status,
     required this.isNormal,
-    required this.lastUpdate,
     required this.onTap,
     required this.isConnected,
   });
@@ -406,7 +462,7 @@ class _PatientCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-        decoration: _cardDecoration(),
+        decoration: _cardDecoration(isNormal),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -524,11 +580,15 @@ class _PatientCard extends StatelessWidget {
     );
   }
 
-  BoxDecoration _cardDecoration() {
+  BoxDecoration _cardDecoration(bool isNormal) {
     return BoxDecoration(
       color: AppColors.white,
       borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: AppColors.light1),
+      border: Border.all(
+        color: isNormal
+            ? AppColors.light1
+            : AppColors.red.withValues(alpha: 0.35),
+      ),
       boxShadow: [
         BoxShadow(
           color: Colors.black.withValues(alpha: 0.12),
