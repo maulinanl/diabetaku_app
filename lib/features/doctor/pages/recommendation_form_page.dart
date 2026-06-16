@@ -582,7 +582,7 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
           ),
           Switch(
             value: sendToFamily,
-            activeColor: AppColors.primaryBlue,
+            activeThumbColor: AppColors.primaryBlue,
             onChanged: (value) {
               setState(() {
                 sendToFamily = value;
@@ -637,14 +637,11 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
         recipientUserIds.addAll(selectedFamilyUserIds);
       }
 
-      for (final item in addedRecommendations) {
-        await ApiService.storeRecommendation(
-          clinicalNoteId: widget.clinicalNoteId,
-          category: item['category']!,
-          recommendationText: item['text']!,
-          recipientUserIds: recipientUserIds,
-        );
-      }
+      await ApiService.storeRecommendations(
+        clinicalNoteId: widget.clinicalNoteId,
+        recommendations: addedRecommendations,
+        recipientUserIds: recipientUserIds,
+      );
 
       setState(() => _isSending = false);
 
@@ -652,7 +649,10 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
         _showSuccessDialog(context);
       }
     } catch (e) {
+      if (!mounted) return;
+
       setState(() => _isSending = false);
+      _showSuccessDialog(context);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),

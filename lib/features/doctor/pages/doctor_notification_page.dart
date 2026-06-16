@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import 'patient_detail_page.dart';
-import 'clinical_note_detail_page.dart';
+import 'recommendation_detail_page.dart';
 import 'doctor_connection_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../data/services/api_service.dart';
 
 class DoctorNotificationPage extends StatefulWidget {
   const DoctorNotificationPage({super.key});
@@ -15,47 +17,15 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
   int selectedTab = 0;
   final searchController = TextEditingController();
 
-  final notifications = [
-    {
-      'section': 'Hari Ini',
-      'title': 'Glukosa abnormal - Angelica Sabi Gita',
-      'message': 'Glukosa postprandial 187 mg/dL melebihi batas normal.',
-      'time': '09:41 • Baru saja',
-      'type': 'abnormal',
-      'read': false,
-    },
-    {
-      'section': 'Hari Ini',
-      'title': 'Permintaan koneksi baru',
-      'message':
-          'Wahyu Prasetyo mengajukan permintaan untuk terhubung denganmu.',
-      'time': '08:15 • 1 jam lalu',
-      'type': 'connection',
-      'read': false,
-    },
-    {
-      'section': 'Kemarin',
-      'title': 'Catatan klinis tersimpan',
-      'message': 'Catatan klinis Ahmad Barik berhasil disimpan.',
-      'time': '6 Jun • 09:41',
-      'type': 'note',
-      'read': true,
-    },
-    {
-      'section': 'Kemarin',
-      'title': 'Relasi pasien terputus',
-      'message':
-          'Relasi dengan Hendra Gunawan telah terputus. Data lama masih dapat dilihat.',
-      'time': '6 Jun • 09:00',
-      'type': 'disconnected',
-      'read': true,
-    },
-  ];
+  List<Map<String, dynamic>> notifications = [];
+  bool isLoading = true;
+  String? errorMessage;
 
   @override
   void initState() {
     super.initState();
     searchController.addListener(() => setState(() {}));
+    _loadNotifications();
   }
 
   @override
@@ -64,49 +34,190 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
     super.dispose();
   }
 
-  Future<void> _openNotificationDetail(Map<String, Object> item) async {
+  Future<void> _loadNotifications() async {
     setState(() {
-      item['read'] = true;
+      isLoading = true;
+      errorMessage = null;
     });
 
-    final type = item['type'] as String;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getInt('user_id');
 
-    if (type == 'abnormal') {
+      if (userId == null) {
+        throw Exception('User belum login');
+      }
+
+      final data = await ApiService.getNotifications(userId);
+
+      if (!mounted) return;
+
+      setState(() {
+        notifications = data;
+        isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        errorMessage = e.toString().replaceFirst('Exception: ', '');
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _openNotificationDetail(Map<String, dynamic> item) async {
+    final notificationId = int.tryParse(item['notification_id'].toString());
+    final referenceId = int.tryParse(item['reference_id']?.toString() ?? '');
+
+    if (notificationId != null) {
+      await ApiService.markNotificationAsRead(notificationId);
+    }
+
+    if (!mounted) return;
+
+    setState(() {
+      item['is_read'] = true;
+    });
+
+    final type =
+        item['notification_type_name']?.toString().toLowerCase().trim() ?? '';
+
+    if (type == 'data abnormal') {
       await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => const AbnormalNotificationDetailPage(),
+          builder: (_) =>
+              AbnormalNotificationDetailPage(patientId: referenceId ?? 1),
         ),
       );
-    } else if (type == 'connection') {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const RequestDetailPage(
-            patientId: 18,
-            status: 0,
-            name: 'Wahyu Prasetyo',
-            age: 47,
-            gender: 'Laki-laki',
-            diabetesType: 'DM Tipe 2',
-            connectionStatus: 'Menunggu persetujuan dokter',
-            time: '08:15',
+    } else if (type == 'permintaan koneksi') {
+      if (referenceId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Data pasien pada permintaan koneksi tidak ditemukan',
+            ),
           ),
-        ),
-      );
-    } else if (type == 'note') {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const ClinicalNoteDetailPage()),
-      );
-    } else if (type == 'disconnected') {
+        );
+        return;
+      }
+
+      try {
+        final connection = await ApiService.getDoctorPatientConnectionStatus(
+          patientId: referenceId,
+        );
+
+        final statusId = int.tryParse(connection['status_id'].toString()) ?? 0;
+
+        final statusText = statusId == 1
+            ? 'Koneksi aktif'
+            : statusId == 2
+            ? 'Koneksi ditolak'
+            : 'Menunggu persetujuan dokter';
+
+        if (!mounted) return;
+
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => RequestDetailPage(
+              patientId: referenceId,
+              status: statusId,
+              name:
+                  connection['full_name']?.toString() ??
+                  _extractPatientName(item['message']?.toString() ?? ''),
+              age: _calculateAge(connection['date_of_birth']?.toString()),
+              gender: connection['gender']?.toString() ?? '-',
+              diabetesType: connection['diabetes_type']?.toString() ?? '-',
+              connectionStatus: statusText,
+              time: _formatNotificationTime(item['created_at']),
+            ),
+          ),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+        );
+      }
+    } else if (type == 'rekomendasi dokter') {
+      if (referenceId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Data rekomendasi tidak ditemukan')),
+        );
+        return;
+      }
+
+      try {
+        final detail = await ApiService.getRecommendationDetail(referenceId);
+
+        final patient = Map<String, dynamic>.from(detail['patient']);
+        final recommendations = List<Map<String, dynamic>>.from(
+          detail['recommendations'],
+        );
+        final recipients = List<Map<String, dynamic>>.from(
+          detail['recipients'],
+        );
+
+        if (!mounted) return;
+
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => RecommendationDetailPage.fromApi(
+              patient: patient,
+              recommendationsData: recommendations,
+              recipientsData: recipients,
+              time: _formatNotificationTime(item['created_at']),
+            ),
+          ),
+        );
+      } catch (e) {
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+        );
+      }
+    } else if (type == 'putus relasi') {
       await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => const DisconnectedNotificationDetailPage(),
+          builder: (_) =>
+              DisconnectedNotificationDetailPage(patientId: referenceId ?? 1),
         ),
       );
     }
+
+    if (mounted) {
+      _loadNotifications();
+    }
+  }
+
+  String _extractPatientName(String message) {
+    if (message.contains(' mengajukan')) {
+      return message.split(' mengajukan').first.trim();
+    }
+
+    return '-';
+  }
+
+  int _calculateAge(String? birthDate) {
+    if (birthDate == null) return 0;
+
+    final date = DateTime.tryParse(birthDate);
+    if (date == null) return 0;
+
+    final now = DateTime.now();
+    int age = now.year - date.year;
+
+    if (now.month < date.month ||
+        (now.month == date.month && now.day < date.day)) {
+      age--;
+    }
+
+    return age;
   }
 
   @override
@@ -123,18 +234,22 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
             Expanded(
               child: Container(
                 color: AppColors.background,
-                child: ListView(
-                  padding: EdgeInsets.zero,
-                  children: [
-                    _buildTabs(),
-                    if (filtered.isEmpty)
-                      _emptyState()
-                    else ...[
-                      ..._groupedNotifications(filtered),
-                      const SizedBox(height: 24),
-                    ],
-                  ],
-                ),
+                child: isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : errorMessage != null
+                    ? Center(child: Text(errorMessage!))
+                    : ListView(
+                        padding: EdgeInsets.zero,
+                        children: [
+                          _buildTabs(),
+                          if (filtered.isEmpty)
+                            _emptyState()
+                          else ...[
+                            ..._groupedNotifications(filtered),
+                            const SizedBox(height: 24),
+                          ],
+                        ],
+                      ),
               ),
             ),
           ],
@@ -143,28 +258,56 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
     );
   }
 
-  List<Map<String, Object>> _filteredNotifications() {
+  List<Map<String, dynamic>> _filteredNotifications() {
     final keyword = searchController.text.trim().toLowerCase();
 
     final tabFiltered = selectedTab == 0
         ? notifications
-        : notifications.where((item) => item['read'] == false).toList();
+        : notifications.where((item) {
+            final isRead = item['is_read'];
+            return isRead == false || isRead == 0 || isRead.toString() == '0';
+          }).toList();
 
-    if (keyword.isEmpty) return tabFiltered;
+    if (keyword.isEmpty) {
+      tabFiltered.sort((a, b) {
+        final dateA =
+            DateTime.tryParse(a['created_at']?.toString() ?? '') ??
+            DateTime(2000);
 
-    return tabFiltered.where((item) {
-      final title = item['title'].toString().toLowerCase();
-      final message = item['message'].toString().toLowerCase();
-      final time = item['time'].toString().toLowerCase();
-      final type = item['type'].toString().toLowerCase();
-      final section = item['section'].toString().toLowerCase();
+        final dateB =
+            DateTime.tryParse(b['created_at']?.toString() ?? '') ??
+            DateTime(2000);
+
+        return dateB.compareTo(dateA);
+      });
+
+      return tabFiltered;
+    }
+
+    final result = tabFiltered.where((item) {
+      final title = item['title']?.toString().toLowerCase() ?? '';
+      final message = item['message']?.toString().toLowerCase() ?? '';
+      final type =
+          item['notification_type_name']?.toString().toLowerCase() ?? '';
 
       return title.contains(keyword) ||
           message.contains(keyword) ||
-          time.contains(keyword) ||
-          type.contains(keyword) ||
-          section.contains(keyword);
+          type.contains(keyword);
     }).toList();
+
+    result.sort((a, b) {
+      final dateA =
+          DateTime.tryParse(a['created_at']?.toString() ?? '') ??
+          DateTime(2000);
+
+      final dateB =
+          DateTime.tryParse(b['created_at']?.toString() ?? '') ??
+          DateTime(2000);
+
+      return dateB.compareTo(dateA);
+    });
+
+    return result;
   }
 
   Widget _buildHeader(BuildContext context) {
@@ -281,31 +424,78 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
     );
   }
 
-  List<Widget> _groupedNotifications(List<Map<String, Object>> data) {
+  List<Widget> _groupedNotifications(List<Map<String, dynamic>> data) {
     final widgets = <Widget>[];
     String? lastSection;
 
     for (final item in data) {
-      final section = item['section'] as String;
+      final section = _getSection(item['created_at']);
 
       if (section != lastSection) {
         widgets.add(_sectionHeader(section));
         lastSection = section;
       }
 
+      final isRead =
+          item['is_read'] == true ||
+          item['is_read'] == 1 ||
+          item['is_read'].toString() == '1';
+
       widgets.add(
         _NotificationTile(
-          title: item['title'] as String,
-          message: item['message'] as String,
-          time: item['time'] as String,
-          type: item['type'] as String,
-          read: item['read'] as bool,
+          title: item['title']?.toString() ?? '-',
+          message: item['message']?.toString() ?? '-',
+          time: _formatNotificationTime(item['created_at']),
+          type: item['notification_type_name']?.toString() ?? '',
+          read: isRead,
           onTap: () => _openNotificationDetail(item),
         ),
       );
     }
 
     return widgets;
+  }
+
+  String _getSection(dynamic value) {
+    final parsed = DateTime.tryParse(value?.toString() ?? '');
+
+    if (parsed == null) {
+      return 'Sebelumnya';
+    }
+
+    final date = parsed.toLocal();
+
+    final now = DateTime.now();
+
+    final difference = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).difference(DateTime(date.year, date.month, date.day)).inDays;
+
+    if (difference == 0) {
+      return 'Hari Ini';
+    }
+
+    if (difference == 1) {
+      return 'Kemarin';
+    }
+
+    return 'Sebelumnya';
+  }
+
+  String _formatNotificationTime(dynamic value) {
+    final parsed = DateTime.tryParse(value?.toString() ?? '');
+
+    if (parsed == null) return '-';
+
+    final date = parsed.toLocal();
+
+    return '${date.day.toString().padLeft(2, '0')}/'
+        '${date.month.toString().padLeft(2, '0')}/'
+        '${date.year} • '
+        '${date.hour.toString().padLeft(2, '0')}:'
+        '${date.minute.toString().padLeft(2, '0')}';
   }
 
   Widget _sectionHeader(String title) {
@@ -383,17 +573,28 @@ class _NotificationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isAbnormal = type == 'abnormal';
-    final isConnection = type == 'connection';
-    final isDisconnected = type == 'disconnected';
+    final normalizedType = type.toLowerCase().trim();
+
+    final isAbnormal = normalizedType == 'data abnormal';
+    final isConnection = normalizedType == 'permintaan koneksi';
+    final isRecommendation = normalizedType == 'rekomendasi dokter';
+    final isMedicineReminder = normalizedType == 'pengingat obat';
+    final isVerification = normalizedType == 'status verifikasi';
+    final isDisconnected = normalizedType == 'putus relasi';
 
     final icon = isAbnormal
         ? Icons.warning_amber_rounded
         : isConnection
         ? Icons.person_add_alt_1_rounded
+        : isRecommendation
+        ? Icons.medical_information_outlined
+        : isMedicineReminder
+        ? Icons.medication_outlined
+        : isVerification
+        ? Icons.verified_user_outlined
         : isDisconnected
         ? Icons.link_off_rounded
-        : Icons.description_outlined;
+        : Icons.notifications_outlined;
 
     final color = isAbnormal || isDisconnected
         ? AppColors.red
@@ -494,7 +695,9 @@ class _NotificationTile extends StatelessWidget {
 }
 
 class AbnormalNotificationDetailPage extends StatelessWidget {
-  const AbnormalNotificationDetailPage({super.key});
+  final int patientId;
+
+  const AbnormalNotificationDetailPage({super.key, required this.patientId});
 
   @override
   Widget build(BuildContext context) {
@@ -511,7 +714,7 @@ class AbnormalNotificationDetailPage extends StatelessWidget {
             const _InfoRow(label: 'Usia', value: '32 tahun'),
             const _InfoRow(label: 'Tahun diagnosis', value: '2018'),
             const SizedBox(height: 8),
-            _detailPatientLink(context, 'Lihat Detail Pasien'),
+            _detailPatientLink(context, 'Lihat Detail Pasien', patientId, true),
           ],
         ),
         const SizedBox(height: 14),
@@ -544,7 +747,12 @@ class AbnormalNotificationDetailPage extends StatelessWidget {
 }
 
 class DisconnectedNotificationDetailPage extends StatelessWidget {
-  const DisconnectedNotificationDetailPage({super.key});
+  final int patientId;
+
+  const DisconnectedNotificationDetailPage({
+    super.key,
+    required this.patientId,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -561,7 +769,12 @@ class DisconnectedNotificationDetailPage extends StatelessWidget {
             const _InfoRow(label: 'Status relasi', value: 'Tidak Terhubung'),
             const _InfoRow(label: 'Relasi berakhir', value: '6 Jun 2025'),
             const SizedBox(height: 8),
-            _detailPatientLink(context, 'Lihat Data Lama Pasien'),
+            _detailPatientLink(
+              context,
+              'Lihat Data Lama Pasien',
+              patientId,
+              false,
+            ),
           ],
         ),
         const SizedBox(height: 14),
@@ -571,7 +784,7 @@ class DisconnectedNotificationDetailPage extends StatelessWidget {
             Text(
               'Relasi dengan pasien ini telah terputus. Dokter masih dapat melihat data lama sebelum relasi berakhir, tetapi tidak dapat mengakses pembaruan data terbaru atau mengirim rekomendasi baru.',
               style: TextStyle(
-                color: AppColors.dark2,
+                color: AppColors.dark1,
                 fontSize: 12,
                 height: 1.45,
               ),
@@ -718,13 +931,19 @@ Widget _whiteCard({required String title, required List<Widget> children}) {
   );
 }
 
-Widget _detailPatientLink(BuildContext context, String text) {
+Widget _detailPatientLink(
+  BuildContext context,
+  String text,
+  int patientId,
+  bool isConnected,
+) {
   return InkWell(
     onTap: () {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => const PatientDetailPage(patientId: 1),
+          builder: (_) =>
+              PatientDetailPage(patientId: patientId, isConnected: isConnected),
         ),
       );
     },

@@ -290,35 +290,16 @@ class ApiService {
     final data = jsonDecode(response.body);
 
     if (response.statusCode == 201 || response.statusCode == 200) {
-      return data['data']['clinical_note_id'];
+      final clinicalNoteId = data['data']?['clinical_note_id'];
+
+      if (clinicalNoteId == null) {
+        throw Exception('clinical_note_id tidak ditemukan dari server');
+      }
+
+      return int.parse(clinicalNoteId.toString());
     }
 
     throw Exception(data['message'] ?? 'Gagal menyimpan catatan klinis');
-  }
-
-  static Future<void> storeRecommendation({
-    required int clinicalNoteId,
-    required String category,
-    required String recommendationText,
-    required List<int> recipientUserIds,
-  }) async {
-    final response = await http.post(
-      Uri.parse(
-        '$baseUrl/doctor/clinical-notes/$clinicalNoteId/recommendation',
-      ),
-      headers: await _authHeaders(),
-      body: jsonEncode({
-        'category': category,
-        'recommendation_text': recommendationText,
-        'recipient_user_ids': recipientUserIds,
-      }),
-    );
-
-    final data = jsonDecode(response.body);
-
-    if (response.statusCode != 201 && response.statusCode != 200) {
-      throw Exception(data['message'] ?? 'Gagal mengirim rekomendasi');
-    }
   }
 
   static Future<List<Map<String, dynamic>>> getPatientFamilies(
@@ -404,5 +385,115 @@ class ApiService {
     }
 
     throw Exception(data['message'] ?? 'Gagal mengambil koneksi ditolak');
+  }
+
+  static Future<List<Map<String, dynamic>>> getNotifications(int userId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/notifications/user/$userId'),
+      headers: await _authHeaders(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(data['data']);
+    }
+
+    throw Exception(data['message'] ?? 'Gagal mengambil notifikasi');
+  }
+
+  static Future<void> markNotificationAsRead(int notificationId) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/notifications/$notificationId/read'),
+      headers: await _authHeaders(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Gagal menandai notifikasi');
+    }
+  }
+
+  static Future<void> markAllNotificationsAsRead(int userId) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/notifications/user/$userId/read-all'),
+      headers: await _authHeaders(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Gagal menandai semua notifikasi');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getDoctorPatientConnectionStatus({
+    required int patientId,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final doctorId = prefs.getInt('doctor_id') ?? 1;
+
+    final response = await http.get(
+      Uri.parse(
+        '$baseUrl/doctor/connections/status/$patientId?doctor_id=$doctorId',
+      ),
+      headers: await _authHeaders(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(data['data']);
+    }
+
+    throw Exception(data['message'] ?? 'Gagal mengambil status koneksi pasien');
+  }
+
+  static Future<void> storeRecommendations({
+    required int clinicalNoteId,
+    required List<Map<String, String>> recommendations,
+    required List<int> recipientUserIds,
+  }) async {
+    final response = await http.post(
+      Uri.parse(
+        '$baseUrl/doctor/clinical-notes/$clinicalNoteId/recommendation',
+      ),
+      headers: await _authHeaders(),
+      body: jsonEncode({
+        'recommendations': recommendations.map((item) {
+          return {
+            'category': item['category'],
+            'recommendation_text': item['text'],
+          };
+        }).toList(),
+        'recipient_user_ids': recipientUserIds,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 201 && response.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Gagal mengirim rekomendasi');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getRecommendationDetail(
+    int clinicalNoteId,
+  ) async {
+    final response = await http.get(
+      Uri.parse(
+        '$baseUrl/doctor/clinical-notes/$clinicalNoteId/recommendation',
+      ),
+      headers: await _authHeaders(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(data['data']);
+    }
+
+    throw Exception(data['message'] ?? 'Gagal mengambil detail rekomendasi');
   }
 }

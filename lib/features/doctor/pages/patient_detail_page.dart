@@ -261,9 +261,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                       width: 64,
                       height: 64,
                       decoration: BoxDecoration(
-                        color: widget.isConnected
-                            ? AppColors.lightBlue
-                            : AppColors.light1,
+                        color: AppColors.lightBlue,
                         shape: BoxShape.circle,
                         border: Border.all(
                           color: AppColors.veryLightBlue,
@@ -274,9 +272,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                         child: Text(
                           initials,
                           style: TextStyle(
-                            color: widget.isConnected
-                                ? AppColors.primaryBlue
-                                : AppColors.dark4,
+                            color: AppColors.primaryBlue,
                             fontWeight: FontWeight.bold,
                             fontSize: 18,
                           ),
@@ -318,8 +314,8 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                               if (!widget.isConnected)
                                 _badge(
                                   text: 'Tidak Terhubung',
-                                  bg: AppColors.light1,
-                                  color: AppColors.dark4,
+                                  bg: AppColors.light4,
+                                  color: AppColors.dark2,
                                   icon: Icons.link_off_rounded,
                                 ),
                             ],
@@ -380,7 +376,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
       decoration: BoxDecoration(
         color: AppColors.light1,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.dark4.withValues(alpha: 0.18)),
+        border: Border.all(color: AppColors.light4.withValues(alpha: 0.18)),
       ),
       child: const Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -474,7 +470,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
       ),
       itemBuilder: (context, index) {
         final item = items[index];
-        final color = widget.isConnected ? item[4] as Color : AppColors.dark4;
+        final color = item[4] as Color;
 
         return Container(
           padding: const EdgeInsets.all(12),
@@ -867,7 +863,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
       return _buildTrendAndHistory(
         title: 'Tren Glukosa',
         unitLabel: 'mg/dL',
-        lineColor: widget.isConnected ? AppColors.red : AppColors.dark4,
+        lineColor: AppColors.red,
         spots: _buildSpotsFromRecords(
           records: filteredGlucose,
           valueKey: 'glucose_value',
@@ -898,7 +894,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
       return _buildTrendAndHistory(
         title: 'Tren Tekanan Darah Sistolik',
         unitLabel: 'mmHg',
-        lineColor: widget.isConnected ? Colors.orange : AppColors.dark4,
+        lineColor: Colors.orange,
         spots: _buildSpotsFromRecords(
           records: filteredPhysiological,
           valueKey: 'systolic',
@@ -967,9 +963,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
           _buildTrendAndHistory(
             title: 'Tren Aktivitas Fisik',
             unitLabel: 'menit',
-            lineColor: widget.isConnected
-                ? AppColors.primaryBlue
-                : AppColors.dark4,
+            lineColor: AppColors.primaryBlue,
             spots: _buildSpotsFromRecords(
               records: filteredActivity,
               valueKey: 'duration_minutes',
@@ -994,9 +988,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
           _buildTrendAndHistory(
             title: 'Tren Estimasi Karbohidrat',
             unitLabel: 'gram',
-            lineColor: widget.isConnected
-                ? AppColors.primaryBlue
-                : AppColors.dark4,
+            lineColor: AppColors.primaryBlue,
             spots: _buildSpotsFromRecords(
               records: filteredMeal,
               valueKey: 'carbohydrate_estimate',
@@ -1034,9 +1026,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
         _buildTrendAndHistory(
           title: 'Tren Kepatuhan Obat',
           unitLabel: 'status',
-          lineColor: widget.isConnected
-              ? AppColors.primaryBlue
-              : AppColors.dark4,
+          lineColor: AppColors.primaryBlue,
           spots: _buildMedicationSpots(filteredMedication),
           history: medicationHistory.isEmpty
               ? [
@@ -1366,9 +1356,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                   item[2],
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: widget.isConnected
-                        ? AppColors.primaryBlue
-                        : AppColors.dark4,
+                    color: AppColors.primaryBlue,
                   ),
                 ),
               ],

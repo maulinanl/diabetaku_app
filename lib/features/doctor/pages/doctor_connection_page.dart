@@ -94,13 +94,11 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
         patientId: patientId,
       );
 
-      _showConnectionResultSheet(
-        title: 'Permintaan Diterima',
-        message: 'Pasien berhasil terhubung dan masuk ke daftar pasien.',
-        icon: Icons.check_circle_outline,
-        iconColor: const Color(0xFF10C878),
-        iconBg: const Color(0xFFEAFBF3),
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Permintaan berhasil diterima')),
       );
+
+      _loadData();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
@@ -115,13 +113,11 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
         patientId: patientId,
       );
 
-      _showConnectionResultSheet(
-        title: 'Permintaan Ditolak',
-        message: 'Permintaan koneksi pasien berhasil ditolak.',
-        icon: Icons.cancel_outlined,
-        iconColor: AppColors.red,
-        iconBg: AppColors.lightRed,
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Permintaan berhasil ditolak')),
       );
+
+      _loadData();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
@@ -219,6 +215,7 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
                                           info:
                                               'DM $type • $age tahun • $gender',
                                           diagnosis: diagnosis,
+                                          time: '',
                                           status: selectedTab,
                                           onDetail: () {
                                             if (selectedTab == 1) {
@@ -236,74 +233,41 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
                                               Navigator.push(
                                                 context,
                                                 MaterialPageRoute(
-                                                  builder: (_) => RequestDetailPage(
-                                                    patientId: patientId,
-                                                    status: selectedTab,
-                                                    name: name,
-                                                    age: age,
-                                                    gender: gender,
-                                                    diabetesType: 'DM $type',
-                                                    connectionStatus: diagnosis,
-                                                    onAccept: selectedTab == 0
-                                                        ? () => _showConnectionConfirmSheet(
-                                                            title:
-                                                                'Terima Permintaan?',
-                                                            message:
-                                                                'Pasien akan terhubung dengan dokter dan masuk ke daftar pasien.',
-                                                            confirmText:
-                                                                'Ya, Terima',
-                                                            confirmColor:
-                                                                AppColors
-                                                                    .primaryBlue,
-                                                            onConfirm: () =>
-                                                                _acceptRequest(
-                                                                  patientId,
-                                                                ),
-                                                          )
-                                                        : null,
-                                                    onReject: selectedTab == 0
-                                                        ? () => _showConnectionConfirmSheet(
-                                                            title:
-                                                                'Tolak Permintaan?',
-                                                            message:
-                                                                'Permintaan koneksi pasien akan ditolak dan tidak masuk ke daftar pasien.',
-                                                            confirmText:
-                                                                'Ya, Tolak',
-                                                            confirmColor:
-                                                                AppColors.red,
-                                                            onConfirm: () =>
-                                                                _rejectRequest(
-                                                                  patientId,
-                                                                ),
-                                                          )
-                                                        : null,
-                                                  ),
+                                                  builder: (_) =>
+                                                      RequestDetailPage(
+                                                        patientId: patientId,
+                                                        status: selectedTab,
+                                                        name: name,
+                                                        age: age,
+                                                        gender: gender,
+                                                        diabetesType:
+                                                            'DM $type',
+                                                        connectionStatus:
+                                                            diagnosis,
+                                                        onAccept:
+                                                            selectedTab == 0
+                                                            ? () =>
+                                                                  _acceptRequest(
+                                                                    patientId,
+                                                                  )
+                                                            : null,
+                                                        onReject:
+                                                            selectedTab == 0
+                                                            ? () =>
+                                                                  _rejectRequest(
+                                                                    patientId,
+                                                                  )
+                                                            : null,
+                                                      ),
                                                 ),
                                               );
                                             }
                                           },
                                           onAccept: selectedTab == 0
-                                              ? () => _showConnectionConfirmSheet(
-                                                  title: 'Terima Permintaan?',
-                                                  message:
-                                                      'Pasien akan terhubung dengan dokter dan masuk ke daftar pasien.',
-                                                  confirmText: 'Ya, Terima',
-                                                  confirmColor:
-                                                      AppColors.primaryBlue,
-                                                  onConfirm: () =>
-                                                      _acceptRequest(patientId),
-                                                )
+                                              ? () => _acceptRequest(patientId)
                                               : null,
                                           onReject: selectedTab == 0
-                                              ? () => _showConnectionConfirmSheet(
-                                                  title: 'Tolak Permintaan?',
-                                                  message:
-                                                      'Permintaan koneksi pasien akan ditolak dan tidak masuk ke daftar pasien.',
-                                                  confirmText: 'Ya, Tolak',
-                                                  confirmColor: AppColors.red,
-                                                  onConfirm: () =>
-                                                      _rejectRequest(patientId),
-                                                )
+                                              ? () => _rejectRequest(patientId)
                                               : null,
                                         );
                                       },
@@ -395,194 +359,6 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
       ),
     );
   }
-
-  void _showConnectionConfirmSheet({
-    required String title,
-    required String message,
-    required String confirmText,
-    required Color confirmColor,
-    required VoidCallback onConfirm,
-  }) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(24, 12, 24, 28),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 50,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFD9D9D9),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ),
-              const SizedBox(height: 24),
-              const CircleAvatar(
-                radius: 42,
-                backgroundColor: AppColors.veryLightBlue,
-                child: Icon(
-                  Icons.help_outline_rounded,
-                  color: AppColors.primaryBlue,
-                  size: 48,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppColors.primaryBlue,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppColors.dark2,
-                  fontSize: 14,
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 26),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(sheetContext);
-                    onConfirm();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: confirmColor,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: Text(
-                    confirmText,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(sheetContext),
-                child: const Text(
-                  'Batal',
-                  style: TextStyle(color: AppColors.dark2),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _showConnectionResultSheet({
-    required String title,
-    required String message,
-    required IconData icon,
-    required Color iconColor,
-    required Color iconBg,
-  }) {
-    showModalBottomSheet(
-      context: context,
-      isDismissible: false,
-      enableDrag: false,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(24, 12, 24, 28),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 50,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFD9D9D9),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ),
-              const SizedBox(height: 28),
-              CircleAvatar(
-                radius: 46,
-                backgroundColor: iconBg,
-                child: Icon(icon, color: iconColor, size: 54),
-              ),
-              const SizedBox(height: 22),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppColors.primaryBlue,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppColors.dark2,
-                  fontSize: 14,
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 26),
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(sheetContext);
-
-                    if (Navigator.canPop(context)) {
-                      Navigator.pop(context);
-                    }
-
-                    _loadData();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryBlue,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'Selesai',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
 }
 
 class _RequestCard extends StatelessWidget {
@@ -590,6 +366,7 @@ class _RequestCard extends StatelessWidget {
   final String name;
   final String info;
   final String diagnosis;
+  final String time;
   final int status;
   final VoidCallback? onDetail;
   final VoidCallback? onAccept;
@@ -600,6 +377,7 @@ class _RequestCard extends StatelessWidget {
     required this.name,
     required this.info,
     required this.diagnosis,
+    required this.time,
     required this.status,
     required this.onDetail,
     this.onAccept,
@@ -789,6 +567,7 @@ class RequestDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isPending = status == 0;
+    final isAccepted = status == 1;
     final isRejected = status == 2;
 
     return Scaffold(
@@ -797,7 +576,7 @@ class RequestDetailPage extends StatelessWidget {
         top: false,
         child: Column(
           children: [
-            _buildHeader(context, isRejected),
+            _buildHeader(context, isAccepted, isRejected),
             Expanded(
               child: Container(
                 color: AppColors.background,
@@ -840,6 +619,38 @@ class RequestDetailPage extends StatelessWidget {
                             child: const Text('Tolak Permintaan'),
                           ),
                         ),
+                      ] else if (isAccepted) ...[
+                        const SizedBox(height: 18),
+                        _infoBox(
+                          icon: Icons.check_circle_outline,
+                          text:
+                              'Permintaan koneksi ini telah diterima. Pasien sudah terhubung dengan dokter.',
+                          color: AppColors.primaryBlue,
+                          bg: AppColors.veryLightBlue,
+                        ),
+                        const SizedBox(height: 14),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 44,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => PatientDetailPage(
+                                    patientId: patientId,
+                                    isConnected: true,
+                                  ),
+                                ),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primaryBlue,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text('Lihat Detail Pasien'),
+                          ),
+                        ),
                       ] else if (isRejected) ...[
                         const SizedBox(height: 18),
                         _infoBox(
@@ -861,7 +672,7 @@ class RequestDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context, bool isRejected) {
+  Widget _buildHeader(BuildContext context, bool isAccepted, bool isRejected) {
     final topPad = MediaQuery.of(context).padding.top;
 
     return Container(
@@ -883,7 +694,11 @@ class RequestDetailPage extends StatelessWidget {
               ),
               Expanded(
                 child: Text(
-                  isRejected ? 'Koneksi Ditolak' : 'Permintaan Koneksi',
+                  isAccepted
+                      ? 'Koneksi Aktif'
+                      : isRejected
+                      ? 'Koneksi Ditolak'
+                      : 'Permintaan Koneksi',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: Colors.white,
@@ -910,14 +725,20 @@ class RequestDetailPage extends StatelessWidget {
                       ? AppColors.lightRed
                       : AppColors.lightBlue,
                   child: Icon(
-                    isRejected ? Icons.cancel_outlined : Icons.person_add_alt_1,
+                    isAccepted
+                        ? Icons.check_circle_outline
+                        : isRejected
+                        ? Icons.cancel_outlined
+                        : Icons.person_add_alt_1,
                     color: isRejected ? AppColors.red : AppColors.primaryBlue,
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    isRejected
+                    isAccepted
+                        ? 'Permintaan koneksi diterima\n$time'
+                        : isRejected
                         ? 'Permintaan koneksi ditolak\n$time'
                         : 'Permintaan koneksi baru\n$time',
                     style: const TextStyle(
