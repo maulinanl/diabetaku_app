@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import 'clinical_note_detail_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../data/services/api_service.dart';
 
 class DoctorHistoryPage extends StatefulWidget {
   const DoctorHistoryPage({super.key});
@@ -17,38 +19,15 @@ class _DoctorHistoryPageState extends State<DoctorHistoryPage> {
 
   final filters = ['Semua', 'Catatan Klinis', '+ Rekomendasi'];
 
-  final histories = [
-    {
-      'initial': 'SG',
-      'name': 'Sona Gemilang',
-      'age': '32 tahun • Laki-laki',
-      'type': 'Rekomendasi',
-      'status': 'Tidak Stabil',
-      'description':
-          'Glukosa postprandial 187 mg/dL, melebihi batas normal. Penyesuaian dosis Metformin diperlukan.',
-      'followUp': 'Follow up: 7 Jul 2025',
-    },
-    {
-      'initial': 'AB',
-      'name': 'Ahmad Barik',
-      'age': '27 tahun • Perempuan',
-      'type': 'Catatan Klinis',
-      'status': 'Stabil',
-      'description':
-          'Kondisi pasien stabil. Glukosa puasa dalam batas normal. Tekanan darah terkontrol baik.',
-      'followUp': 'Tanpa rekomendasi',
-    },
-    {
-      'initial': 'WH',
-      'name': 'Wijaya',
-      'age': '52 tahun • Laki-laki',
-      'type': 'Rekomendasi',
-      'status': 'Perlu perhatian',
-      'description':
-          'HbA1c turun ke 7.2% dan berat badan mulai terkontrol. Edukasi aktivitas fisik tetap dilanjutkan.',
-      'followUp': 'Follow up: 10 Jul 2025',
-    },
-  ];
+  List<Map<String, dynamic>> histories = [];
+  bool isLoading = true;
+  String? errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
 
   @override
   void dispose() {
@@ -58,18 +37,29 @@ class _DoctorHistoryPageState extends State<DoctorHistoryPage> {
 
   @override
   Widget build(BuildContext context) {
-    final filtered = histories.where((item) {
-      final name = item['name']!.toLowerCase();
-      final matchesSearch = name.contains(searchQuery.toLowerCase());
+    final filtered =
+        histories.where((item) {
+          final name = (item['full_name'] ?? '').toString().toLowerCase();
+          final matchesSearch = name.contains(searchQuery.toLowerCase());
 
-      final matchesFilter = selectedFilter == 0
-          ? true
-          : selectedFilter == 1
-          ? item['type'] == 'Catatan Klinis'
-          : item['type'] == 'Rekomendasi';
+          final recommendationCount =
+              int.tryParse(item['recommendation_count']?.toString() ?? '0') ??
+              0;
 
-      return matchesSearch && matchesFilter;
-    }).toList();
+          final matchesFilter = selectedFilter == 0
+              ? true
+              : selectedFilter == 1
+              ? recommendationCount == 0
+              : recommendationCount > 0;
+
+          final matchesDate = _isInSelectedRange(item['created_at']);
+
+          return matchesSearch && matchesFilter && matchesDate;
+        }).toList()..sort((a, b) {
+          final dateA = _parseDate(a['created_at']) ?? DateTime(2000);
+          final dateB = _parseDate(b['created_at']) ?? DateTime(2000);
+          return dateB.compareTo(dateA);
+        });
 
     return Scaffold(
       backgroundColor: AppColors.primaryBlue,
@@ -78,16 +68,18 @@ class _DoctorHistoryPageState extends State<DoctorHistoryPage> {
         child: Column(
           children: [
             _buildHeader(),
-
             Expanded(
               child: Container(
                 color: AppColors.background,
                 child: Column(
                   children: [
                     _buildFilters(),
-
                     Expanded(
-                      child: filtered.isEmpty
+                      child: isLoading
+                          ? const Center(child: CircularProgressIndicator())
+                          : errorMessage != null
+                          ? Center(child: Text(errorMessage!))
+                          : filtered.isEmpty
                           ? _buildEmptyState()
                           : ListView(
                               padding: const EdgeInsets.fromLTRB(
@@ -99,10 +91,12 @@ class _DoctorHistoryPageState extends State<DoctorHistoryPage> {
                               children: [
                                 Row(
                                   children: [
-                                    const Expanded(
+                                    Expanded(
                                       child: Text(
-                                        '7 Jun 2025 - Hari ini',
-                                        style: TextStyle(
+                                        selectedRange == null
+                                            ? 'Semua riwayat terbaru'
+                                            : '${selectedRange!.start.day}/${selectedRange!.start.month}/${selectedRange!.start.year} - ${selectedRange!.end.day}/${selectedRange!.end.month}/${selectedRange!.end.year}',
+                                        style: const TextStyle(
                                           color: AppColors.primaryBlue,
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,
@@ -147,6 +141,14 @@ class _DoctorHistoryPageState extends State<DoctorHistoryPage> {
                                 const SizedBox(height: 12),
 
                                 ...filtered.map((item) {
+                                  final recommendationCount =
+                                      int.tryParse(
+                                        item['recommendation_count']
+                                                ?.toString() ??
+                                            '0',
+                                      ) ??
+                                      0;
+
                                   return Padding(
                                     padding: const EdgeInsets.only(bottom: 14),
                                     child: GestureDetector(
@@ -156,25 +158,41 @@ class _DoctorHistoryPageState extends State<DoctorHistoryPage> {
                                           MaterialPageRoute(
                                             builder: (_) =>
                                                 ClinicalNoteDetailPage(
+                                                  historyData: item,
                                                   hasRecommendation:
-                                                      item['type'] ==
-                                                      'Rekomendasi',
+                                                      recommendationCount > 0,
                                                 ),
                                           ),
                                         );
                                       },
                                       child: _HistoryCard(
-                                        initial: item['initial']!,
-                                        name: item['name']!,
-                                        age: item['age']!,
-                                        type: item['type']!,
-                                        status: item['status']!,
-                                        description: item['description']!,
-                                        followUp: item['followUp']!,
+                                        initial: _getInitial(
+                                          item['full_name']?.toString() ?? '-',
+                                        ),
+                                        name:
+                                            item['full_name']?.toString() ??
+                                            '-',
+                                        age:
+                                            '${_calculateAge(item['date_of_birth']?.toString())} tahun • ${item['gender'] ?? '-'}',
+                                        type: recommendationCount > 0
+                                            ? 'Rekomendasi'
+                                            : 'Catatan Klinis',
+                                        status:
+                                            item['patient_condition']
+                                                ?.toString() ??
+                                            '-',
+                                        description:
+                                            item['doctor_note']?.toString() ??
+                                            item['treatment_plan']
+                                                ?.toString() ??
+                                            '-',
+                                        followUp: item['follow_up_date'] == null
+                                            ? 'Tanpa follow up'
+                                            : 'Follow up: ${item['follow_up_date']}',
                                       ),
                                     ),
                                   );
-                                }),
+                                }).toList(),
                               ],
                             ),
                     ),
@@ -186,6 +204,85 @@ class _DoctorHistoryPageState extends State<DoctorHistoryPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _loadHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final doctorId = prefs.getInt('doctor_id');
+
+      if (doctorId == null) {
+        throw Exception('Doctor ID tidak ditemukan');
+      }
+
+      final data = await ApiService.getDoctorHistory(doctorId);
+
+      if (!mounted) return;
+
+      setState(() {
+        histories = data;
+        isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        errorMessage = e.toString().replaceFirst('Exception: ', '');
+        isLoading = false;
+      });
+    }
+  }
+
+  String _getInitial(String name) {
+    final words = name.trim().split(' ').where((e) => e.isNotEmpty).toList();
+
+    if (words.length >= 2) {
+      return '${words[0][0]}${words[1][0]}'.toUpperCase();
+    }
+
+    return words.isNotEmpty ? words.first[0].toUpperCase() : '-';
+  }
+
+  int _calculateAge(String? birthDate) {
+    if (birthDate == null) return 0;
+
+    final dob = DateTime.tryParse(birthDate);
+    if (dob == null) return 0;
+
+    final now = DateTime.now();
+    int age = now.year - dob.year;
+
+    if (now.month < dob.month ||
+        (now.month == dob.month && now.day < dob.day)) {
+      age--;
+    }
+
+    return age;
+  }
+
+  DateTime? _parseDate(dynamic value) {
+    return DateTime.tryParse(value?.toString() ?? '');
+  }
+
+  bool _isInSelectedRange(dynamic value) {
+    if (selectedRange == null) return true;
+
+    final date = _parseDate(value);
+    if (date == null) return false;
+
+    final itemDate = DateTime(date.year, date.month, date.day);
+    final start = DateTime(
+      selectedRange!.start.year,
+      selectedRange!.start.month,
+      selectedRange!.start.day,
+    );
+    final end = DateTime(
+      selectedRange!.end.year,
+      selectedRange!.end.month,
+      selectedRange!.end.day,
+    );
+
+    return !itemDate.isBefore(start) && !itemDate.isAfter(end);
   }
 
   Widget _buildHeader() {
@@ -337,7 +434,6 @@ class _DoctorHistoryPageState extends State<DoctorHistoryPage> {
                       ),
                     ),
                     const SizedBox(height: 12),
-
                     Row(
                       children: [
                         Expanded(
@@ -359,9 +455,7 @@ class _DoctorHistoryPageState extends State<DoctorHistoryPage> {
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 10),
-
                     SizedBox(
                       height: 330,
                       child: Theme(
@@ -394,9 +488,7 @@ class _DoctorHistoryPageState extends State<DoctorHistoryPage> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 8),
-
                     Row(
                       children: [
                         Expanded(
@@ -538,11 +630,6 @@ class _HistoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isRecommendation = type == 'Rekomendasi';
-    final statusColor = status == 'Stabil'
-        ? const Color(0xFF10C878)
-        : status == 'Tidak Stabil'
-        ? Colors.orange
-        : AppColors.primaryBlue;
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -552,7 +639,7 @@ class _HistoryCard extends StatelessWidget {
         border: Border.all(color: AppColors.light1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -616,39 +703,40 @@ class _HistoryCard extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: status == 'Tidak Stabil'
-                  ? const Color(0xFFFFF8E8)
-                  : AppColors.veryLightBlue,
+              color: AppColors.veryLightBlue,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
               children: [
-                Icon(
-                  status == 'Stabil'
-                      ? Icons.check_circle_outline
-                      : Icons.warning_amber_rounded,
+                const Icon(
+                  Icons.sticky_note_2_outlined,
                   size: 16,
-                  color: statusColor,
+                  color: AppColors.primaryBlue,
                 ),
                 const SizedBox(width: 6),
-                Text(
-                  status,
-                  style: TextStyle(
-                    color: statusColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                Expanded(
+                  child: Text(
+                    status,
+                    style: const TextStyle(
+                      color: AppColors.primaryBlue,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 10),
-          Text(
-            description,
-            style: const TextStyle(
-              color: AppColors.dark2,
-              fontSize: 12,
-              height: 1.4,
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              description,
+              style: const TextStyle(
+                color: AppColors.dark2,
+                fontSize: 12,
+                height: 1.4,
+              ),
             ),
           ),
           const SizedBox(height: 12),

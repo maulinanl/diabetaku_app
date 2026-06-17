@@ -30,10 +30,31 @@ class ApiService {
       await prefs.setInt('role_id', data['user']['role_id']);
       await prefs.setString('full_name', data['user']['full_name']);
 
+      if (data['doctor'] != null) {
+        await prefs.setInt(
+          'doctor_id',
+          int.parse(data['doctor']['doctor_id'].toString()),
+        );
+      }
+
+      if (data['patient'] != null) {
+        await prefs.setInt(
+          'patient_id',
+          int.parse(data['patient']['patient_id'].toString()),
+        );
+      }
+
+      if (data['family'] != null) {
+        await prefs.setInt(
+          'family_id',
+          int.parse(data['family']['family_id'].toString()),
+        );
+      }
+
       return data;
-    } else {
-      throw Exception(data['message'] ?? 'Login gagal');
     }
+
+    throw Exception(data['message'] ?? 'Email atau password salah');
   }
 
   static Future<String?> getToken() async {
@@ -495,5 +516,22 @@ class ApiService {
     }
 
     throw Exception(data['message'] ?? 'Gagal mengambil detail rekomendasi');
+  }
+
+  static Future<List<Map<String, dynamic>>> getDoctorHistory(
+    int doctorId,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/doctor/history/$doctorId'),
+      headers: await _authHeaders(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(data['data']);
+    }
+
+    throw Exception(data['message'] ?? 'Gagal mengambil riwayat dokter');
   }
 }
