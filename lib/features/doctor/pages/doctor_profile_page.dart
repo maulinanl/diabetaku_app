@@ -1,10 +1,88 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../auth/pages/change_password_page.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/services/api_service.dart';
 import 'edit_doctor_profile_page.dart';
 import '../../auth/pages/login_page.dart';
 
-class DoctorProfilePage extends StatelessWidget {
+class DoctorProfilePage extends StatefulWidget {
   const DoctorProfilePage({super.key});
+
+  @override
+  State<DoctorProfilePage> createState() => _DoctorProfilePageState();
+}
+
+class _DoctorProfilePageState extends State<DoctorProfilePage> {
+  late String initialFullName;
+  late String initialPhone;
+  late String initialGender;
+  late int initialSpecializationId;
+  late String initialInstitution;
+  Map<String, dynamic>? profile;
+  bool isLoading = true;
+  String? errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final doctorId = prefs.getInt('doctor_id');
+
+      if (doctorId == null) {
+        throw Exception(
+          'Doctor ID tidak ditemukan. Coba logout lalu login ulang.',
+        );
+      }
+
+      final data = await ApiService.getDoctorProfile(doctorId);
+
+      if (!mounted) return;
+
+      setState(() {
+        profile = data;
+        isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        errorMessage = e.toString().replaceFirst('Exception: ', '');
+        isLoading = false;
+      });
+    }
+  }
+
+  String _getInitials(String name) {
+    final ignoredTitles = ['dr.', 'dr', 'prof.', 'prof', 'sp.', 'sp'];
+
+    final words = name
+        .trim()
+        .split(' ')
+        .where((e) => e.isNotEmpty)
+        .where((e) => !ignoredTitles.contains(e.toLowerCase()))
+        .toList();
+
+    if (words.length >= 2) {
+      return '${words[0][0]}${words[1][0]}'.toUpperCase();
+    }
+
+    if (words.length == 1) {
+      return words.first[0].toUpperCase();
+    }
+
+    return '-';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -12,42 +90,73 @@ class DoctorProfilePage extends StatelessWidget {
       backgroundColor: AppColors.primaryBlue,
       body: SafeArea(
         top: false,
-        child: Column(
-          children: [
-            _headerCard(context),
-            Expanded(
-              child: Container(
-                color: AppColors.background,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 22, 20, 170),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(child: _statCard('12', 'Pasien Aktif')),
-                          const SizedBox(width: 12),
-                          Expanded(child: _statCard('3', 'Pasien Abnormal')),
-                        ],
-                      ),
-                      const SizedBox(height: 18),
-                      _dataSection(context),
-                      const SizedBox(height: 18),
-                      _menuSection(),
-                      const SizedBox(height: 18),
-                      _logoutTile(context),
-                    ],
+        child: isLoading
+            ? const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              )
+            : errorMessage != null
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(
+                    errorMessage!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white),
                   ),
                 ),
+              )
+            : Column(
+                children: [
+                  _headerCard(context),
+                  Expanded(
+                    child: Container(
+                      color: AppColors.background,
+                      child: RefreshIndicator(
+                        onRefresh: _loadProfile,
+                        child: SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(20, 22, 20, 170),
+                          child: Column(
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _statCard('12', 'Pasien Aktif'),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _statCard('3', 'Pasien Abnormal'),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 18),
+                              _dataSection(context),
+                              const SizedBox(height: 18),
+                              _menuSection(),
+                              const SizedBox(height: 18),
+                              _logoutTile(context),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }
 
   Widget _headerCard(BuildContext context) {
     final topPad = MediaQuery.of(context).padding.top;
+
+    final name = profile?['full_name']?.toString() ?? '-';
+    final specialization = profile?['specialization_name']?.toString() ?? '-';
+    final institution = profile?['institution']?.toString() ?? '-';
+    final verification = _verificationText(
+      profile?['verification_status']?.toString() ?? 'Terverifikasi',
+    );
+    final initials = _getInitials(name);
 
     return Container(
       width: double.infinity,
@@ -61,12 +170,12 @@ class DoctorProfilePage extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const CircleAvatar(
+          CircleAvatar(
             radius: 44,
             backgroundColor: AppColors.lightBlue,
             child: Text(
-              'AS',
-              style: TextStyle(
+              initials,
+              style: const TextStyle(
                 color: AppColors.primaryBlue,
                 fontSize: 30,
                 fontWeight: FontWeight.bold,
@@ -74,44 +183,83 @@ class DoctorProfilePage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'dr. Agus Setiawan, Sp.PD',
+          Text(
+            name,
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 19,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
-            'Penyakit Dalam • RS Cipto Mangunkusumo',
+          Text(
+            '$specialization • $institution',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white, fontSize: 12),
+            style: const TextStyle(color: Colors.white, fontSize: 12),
           ),
           const SizedBox(height: 12),
-          _verifiedBadge(),
+          _verifiedBadge(verification),
         ],
       ),
     );
   }
 
-  Widget _verifiedBadge() {
+  String _verificationText(String value) {
+    final status = value.toLowerCase();
+
+    if (status == 'disetujui' || status == 'terverifikasi') {
+      return 'Terverifikasi';
+    }
+
+    if (status == 'menunggu') return 'Menunggu Verifikasi';
+    if (status == 'ditolak') return 'Ditolak';
+
+    return 'Terverifikasi';
+  }
+
+  Widget _verifiedBadge(String verification) {
+    final status = verification.toLowerCase();
+
+    IconData icon;
+    Color backgroundColor;
+
+    switch (status) {
+      case 'terverifikasi':
+        icon = Icons.verified;
+        backgroundColor = Colors.white.withValues(alpha: 0.18);
+        break;
+
+      case 'menunggu':
+        icon = Icons.pending;
+        backgroundColor = Colors.orange.withValues(alpha: 0.18);
+        break;
+
+      case 'ditolak':
+        icon = Icons.cancel;
+        backgroundColor = Colors.red.withValues(alpha: 0.18);
+        break;
+
+      default:
+        icon = Icons.info_outline;
+        backgroundColor = Colors.white.withValues(alpha: 0.18);
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.18),
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
       ),
-      child: const Row(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.verified_rounded, size: 14, color: Colors.white),
-          SizedBox(width: 5),
+          Icon(icon, size: 14, color: Colors.white),
+          const SizedBox(width: 5),
           Text(
-            'Terverifikasi',
-            style: TextStyle(
+            verification,
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 11,
               fontWeight: FontWeight.w600,
@@ -130,24 +278,13 @@ class DoctorProfilePage extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.lightBlue),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // const Icon(
-          //   Icons.verified_rounded,
-          //   size: 12,
-          //   color: AppColors.primaryBlue,
-          // ),
-          const SizedBox(width: 4),
-          Text(
-            text,
-            style: const TextStyle(
-              color: AppColors.primaryBlue,
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: AppColors.primaryBlue,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -211,13 +348,19 @@ class DoctorProfilePage extends StatelessWidget {
                 ),
               ),
               OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.push(
+                onPressed: () async {
+                  if (profile == null) return;
+
+                  final updated = await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const EditDoctorProfilePage(),
+                      builder: (_) => EditDoctorProfilePage(profile: profile!),
                     ),
                   );
+
+                  if (updated == true) {
+                    _loadProfile();
+                  }
                 },
                 icon: const Icon(Icons.edit, size: 16),
                 label: const Text('Ubah'),
@@ -240,15 +383,24 @@ class DoctorProfilePage extends StatelessWidget {
           _profileItem(
             Icons.person_outline,
             'Nama Lengkap',
-            'dr. Agus Setiawan, Sp.PD',
+            profile?['full_name']?.toString() ?? '-',
           ),
           _profileItem(
             Icons.email_outlined,
             'Email',
-            'agusSetiawan@gmail.com',
+            profile?['email']?.toString() ?? '-',
             badge: 'Terverifikasi',
           ),
-          _profileItem(Icons.phone_outlined, 'Nomor Telepon', '081278564098'),
+          _profileItem(
+            Icons.phone_outlined,
+            'Nomor Telepon',
+            profile?['phone_number']?.toString() ?? '-',
+          ),
+          _profileItem(
+            Icons.wc,
+            'Jenis Kelamin',
+            profile?['gender']?.toString() ?? '-',
+          ),
           const Divider(height: 26),
           const Align(
             alignment: Alignment.centerLeft,
@@ -264,18 +416,18 @@ class DoctorProfilePage extends StatelessWidget {
           _profileItem(
             Icons.medical_services_outlined,
             'Spesialisasi',
-            'Penyakit Dalam',
+            profile?['specialization_name']?.toString() ?? '-',
           ),
           _profileItem(
             Icons.badge_outlined,
             'Nomor STR',
-            'STR-2024-001234',
+            profile?['str_number']?.toString() ?? '-',
             badge: 'Valid',
           ),
           _profileItem(
             Icons.local_hospital_outlined,
             'Institusi',
-            'RS Cipto Mangunkusumo',
+            profile?['institution']?.toString() ?? '-',
           ),
         ],
       ),
@@ -348,14 +500,30 @@ class DoctorProfilePage extends StatelessWidget {
             Icons.lock_outline,
             'Ubah kata sandi',
             'Perbarui keamanan akun',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ChangePasswordPage()),
+              );
+            },
           ),
-          _menuTile(Icons.info_outline, 'Tentang aplikasi', 'Versi 1.0.0'),
+          _menuTile(
+            Icons.info_outline,
+            'Tentang aplikasi',
+            'Versi 1.0.0',
+            onTap: () {},
+          ),
         ],
       ),
     );
   }
 
-  Widget _menuTile(IconData icon, String title, String subtitle) {
+  Widget _menuTile(
+    IconData icon,
+    String title,
+    String subtitle, {
+    required VoidCallback onTap,
+  }) {
     return ListTile(
       leading: Container(
         width: 38,
@@ -372,7 +540,7 @@ class DoctorProfilePage extends StatelessWidget {
         style: const TextStyle(color: AppColors.dark3, fontSize: 11),
       ),
       trailing: const Icon(Icons.chevron_right, color: AppColors.dark3),
-      onTap: () {},
+      onTap: onTap,
     );
   }
 
@@ -464,8 +632,12 @@ class DoctorProfilePage extends StatelessWidget {
                 ),
               ),
               TextButton(
-                onPressed: () {
+                onPressed: () async {
                   Navigator.pop(sheetContext);
+
+                  await ApiService.logout();
+
+                  if (!parentContext.mounted) return;
 
                   Navigator.of(parentContext).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (_) => const LoginPage()),

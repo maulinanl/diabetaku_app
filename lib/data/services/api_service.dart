@@ -534,4 +534,85 @@ class ApiService {
 
     throw Exception(data['message'] ?? 'Gagal mengambil riwayat dokter');
   }
+
+  static Future<Map<String, dynamic>> getDoctorProfile(int doctorId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/doctor/profile/$doctorId'),
+      headers: await _authHeaders(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(data['data']);
+    }
+
+    throw Exception(data['message'] ?? 'Gagal mengambil profil dokter');
+  }
+
+  static Future<void> updateDoctorProfile({
+    required int doctorId,
+    required String fullName,
+    required String phoneNumber,
+    required String gender,
+    required int specializationId,
+    required String institution,
+    String? dateOfBirth,
+  }) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/doctor/profile/$doctorId'),
+      headers: await _authHeaders(),
+      body: jsonEncode({
+        'full_name': fullName,
+        'phone_number': phoneNumber,
+        'date_of_birth': dateOfBirth,
+        'gender': gender,
+        'specialization_id': specializationId,
+        'institution': institution,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Gagal memperbarui profil dokter');
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getSpecializations() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/master/specializations'),
+      headers: await _authHeaders(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(data['data']);
+    }
+
+    throw Exception(data['message'] ?? 'Gagal mengambil data spesialisasi');
+  }
+
+  static Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/auth/change-password'),
+      headers: await _authHeaders(),
+      body: jsonEncode({
+        'current_password': currentPassword,
+        'new_password': newPassword,
+        'new_password_confirmation': confirmPassword,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Gagal mengubah kata sandi');
+    }
+  }
 }

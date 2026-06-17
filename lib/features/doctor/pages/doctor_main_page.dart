@@ -61,6 +61,8 @@ class _DoctorHomeContentState extends State<DoctorHomeContent> {
   bool isLoading = true;
   String? errorMessage;
 
+  String doctorName = '-';
+
   String _getInitials(String name) {
     final parts = name.trim().split(' ');
     if (parts.isEmpty) return '-';
@@ -118,7 +120,16 @@ class _DoctorHomeContentState extends State<DoctorHomeContent> {
     _searchController.addListener(() {
       setState(() => searchQuery = _searchController.text);
     });
+    _loadDoctorName();
     _fetchPatients();
+  }
+
+  Future<void> _loadDoctorName() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      doctorName = prefs.getString('full_name') ?? '-';
+    });
   }
 
   Future<void> _fetchPatients() async {
@@ -301,18 +312,18 @@ class _DoctorHomeContentState extends State<DoctorHomeContent> {
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'Selamat Pagi, semangat hari ini!',
                       style: TextStyle(color: Colors.white, fontSize: 16),
                     ),
-                    SizedBox(height: 6),
+                    const SizedBox(height: 6),
                     Text(
-                      'dr. Agus Setiawan, Sp.PD',
-                      style: TextStyle(
+                      doctorName,
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
