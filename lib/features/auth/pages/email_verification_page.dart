@@ -6,10 +6,17 @@ import '../../../data/services/api_service.dart';
 import 'admin_verification_waiting_page.dart';
 import 'login_page.dart';
 
+enum VerificationRoleType { doctor, patient, family }
+
 class EmailVerificationPage extends StatefulWidget {
   final String email;
+  final VerificationRoleType roleType;
 
-  const EmailVerificationPage({super.key, required this.email});
+  const EmailVerificationPage({
+    super.key,
+    required this.email,
+    required this.roleType,
+  });
 
   @override
   State<EmailVerificationPage> createState() => _EmailVerificationPageState();
@@ -23,6 +30,20 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
   Timer? timer;
 
   bool get canResend => remainingSeconds == 0;
+
+  bool get needsAdminVerification =>
+      widget.roleType == VerificationRoleType.doctor;
+
+  String get successMessage {
+  switch (widget.roleType) {
+    case VerificationRoleType.doctor:
+      return 'Email berhasil diverifikasi. Menunggu verifikasi admin.';
+    case VerificationRoleType.patient:
+      return 'Email berhasil diverifikasi. Silakan login.';
+    case VerificationRoleType.family:
+      return 'Email berhasil diverifikasi. Silakan login.';
+  }
+}
 
   @override
   void initState() {
@@ -64,40 +85,32 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
       if (!mounted) return;
 
       if (isVerified) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const AdminVerificationWaitingPage(),
-          ),
-        );
+        _showStyledSnackBar(message: successMessage, isError: false);
+
+        Future.delayed(const Duration(milliseconds: 600), () {
+          if (!mounted) return;
+
+          if (needsAdminVerification) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const AdminVerificationWaitingPage(),
+              ),
+            );
+          } else {
+            _goToLogin();
+          }
+        });
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: AppColors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            content: const Row(
-              children: [
-                Icon(Icons.info_outline, color: Colors.white),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Email belum terverifikasi. Silakan cek email Anda.',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-          ),
+        _showStyledSnackBar(
+          message: 'Email belum terverifikasi. Silakan cek email Anda.',
         );
       }
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      _showStyledSnackBar(
+        message: e.toString().replaceFirst('Exception: ', ''),
       );
     } finally {
       if (mounted) {
@@ -116,10 +129,9 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Email verifikasi berhasil dikirim ulang'),
-        ),
+      _showStyledSnackBar(
+        message: 'Email verifikasi berhasil dikirim ulang',
+        isError: false,
       );
 
       setState(() {
@@ -130,8 +142,8 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      _showStyledSnackBar(
+        message: e.toString().replaceFirst('Exception: ', ''),
       );
     } finally {
       if (mounted) {
@@ -186,13 +198,17 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                     icon: const Icon(Icons.arrow_back, color: AppColors.dark3),
                   ),
                 ),
+
                 const SizedBox(height: 40),
+
                 const Icon(
                   Icons.mark_email_read_outlined,
                   size: 82,
                   color: AppColors.primaryBlue,
                 ),
+
                 const SizedBox(height: 22),
+
                 const Text(
                   'Verifikasi Email Anda',
                   textAlign: TextAlign.center,
@@ -202,7 +218,9 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                     color: AppColors.primaryBlue,
                   ),
                 ),
+
                 const SizedBox(height: 18),
+
                 const Text(
                   'Kami telah mengirimkan tautan verifikasi ke alamat berikut.',
                   textAlign: TextAlign.center,
@@ -212,7 +230,9 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                     height: 1.5,
                   ),
                 ),
+
                 const SizedBox(height: 8),
+
                 const Text(
                   'Tautan berlaku selama 24 jam.',
                   textAlign: TextAlign.center,
@@ -222,7 +242,9 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+
                 const SizedBox(height: 18),
+
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(
@@ -244,20 +266,13 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                     ),
                   ),
                 ),
+
                 const SizedBox(height: 24),
-                const _VerificationStep(
-                  text: 'Registrasi berhasil',
-                  isDone: true,
-                ),
-                const _VerificationStep(
-                  text: 'Email Terverifikasi',
-                  isDone: false,
-                ),
-                const _VerificationStep(
-                  text: 'Menunggu Verifikasi Admin',
-                  isDone: false,
-                ),
+
+                ..._buildVerificationSteps(),
+
                 const SizedBox(height: 26),
+
                 SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -279,7 +294,9 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                           ),
                   ),
                 ),
+
                 const SizedBox(height: 12),
+
                 SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -303,10 +320,58 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                           ),
                   ),
                 ),
+
                 const SizedBox(height: 12),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildVerificationSteps() {
+  final steps = <Widget>[
+    const _VerificationStep(
+      text: 'Registrasi berhasil',
+      isDone: true,
+    ),
+
+    const _VerificationStep(
+      text: 'Email Terverifikasi',
+      isDone: false,
+    ),
+  ];
+
+  if (widget.roleType == VerificationRoleType.doctor) {
+    steps.add(
+      const _VerificationStep(
+        text: 'Menunggu Verifikasi Admin',
+        isDone: false,
+      ),
+    );
+  }
+
+  return steps;
+}
+
+  void _showStyledSnackBar({required String message, bool isError = true}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: isError ? AppColors.red : AppColors.primaryBlue,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        content: Row(
+          children: [
+            Icon(
+              isError ? Icons.info_outline : Icons.check_circle_outline,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(message, style: const TextStyle(color: Colors.white)),
+            ),
+          ],
         ),
       ),
     );

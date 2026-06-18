@@ -78,11 +78,22 @@ class _LoginPageState extends State<LoginPage> {
       final message = parts.length > 1 ? parts[1] : errorMessage;
       final lockedUntil = parts.length > 2 ? parts[2] : '';
 
+      final roleIdFromError = parts.length > 3 ? int.tryParse(parts[3]) : null;
+
+      VerificationRoleType roleType = VerificationRoleType.patient;
+
+      if (roleIdFromError == 2) {
+        roleType = VerificationRoleType.doctor;
+      } else if (roleIdFromError == 4) {
+        roleType = VerificationRoleType.family;
+      }
+
       if (status == 'email_unverified') {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => EmailVerificationPage(email: email),
+            builder: (_) =>
+                EmailVerificationPage(email: email, roleType: roleType),
           ),
         );
         return;

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/services/api_service.dart';
+import '../../auth/pages/email_verification_page.dart';
 
 class RegisterPatientPage extends StatefulWidget {
   const RegisterPatientPage({super.key});
@@ -27,19 +30,95 @@ class _RegisterPatientPageState extends State<RegisterPatientPage> {
   bool obscurePassword = true;
   bool obscureConfirm = true;
 
-  bool get isValid =>
-      nameCtr.text.isNotEmpty &&
-      emailCtr.text.isNotEmpty &&
-      phoneCtr.text.isNotEmpty &&
-      birthDate != null &&
-      diagnosisDate != null &&
-      dmType != null &&
-      gender != null &&
-      bloodType != null &&
-      rhesus != null &&
-      heightCtr.text.isNotEmpty &&
-      passwordCtr.text.length >= 8 &&
-      confirmPasswordCtr.text == passwordCtr.text;
+  bool isRegistering = false;
+
+  int get bloodTypeId {
+    if (bloodType == 'A') return 1;
+    if (bloodType == 'B') return 2;
+    if (bloodType == 'AB') return 3;
+    return 4;
+  }
+
+  int get rhesusTypeId {
+    if (rhesus == 'Positif (+)') return 1;
+    return 2;
+  }
+
+  bool get isValid {
+    final emailRegex = RegExp(r'^[\w\.-]+@[\w\.-]+\.\w+$');
+    final phoneRegex = RegExp(r'^[0-9]+$');
+    final passwordRegex = RegExp(r'^(?=.*[A-Za-z])(?=.*\d).{8,}$');
+
+    return nameCtr.text.trim().isNotEmpty &&
+        emailRegex.hasMatch(emailCtr.text.trim()) &&
+        phoneRegex.hasMatch(phoneCtr.text.trim()) &&
+        phoneCtr.text.trim().length >= 10 &&
+        birthDate != null &&
+        diagnosisDate != null &&
+        dmType != null &&
+        gender != null &&
+        bloodType != null &&
+        rhesus != null &&
+        double.tryParse(heightCtr.text.trim()) != null &&
+        passwordRegex.hasMatch(passwordCtr.text) &&
+        confirmPasswordCtr.text == passwordCtr.text;
+  }
+
+  String? get emailError {
+    final email = emailCtr.text.trim();
+    if (email.isEmpty) return null;
+
+    final emailRegex = RegExp(r'^[\w\.-]+@[\w\.-]+\.\w+$');
+    if (!emailRegex.hasMatch(email)) {
+      return 'Format email tidak valid';
+    }
+
+    return null;
+  }
+
+  String? get phoneError {
+    final phone = phoneCtr.text.trim();
+    if (phone.isEmpty) return null;
+
+    if (phone.length < 10) {
+      return 'Nomor telepon terlalu pendek';
+    }
+
+    return null;
+  }
+
+  String? get heightError {
+    final height = heightCtr.text.trim();
+    if (height.isEmpty) return null;
+
+    final value = double.tryParse(height);
+    if (value == null) return 'Tinggi badan harus berupa angka';
+    if (value < 50 || value > 250) return 'Tinggi badan tidak valid';
+
+    return null;
+  }
+
+  String? get passwordError {
+    final password = passwordCtr.text;
+    if (password.isEmpty) return null;
+
+    if (password.length < 8) return 'Minimal 8 karakter';
+    if (!RegExp(r'^(?=.*[A-Za-z])(?=.*\d)').hasMatch(password)) {
+      return 'Gunakan kombinasi huruf dan angka';
+    }
+
+    return null;
+  }
+
+  String? get confirmPasswordError {
+    if (confirmPasswordCtr.text.isEmpty) return null;
+
+    if (confirmPasswordCtr.text != passwordCtr.text) {
+      return 'Konfirmasi kata sandi belum sama';
+    }
+
+    return null;
+  }
 
   @override
   void initState() {
@@ -127,13 +206,20 @@ class _RegisterPatientPageState extends State<RegisterPatientPage> {
               _input(nameCtr, 'Masukkan nama lengkapmu'),
 
               _label('Email'),
-              _input(emailCtr, 'Masukkan alamat emailmu'),
+              _input(
+                emailCtr,
+                'Masukkan alamat emailmu',
+                keyboardType: TextInputType.emailAddress,
+                errorText: emailError,
+              ),
 
               _label('Nomor Telepon'),
               _input(
                 phoneCtr,
-                'Masukkan nomor telepon (62xx)',
+                'Masukkan nomor telepon',
                 keyboardType: TextInputType.phone,
+                errorText: phoneError,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               ),
 
               Row(
@@ -163,22 +249,22 @@ class _RegisterPatientPageState extends State<RegisterPatientPage> {
               Row(
                 children: [
                   Expanded(
-                    child: _dropdown(
+                    child: _selectField(
                       label: 'Tipe DM',
                       hint: 'Tipe DM',
                       value: dmType,
-                      items: const ['DM Tipe 1', 'DM Tipe 2'],
-                      onChanged: (v) => setState(() => dmType = v),
+                      items: const ['Tipe 1', 'Tipe 2'],
+                      onSelected: (v) => setState(() => dmType = v),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: _dropdown(
+                    child: _selectField(
                       label: 'Jenis Kelamin',
                       hint: 'Jenis Kelamin',
                       value: gender,
                       items: const ['Laki-laki', 'Perempuan'],
-                      onChanged: (v) => setState(() => gender = v),
+                      onSelected: (v) => setState(() => gender = v),
                     ),
                   ),
                 ],
@@ -189,22 +275,22 @@ class _RegisterPatientPageState extends State<RegisterPatientPage> {
               Row(
                 children: [
                   Expanded(
-                    child: _dropdown(
+                    child: _selectField(
                       label: 'Golongan Darah',
                       hint: 'Tipe Goldar',
                       value: bloodType,
                       items: const ['A', 'B', 'AB', 'O'],
-                      onChanged: (v) => setState(() => bloodType = v),
+                      onSelected: (v) => setState(() => bloodType = v),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: _dropdown(
+                    child: _selectField(
                       label: 'Rhesus',
                       hint: 'Tipe Rhesus',
                       value: rhesus,
                       items: const ['Positif (+)', 'Negatif (-)'],
-                      onChanged: (v) => setState(() => rhesus = v),
+                      onSelected: (v) => setState(() => rhesus = v),
                     ),
                   ),
                 ],
@@ -215,15 +301,18 @@ class _RegisterPatientPageState extends State<RegisterPatientPage> {
               _label('Tinggi Badan (cm)'),
               _input(
                 heightCtr,
-                'Masukkan Tinggi badan',
+                'Masukkan tinggi badan',
                 keyboardType: TextInputType.number,
+                errorText: heightError,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               ),
 
               _label('Kata Sandi'),
               _input(
                 passwordCtr,
-                'Masukkan kata sandi (8+ karakter)',
+                'Minimal 8 karakter, huruf dan angka',
                 obscure: obscurePassword,
+                errorText: passwordError,
                 suffixIcon: IconButton(
                   onPressed: () {
                     setState(() => obscurePassword = !obscurePassword);
@@ -240,8 +329,9 @@ class _RegisterPatientPageState extends State<RegisterPatientPage> {
               _label('Konfirmasi Kata Sandi'),
               _input(
                 confirmPasswordCtr,
-                'Konfirmasi kata sandi (8+ karakter)',
+                'Ulangi kata sandi',
                 obscure: obscureConfirm,
+                errorText: confirmPasswordError,
                 suffixIcon: IconButton(
                   onPressed: () {
                     setState(() => obscureConfirm = !obscureConfirm);
@@ -261,7 +351,9 @@ class _RegisterPatientPageState extends State<RegisterPatientPage> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: isValid ? () {} : null,
+                  onPressed: isValid && !isRegistering
+                      ? _registerPatient
+                      : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryBlue,
                     disabledBackgroundColor: const Color(0xFFAFCBEA),
@@ -272,10 +364,19 @@ class _RegisterPatientPageState extends State<RegisterPatientPage> {
                       borderRadius: BorderRadius.circular(6),
                     ),
                   ),
-                  child: const Text(
-                    'Lanjut',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
+                  child: isRegistering
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          'Daftar',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
                 ),
               ),
             ],
@@ -283,6 +384,51 @@ class _RegisterPatientPageState extends State<RegisterPatientPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _registerPatient() async {
+    FocusScope.of(context).unfocus();
+
+    setState(() => isRegistering = true);
+
+    try {
+      await ApiService.registerPatient(
+        fullName: nameCtr.text.trim(),
+        email: emailCtr.text.trim(),
+        phoneNumber: phoneCtr.text.trim(),
+        password: passwordCtr.text.trim(),
+        confirmPassword: confirmPasswordCtr.text.trim(),
+        gender: gender!,
+        diabetesType: dmType!,
+        birthDate: birthDate!,
+        diagnosisDate: diagnosisDate!,
+        heightCm: double.parse(heightCtr.text.trim()),
+        bloodTypeId: bloodTypeId,
+        rhesusTypeId: rhesusTypeId,
+      );
+
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => EmailVerificationPage(
+            email: emailCtr.text.trim(),
+            roleType: VerificationRoleType.patient,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      _showStyledSnackBar(
+        message: e.toString().replaceFirst('Exception: ', ''),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => isRegistering = false);
+      }
+    }
   }
 
   Widget _header(BuildContext context) {
@@ -328,15 +474,19 @@ class _RegisterPatientPageState extends State<RegisterPatientPage> {
     bool obscure = false,
     TextInputType? keyboardType,
     Widget? suffixIcon,
+    String? errorText,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return TextFormField(
       controller: controller,
       obscureText: obscure,
       keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(color: AppColors.dark4, fontSize: 13),
         suffixIcon: suffixIcon,
+        errorText: errorText,
         filled: true,
         fillColor: AppColors.white,
         contentPadding: const EdgeInsets.symmetric(
@@ -346,6 +496,14 @@ class _RegisterPatientPageState extends State<RegisterPatientPage> {
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6),
           borderSide: const BorderSide(color: AppColors.light1),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: const BorderSide(color: AppColors.red),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: const BorderSide(color: AppColors.red, width: 1.4),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6),
@@ -392,53 +550,152 @@ class _RegisterPatientPageState extends State<RegisterPatientPage> {
     );
   }
 
-  Widget _dropdown({
+  Widget _selectField({
     required String label,
     required String hint,
     required String? value,
     required List<String> items,
-    required ValueChanged<String?> onChanged,
+    required ValueChanged<String> onSelected,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _label(label),
-        DropdownButtonFormField<String>(
-          value: value,
-          hint: Text(
-            hint,
-            style: const TextStyle(color: AppColors.dark4, fontSize: 13),
+        InkWell(
+          onTap: () => _showOptionSheet(
+            title: label,
+            items: items,
+            selectedValue: value,
+            onSelected: onSelected,
           ),
-          items: items
-              .map(
-                (item) => DropdownMenuItem(
-                  value: item,
-                  child: Text(item, style: const TextStyle(fontSize: 13)),
-                ),
-              )
-              .toList(),
-          onChanged: onChanged,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: AppColors.white,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 14,
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(6),
-              borderSide: const BorderSide(color: AppColors.light1),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(6),
-              borderSide: const BorderSide(
-                color: AppColors.primaryBlue,
-                width: 1.4,
+          child: InputDecorator(
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: AppColors.white,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 15,
               ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: const BorderSide(color: AppColors.light1),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: const BorderSide(
+                  color: AppColors.primaryBlue,
+                  width: 1.4,
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    value ?? hint,
+                    style: TextStyle(
+                      color: value == null ? AppColors.dark4 : AppColors.dark1,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+                const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: AppColors.dark3,
+                  size: 22,
+                ),
+              ],
             ),
           ),
         ),
       ],
+    );
+  }
+
+  void _showOptionSheet({
+    required String title,
+    required List<String> items,
+    required String? selectedValue,
+    required ValueChanged<String> onSelected,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return Container(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+          decoration: const BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.light1,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                'Pilih $title',
+                style: const TextStyle(
+                  color: AppColors.primaryBlue,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ...items.map((item) {
+                final selected = item == selectedValue;
+
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    item,
+                    style: TextStyle(
+                      color: selected ? AppColors.primaryBlue : AppColors.dark1,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                    ),
+                  ),
+                  trailing: selected
+                      ? const Icon(Icons.check, color: AppColors.primaryBlue)
+                      : null,
+                  onTap: () {
+                    onSelected(item);
+                    Navigator.pop(sheetContext);
+                  },
+                );
+              }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showStyledSnackBar({required String message, bool isError = true}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: isError ? AppColors.red : AppColors.primaryBlue,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        content: Row(
+          children: [
+            Icon(
+              isError ? Icons.info_outline : Icons.check_circle_outline,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(message, style: const TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

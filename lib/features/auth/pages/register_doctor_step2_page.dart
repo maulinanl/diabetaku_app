@@ -95,7 +95,10 @@ class _RegisterDoctorStep2PageState extends State<RegisterDoctorStep2Page> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => EmailVerificationPage(email: widget.email),
+          builder: (_) => EmailVerificationPage(
+            email: widget.email,
+            roleType: VerificationRoleType.doctor,
+          ),
         ),
       );
     } catch (e) {
@@ -166,7 +169,7 @@ class _RegisterDoctorStep2PageState extends State<RegisterDoctorStep2Page> {
                     children: specializations.map((item) {
                       final id =
                           int.tryParse(item['specialization_id'].toString()) ??
-                              0;
+                          0;
                       final name =
                           item['specialization_name']?.toString() ?? '-';
                       final selected = id == specializationId;
@@ -238,8 +241,9 @@ class _RegisterDoctorStep2PageState extends State<RegisterDoctorStep2Page> {
                       width: double.infinity,
                       height: 50,
                       child: ElevatedButton(
-                        onPressed:
-                            isValid && !isRegistering ? _registerDoctor : null,
+                        onPressed: isValid && !isRegistering
+                            ? _registerDoctor
+                            : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryBlue,
                           disabledBackgroundColor: const Color(0xFFAFCBEA),
@@ -301,8 +305,7 @@ class _RegisterDoctorStep2PageState extends State<RegisterDoctorStep2Page> {
           Row(
             children: [
               IconButton(
-                onPressed:
-                    isRegistering ? null : () => Navigator.pop(context),
+                onPressed: isRegistering ? null : () => Navigator.pop(context),
                 icon: const Icon(Icons.arrow_back, color: AppColors.dark2),
               ),
               const Expanded(
@@ -390,20 +393,14 @@ class _RegisterDoctorStep2PageState extends State<RegisterDoctorStep2Page> {
       hintStyle: const TextStyle(color: AppColors.dark4, fontSize: 13),
       filled: true,
       fillColor: AppColors.white,
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 14,
-        vertical: 15,
-      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(6),
         borderSide: const BorderSide(color: AppColors.light1),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(6),
-        borderSide: const BorderSide(
-          color: AppColors.primaryBlue,
-          width: 1.4,
-        ),
+        borderSide: const BorderSide(color: AppColors.primaryBlue, width: 1.4),
       ),
     );
   }

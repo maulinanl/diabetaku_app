@@ -114,10 +114,69 @@ class ApiService {
     final message = data['message']?.toString() ?? 'Login gagal';
 
     if (status != null) {
-      throw Exception('$status|$message|${data['locked_until'] ?? ''}');
+      throw Exception(
+        '$status|$message|${data['locked_until'] ?? ''}|${data['role_id'] ?? ''}',
+      );
     }
 
     throw Exception(message);
+  }
+
+  static Future<void> registerPatient({
+    required String fullName,
+    required String email,
+    required String phoneNumber,
+    required String password,
+    required String confirmPassword,
+    required String gender,
+    required String diabetesType,
+    required DateTime birthDate,
+    required DateTime diagnosisDate,
+    required double heightCm,
+    required int bloodTypeId,
+    required int rhesusTypeId,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/register/patient'),
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'full_name': fullName,
+        'email': email,
+        'phone_number': phoneNumber,
+        'password': password,
+        'password_confirmation': confirmPassword,
+        'gender': gender,
+        'diabetes_type': diabetesType,
+        'date_of_birth': birthDate.toIso8601String().split('T').first,
+        'diagnosis_date': diagnosisDate.toIso8601String().split('T').first,
+        'height_cm': heightCm,
+        'blood_type_id': bloodTypeId,
+        'rhesus_type_id': rhesusTypeId,
+      }),
+    );
+
+    print('REGISTER PATIENT STATUS: ${response.statusCode}');
+    print('REGISTER PATIENT BODY: ${response.body}');
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 201) {
+      return;
+    }
+
+    if (response.statusCode == 422 && data['errors'] != null) {
+      final errors = data['errors'] as Map<String, dynamic>;
+      final firstError = errors.values.first;
+
+      if (firstError is List && firstError.isNotEmpty) {
+        throw Exception(firstError.first.toString());
+      }
+    }
+
+    throw Exception(data['message'] ?? 'Registrasi pasien gagal');
   }
 
   static Future<String?> getToken() async {
@@ -735,31 +794,29 @@ class ApiService {
   }
 
   static Future<void> resetPassword({
-  required String token,
-  required String email,
-  required String password,
-  required String passwordConfirmation,
-}) async {
-  final response = await http.post(
-    Uri.parse('$baseUrl/auth/reset-password'),
-    headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-    },
-    body: jsonEncode({
-      'token': token,
-      'email': email,
-      'password': password,
-      'password_confirmation': passwordConfirmation,
-    }),
-  );
-
-  final data = jsonDecode(response.body);
-
-  if (response.statusCode != 200) {
-    throw Exception(
-      data['message'] ?? 'Gagal mengubah kata sandi',
+    required String token,
+    required String email,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/reset-password'),
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'token': token,
+        'email': email,
+        'password': password,
+        'password_confirmation': passwordConfirmation,
+      }),
     );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Gagal mengubah kata sandi');
+    }
   }
-}
 }
