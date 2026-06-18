@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import 'email_sent_page.dart';
+import '../../../data/services/api_service.dart';
+import 'login_page.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -13,6 +15,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final emailController = TextEditingController();
 
   bool get isValid => emailController.text.trim().isNotEmpty;
+  bool isLoading = false;
 
   @override
   void initState() {
@@ -61,10 +64,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               const Text(
                 'Masukkan email yang terdaftar untuk mengatur ulang kata sandi.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppColors.dark2,
-                  fontSize: 13,
-                ),
+                style: TextStyle(color: AppColors.dark2, fontSize: 13),
               ),
               const SizedBox(height: 28),
               TextFormField(
@@ -89,31 +89,41 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                 width: double.infinity,
                 height: 46,
                 child: ElevatedButton(
-                  onPressed: isValid
-                      ? () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const EmailSentPage(),
-                            ),
-                          );
-                        }
-                      : null,
+                  onPressed: isValid && !isLoading ? _sendResetEmail : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryBlue,
                     disabledBackgroundColor: const Color(0xFFAFCBEA),
+                    disabledForegroundColor: AppColors.white,
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(6),
                     ),
                   ),
-                  child: const Text('Kirim'),
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          'Kirim',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
                 ),
               ),
               const SizedBox(height: 14),
               TextButton(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginPage()),
+                    (route) => false,
+                  );
+                },
                 child: const Text(
                   'Ingat kata sandi? Masuk',
                   style: TextStyle(color: AppColors.primaryBlue),
@@ -124,5 +134,30 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _sendResetEmail() async {
+    setState(() => isLoading = true);
+
+    try {
+      await ApiService.forgotPassword(email: emailController.text.trim());
+
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const EmailSentPage()),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    }
   }
 }

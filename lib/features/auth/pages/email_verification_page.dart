@@ -1,85 +1,311 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/widgets/custom_button.dart';
+import '../../../data/services/api_service.dart';
 import 'admin_verification_waiting_page.dart';
+import 'login_page.dart';
 
-class EmailVerificationPage extends StatelessWidget {
-  const EmailVerificationPage({super.key});
+class EmailVerificationPage extends StatefulWidget {
+  final String email;
+
+  const EmailVerificationPage({super.key, required this.email});
+
+  @override
+  State<EmailVerificationPage> createState() => _EmailVerificationPageState();
+}
+
+class _EmailVerificationPageState extends State<EmailVerificationPage> {
+  bool isResending = false;
+  bool isChecking = false;
+
+  int remainingSeconds = 60;
+  Timer? timer;
+
+  bool get canResend => remainingSeconds == 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTimer();
+  }
+
+  void _startTimer() {
+    timer?.cancel();
+
+    timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
+
+      if (remainingSeconds <= 0) {
+        timer.cancel();
+        return;
+      }
+
+      setState(() {
+        remainingSeconds--;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _checkVerificationStatus() async {
+    if (isChecking) return;
+
+    setState(() => isChecking = true);
+
+    try {
+      final isVerified = await ApiService.checkEmailVerification(widget.email);
+
+      if (!mounted) return;
+
+      if (isVerified) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const AdminVerificationWaitingPage(),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            content: const Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.white),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Email belum terverifikasi. Silakan cek email Anda.',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => isChecking = false);
+      }
+    }
+  }
+
+  Future<void> _resendEmail() async {
+    if (!canResend || isResending) return;
+
+    setState(() => isResending = true);
+
+    try {
+      await ApiService.resendVerificationEmail(widget.email);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Email verifikasi berhasil dikirim ulang'),
+        ),
+      );
+
+      setState(() {
+        remainingSeconds = 60;
+      });
+
+      _startTimer();
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => isResending = false);
+      }
+    }
+  }
+
+  void _goToLogin() {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+      (route) => false,
+    );
+  }
+
+  ButtonStyle _buttonStyle({
+    required Color backgroundColor,
+    Color foregroundColor = Colors.white,
+  }) {
+    return ElevatedButton.styleFrom(
+      backgroundColor: backgroundColor,
+      foregroundColor: foregroundColor,
+      disabledBackgroundColor: const Color(0xFFAFCBEA),
+      disabledForegroundColor: AppColors.white,
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.mark_email_read_outlined,
-                size: 80,
-                color: AppColors.primaryBlue,
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Verifikasi Email Anda',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primaryBlue,
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Kami telah mengirimkan tautan verifikasi ke alamat email Anda.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.dark2),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppColors.veryLightBlue,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Center(
-                  child: Text(
-                    'guest@diabetaku.com',
-                    style: TextStyle(color: AppColors.primaryBlue),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 18, 24, 28),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight:
+                  MediaQuery.of(context).size.height -
+                  MediaQuery.of(context).padding.top -
+                  46,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: IconButton(
+                    onPressed: _goToLogin,
+                    icon: const Icon(Icons.arrow_back, color: AppColors.dark3),
                   ),
                 ),
-              ),
-              const SizedBox(height: 20),
-
-              const _VerificationStep(
-                text: 'Registrasi berhasil',
-                isDone: true,
-              ),
-              const _VerificationStep(
-                text: 'Email Terverifikasi',
-                isDone: false,
-              ),
-              const _VerificationStep(
-                text: 'Menunggu Verifikasi Admin',
-                isDone: false,
-              ),
-
-              const SizedBox(height: 24),
-
-              CustomButton(
-                text: 'Kirim Ulang Email Verifikasi',
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const AdminVerificationWaitingPage(),
+                const SizedBox(height: 40),
+                const Icon(
+                  Icons.mark_email_read_outlined,
+                  size: 82,
+                  color: AppColors.primaryBlue,
+                ),
+                const SizedBox(height: 22),
+                const Text(
+                  'Verifikasi Email Anda',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primaryBlue,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  'Kami telah mengirimkan tautan verifikasi ke alamat berikut.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: AppColors.dark2,
+                    fontSize: 15,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Tautan berlaku selama 24 jam.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: AppColors.dark2,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 15,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.veryLightBlue,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.lightBlue),
+                  ),
+                  child: Text(
+                    widget.email,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: AppColors.primaryBlue,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
                     ),
-                  );
-                },
-              ),
-            ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const _VerificationStep(
+                  text: 'Registrasi berhasil',
+                  isDone: true,
+                ),
+                const _VerificationStep(
+                  text: 'Email Terverifikasi',
+                  isDone: false,
+                ),
+                const _VerificationStep(
+                  text: 'Menunggu Verifikasi Admin',
+                  isDone: false,
+                ),
+                const SizedBox(height: 26),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: isChecking ? null : _checkVerificationStatus,
+                    style: _buttonStyle(backgroundColor: AppColors.primaryBlue),
+                    child: isChecking
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text(
+                            'Saya Sudah Verifikasi Email',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: canResend && !isResending ? _resendEmail : null,
+                    style: _buttonStyle(backgroundColor: AppColors.primaryBlue),
+                    child: isResending
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Text(
+                            canResend
+                                ? 'Kirim Ulang Email Verifikasi'
+                                : 'Kirim ulang dalam ${remainingSeconds}s',
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+            ),
           ),
         ),
       ),
@@ -91,20 +317,41 @@ class _VerificationStep extends StatelessWidget {
   final String text;
   final bool isDone;
 
-  const _VerificationStep({
-    required this.text,
-    required this.isDone,
-  });
+  const _VerificationStep({required this.text, required this.isDone});
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: Icon(
-        isDone ? Icons.check_circle : Icons.radio_button_checked,
-        color: AppColors.primaryBlue,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 9),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isDone ? AppColors.primaryBlue : AppColors.veryLightBlue,
+              border: Border.all(color: AppColors.primaryBlue),
+            ),
+            child: Icon(
+              isDone ? Icons.check : Icons.access_time,
+              color: isDone ? Colors.white : AppColors.primaryBlue,
+              size: 19,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: AppColors.dark1,
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
       ),
-      title: Text(text),
-      contentPadding: EdgeInsets.zero,
     );
   }
 }

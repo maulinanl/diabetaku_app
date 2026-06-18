@@ -6,6 +6,8 @@ import '../../patient/pages/patient_main_page.dart';
 import '../../family/pages/family_main_page.dart';
 import 'forgot_password_page.dart';
 import '../../../data/services/api_service.dart';
+import 'email_verification_page.dart';
+import 'admin_verification_waiting_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -25,7 +27,12 @@ class _LoginPageState extends State<LoginPage> {
   bool showPendingVerification = false;
   bool showLoginError = false;
 
+  String loginErrorTitle = '';
+  String loginErrorMessage = '';
+
   Future<void> _handleLogin() async {
+    FocusScope.of(context).unfocus();
+
     setState(() {
       isLoading = true;
       showLoginError = false;
@@ -58,34 +65,84 @@ class _LoginPageState extends State<LoginPage> {
           MaterialPageRoute(builder: (_) => const FamilyMainPage()),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Role pengguna tidak dikenali')),
-        );
+        _showStyledSnackBar(message: 'Role pengguna tidak dikenali');
       }
     } catch (e) {
       if (!mounted) return;
 
       final errorMessage = e.toString().replaceFirst('Exception: ', '');
+      final email = emailController.text.trim();
 
-      setState(() {
-        if (errorMessage.contains('menunggu verifikasi') ||
-            errorMessage.contains('belum aktif')) {
-          showPendingVerification = true;
-          showLoginError = false;
-        } else {
+      final parts = errorMessage.split('|');
+      final status = parts.first;
+      final message = parts.length > 1 ? parts[1] : errorMessage;
+      final lockedUntil = parts.length > 2 ? parts[2] : '';
+
+      if (status == 'email_unverified') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => EmailVerificationPage(email: email),
+          ),
+        );
+        return;
+      }
+
+      if (status == 'admin_unverified') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const AdminVerificationWaitingPage(),
+          ),
+        );
+        return;
+      }
+
+      if (status == 'invalid_credentials') {
+        setState(() {
           showLoginError = true;
           showPendingVerification = false;
-        }
-      });
+          loginErrorTitle = 'Email atau kata sandi salah.';
+          loginErrorMessage =
+              'Akun dapat dikunci sementara setelah beberapa kali percobaan gagal.';
+        });
+        return;
+      }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(errorMessage)));
+      if (status == 'account_locked') {
+        final lockedDate = DateTime.tryParse(lockedUntil);
+        String timeMessage = message;
+
+        if (lockedDate != null) {
+          final diff = lockedDate.difference(DateTime.now());
+          final minutes = diff.inMinutes <= 0 ? 1 : diff.inMinutes;
+
+          timeMessage = 'Coba lagi dalam $minutes menit.';
+        }
+
+        setState(() {
+          showLoginError = true;
+          showPendingVerification = false;
+          loginErrorTitle = 'Akun dikunci sementara.';
+          loginErrorMessage = timeMessage;
+        });
+        return;
+      }
+
+      if (status == 'admin_rejected') {
+        setState(() {
+          showLoginError = true;
+          showPendingVerification = false;
+          loginErrorTitle = 'Registrasi dokter ditolak.';
+          loginErrorMessage = message;
+        });
+        return;
+      }
+
+      _showStyledSnackBar(message: message);
     } finally {
       if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
+        setState(() => isLoading = false);
       }
     }
   }
@@ -165,9 +222,8 @@ class _LoginPageState extends State<LoginPage> {
               if (showLoginError) ...[
                 _infoBox(
                   icon: Icons.info_outline,
-                  title: 'Email atau kata sandi salah.',
-                  message:
-                      'Percobaan ke-3 dari 5. Akun dikunci 30 menit setelah 5 kali gagal.',
+                  title: loginErrorTitle,
+                  message: loginErrorMessage,
                   color: AppColors.red,
                   bgColor: AppColors.lightRed,
                 ),
@@ -412,6 +468,38 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showStyledSnackBar({
+    required String message,
+    Color backgroundColor = AppColors.red,
+    IconData icon = Icons.info_outline,
+  }) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: backgroundColor,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        content: Row(
+          children: [
+            Icon(icon, color: Colors.white, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  height: 1.3,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

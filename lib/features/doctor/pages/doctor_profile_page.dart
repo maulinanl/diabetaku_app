@@ -22,6 +22,8 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
   Map<String, dynamic>? profile;
   bool isLoading = true;
   String? errorMessage;
+  int activePatientCount = 0;
+  int abnormalPatientCount = 0;
 
   @override
   void initState() {
@@ -46,11 +48,31 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
       }
 
       final data = await ApiService.getDoctorProfile(doctorId);
+      final patients = await ApiService.getDoctorPatients(doctorId);
+
+      final activePatients = patients.where((patient) {
+        final status =
+            patient['relation_status']?.toString().toLowerCase() ?? 'diterima';
+
+        return status == 'diterima';
+      }).toList();
+
+      final abnormalPatients = activePatients.where((patient) {
+        final abnormal = patient['is_abnormal'];
+        final status = patient['status']?.toString().toLowerCase();
+
+        return abnormal == true ||
+            abnormal == 1 ||
+            abnormal?.toString() == '1' ||
+            status == 'abnormal';
+      }).length;
 
       if (!mounted) return;
 
       setState(() {
         profile = data;
+        activePatientCount = activePatients.length;
+        abnormalPatientCount = abnormalPatients;
         isLoading = false;
       });
     } catch (e) {
@@ -121,11 +143,17 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
                               Row(
                                 children: [
                                   Expanded(
-                                    child: _statCard('12', 'Pasien Aktif'),
+                                    child: _statCard(
+                                      activePatientCount.toString(),
+                                      'Pasien Aktif',
+                                    ),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
-                                    child: _statCard('3', 'Pasien Abnormal'),
+                                    child: _statCard(
+                                      abnormalPatientCount.toString(),
+                                      'Pasien Abnormal',
+                                    ),
                                   ),
                                 ],
                               ),

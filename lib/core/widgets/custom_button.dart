@@ -1,39 +1,49 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
-import '../constants/app_sizes.dart';
 
 class CustomButton extends StatelessWidget {
   final String text;
   final VoidCallback? onPressed;
-  final bool isPrimary;
+  final bool isLoading;
 
   const CustomButton({
     super.key,
     required this.text,
-    required this.onPressed,
-    this.isPrimary = true,
+    this.onPressed,
+    this.isLoading = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      height: 48,
+      height: 50,
       child: ElevatedButton(
-        onPressed: onPressed,
+        onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
-          elevation: 0,
-          backgroundColor: isPrimary
-              ? AppColors.primaryBlue
-              : AppColors.lightBlue,
+          backgroundColor: AppColors.primaryBlue,
+          disabledBackgroundColor: const Color(0xFFAFCBEA),
           foregroundColor: Colors.white,
+          elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(
-              AppSizes.radius,
-            ),
+            borderRadius: BorderRadius.circular(6),
           ),
         ),
-        child: Text(text),
+        child: isLoading
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            : Text(
+                text,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
       ),
     );
   }

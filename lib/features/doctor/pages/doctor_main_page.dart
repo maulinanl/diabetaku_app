@@ -217,7 +217,9 @@ class _DoctorHomeContentState extends State<DoctorHomeContent> {
             Expanded(
               child: Container(
                 color: AppColors.background,
-                child: filteredPatients.isEmpty
+                child: patients.isEmpty
+                    ? _emptyPatient()
+                    : filteredPatients.isEmpty
                     ? _emptySearch()
                     : ListView(
                         padding: const EdgeInsets.fromLTRB(18, 18, 18, 120),
@@ -447,6 +449,42 @@ class _DoctorHomeContentState extends State<DoctorHomeContent> {
             SizedBox(height: 8),
             Text(
               'Coba gunakan nama pasien atau tipe diabetes lain.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.primaryBlue, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _emptyPatient() {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 38),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircleAvatar(
+              radius: 38,
+              backgroundColor: AppColors.veryLightBlue,
+              child: Icon(
+                Icons.people_alt_outlined,
+                size: 42,
+                color: AppColors.primaryBlue,
+              ),
+            ),
+            SizedBox(height: 18),
+            Text(
+              'Belum Ada Pasien',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: AppColors.dark1,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Pasien yang sudah terhubung akan muncul di halaman ini.',
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.primaryBlue, fontSize: 12),
             ),

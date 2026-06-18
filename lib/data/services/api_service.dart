@@ -5,14 +5,67 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ApiService {
   static const String baseUrl = 'http://127.0.0.1:8000/api';
 
+  static Future<void> registerDoctor({
+    required String fullName,
+    required String email,
+    required String phoneNumber,
+    required String password,
+    required String confirmPassword,
+    required String gender,
+    required int specializationId,
+    required String strNumber,
+    required String institution,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/register/doctor'),
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'full_name': fullName,
+        'email': email,
+        'phone_number': phoneNumber,
+        'gender': gender,
+        'password': password,
+        'password_confirmation': confirmPassword,
+        'specialization_id': specializationId,
+        'str_number': strNumber,
+        'institution': institution,
+      }),
+    );
+
+    print('REGISTER DOCTOR STATUS: ${response.statusCode}');
+    print('REGISTER DOCTOR BODY: ${response.body}');
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 201) {
+      return;
+    }
+
+    if (response.statusCode == 422 && data['errors'] != null) {
+      final errors = data['errors'] as Map<String, dynamic>;
+      final firstError = errors.values.first;
+
+      if (firstError is List && firstError.isNotEmpty) {
+        throw Exception(firstError.first.toString());
+      }
+    }
+
+    if (data['error'] != null) {
+      throw Exception(data['error'].toString());
+    }
+
+    throw Exception(data['message'] ?? 'Registrasi dokter gagal');
+  }
+
   static Future<Map<String, dynamic>> login({
     required String email,
     required String password,
   }) async {
-    final url = Uri.parse('$baseUrl/auth/login');
-
     final response = await http.post(
-      url,
+      Uri.parse('$baseUrl/auth/login'),
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
@@ -21,6 +74,9 @@ class ApiService {
     );
 
     final data = jsonDecode(response.body);
+
+    print('LOGIN STATUS: ${response.statusCode}');
+    print('LOGIN BODY: ${response.body}');
 
     if (response.statusCode == 200) {
       final prefs = await SharedPreferences.getInstance();
@@ -54,7 +110,14 @@ class ApiService {
       return data;
     }
 
-    throw Exception(data['message'] ?? 'Email atau password salah');
+    final status = data['status']?.toString();
+    final message = data['message']?.toString() ?? 'Login gagal';
+
+    if (status != null) {
+      throw Exception('$status|$message|${data['locked_until'] ?? ''}');
+    }
+
+    throw Exception(message);
   }
 
   static Future<String?> getToken() async {
@@ -615,4 +678,88 @@ class ApiService {
       throw Exception(data['message'] ?? 'Gagal mengubah kata sandi');
     }
   }
+
+  static Future<void> resendVerificationEmail(String email) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/email/resend'),
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'email': email}),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        data['message'] ?? 'Gagal mengirim ulang email verifikasi',
+      );
+    }
+  }
+
+  static Future<bool> checkEmailVerification(String email) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/email/check'),
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'email': email}),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return data['status'] == 'verified';
+    }
+
+    throw Exception(data['message'] ?? 'Gagal mengecek verifikasi email');
+  }
+
+  static Future<void> forgotPassword({required String email}) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/forgot-password'),
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'email': email}),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Gagal mengirim email reset password');
+    }
+  }
+
+  static Future<void> resetPassword({
+  required String token,
+  required String email,
+  required String password,
+  required String passwordConfirmation,
+}) async {
+  final response = await http.post(
+    Uri.parse('$baseUrl/auth/reset-password'),
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: jsonEncode({
+      'token': token,
+      'email': email,
+      'password': password,
+      'password_confirmation': passwordConfirmation,
+    }),
+  );
+
+  final data = jsonDecode(response.body);
+
+  if (response.statusCode != 200) {
+    throw Exception(
+      data['message'] ?? 'Gagal mengubah kata sandi',
+    );
+  }
+}
 }

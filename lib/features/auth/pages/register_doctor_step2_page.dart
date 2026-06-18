@@ -1,9 +1,25 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/services/api_service.dart';
 import 'email_verification_page.dart';
 
 class RegisterDoctorStep2Page extends StatefulWidget {
-  const RegisterDoctorStep2Page({super.key});
+  final String fullName;
+  final String email;
+  final String phoneNumber;
+  final String password;
+  final String confirmPassword;
+  final String gender;
+
+  const RegisterDoctorStep2Page({
+    super.key,
+    required this.fullName,
+    required this.email,
+    required this.phoneNumber,
+    required this.password,
+    required this.confirmPassword,
+    required this.gender,
+  });
 
   @override
   State<RegisterDoctorStep2Page> createState() =>
@@ -14,18 +30,83 @@ class _RegisterDoctorStep2PageState extends State<RegisterDoctorStep2Page> {
   final strCtr = TextEditingController();
   final institutionCtr = TextEditingController();
 
-  String? specialization;
+  int? specializationId;
+  List<Map<String, dynamic>> specializations = [];
+
+  bool isLoadingSpecialization = true;
+  bool isRegistering = false;
 
   bool get isValid =>
-      specialization != null &&
-      strCtr.text.isNotEmpty &&
-      institutionCtr.text.isNotEmpty;
+      specializationId != null &&
+      strCtr.text.trim().isNotEmpty &&
+      institutionCtr.text.trim().isNotEmpty;
 
   @override
   void initState() {
     super.initState();
+
     strCtr.addListener(() => setState(() {}));
     institutionCtr.addListener(() => setState(() {}));
+
+    _loadSpecializations();
+  }
+
+  Future<void> _loadSpecializations() async {
+    try {
+      final data = await ApiService.getSpecializations();
+
+      if (!mounted) return;
+
+      setState(() {
+        specializations = data;
+        isLoadingSpecialization = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() => isLoadingSpecialization = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
+  }
+
+  Future<void> _registerDoctor() async {
+    setState(() => isRegistering = true);
+
+    try {
+      await ApiService.registerDoctor(
+        fullName: widget.fullName,
+        email: widget.email,
+        phoneNumber: widget.phoneNumber,
+        password: widget.password,
+        confirmPassword: widget.confirmPassword,
+        gender: widget.gender,
+        specializationId: specializationId!,
+        strNumber: strCtr.text.trim(),
+        institution: institutionCtr.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      setState(() => isRegistering = false);
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => EmailVerificationPage(email: widget.email),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() => isRegistering = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
   }
 
   @override
@@ -33,6 +114,96 @@ class _RegisterDoctorStep2PageState extends State<RegisterDoctorStep2Page> {
     strCtr.dispose();
     institutionCtr.dispose();
     super.dispose();
+  }
+
+  String _selectedSpecializationName() {
+    final selected = specializations.where((item) {
+      return int.tryParse(item['specialization_id'].toString()) ==
+          specializationId;
+    }).toList();
+
+    if (selected.isEmpty) return 'Pilih spesialisasi';
+
+    return selected.first['specialization_name']?.toString() ??
+        'Pilih spesialisasi';
+  }
+
+  void _showSpecializationSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return Container(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+          decoration: const BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height * 0.5,
+            child: Column(
+              children: [
+                Container(
+                  width: 42,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.light1,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  'Pilih Spesialisasi',
+                  style: TextStyle(
+                    color: AppColors.primaryBlue,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: ListView(
+                    children: specializations.map((item) {
+                      final id =
+                          int.tryParse(item['specialization_id'].toString()) ??
+                              0;
+                      final name =
+                          item['specialization_name']?.toString() ?? '-';
+                      final selected = id == specializationId;
+
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          name,
+                          style: TextStyle(
+                            color: selected
+                                ? AppColors.primaryBlue
+                                : AppColors.dark1,
+                            fontWeight: selected
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                          ),
+                        ),
+                        trailing: selected
+                            ? const Icon(
+                                Icons.check,
+                                color: AppColors.primaryBlue,
+                              )
+                            : null,
+                        onTap: () {
+                          setState(() => specializationId = id);
+                          Navigator.pop(sheetContext);
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -50,7 +221,7 @@ class _RegisterDoctorStep2PageState extends State<RegisterDoctorStep2Page> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _label('Spesialisasi'),
-                    _dropdown(),
+                    _specializationField(),
 
                     _label('Nomor STR'),
                     _input(strCtr, 'Masukkan nomor STR'),
@@ -67,17 +238,8 @@ class _RegisterDoctorStep2PageState extends State<RegisterDoctorStep2Page> {
                       width: double.infinity,
                       height: 50,
                       child: ElevatedButton(
-                        onPressed: isValid
-                            ? () {
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        const EmailVerificationPage(),
-                                  ),
-                                );
-                              }
-                            : null,
+                        onPressed:
+                            isValid && !isRegistering ? _registerDoctor : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryBlue,
                           disabledBackgroundColor: const Color(0xFFAFCBEA),
@@ -88,10 +250,19 @@ class _RegisterDoctorStep2PageState extends State<RegisterDoctorStep2Page> {
                             borderRadius: BorderRadius.circular(6),
                           ),
                         ),
-                        child: const Text(
-                          'Daftar sebagai Dokter',
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
+                        child: isRegistering
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
+                                'Daftar sebagai Dokter',
+                                style: TextStyle(fontWeight: FontWeight.w600),
+                              ),
                       ),
                     ),
                   ],
@@ -99,6 +270,22 @@ class _RegisterDoctorStep2PageState extends State<RegisterDoctorStep2Page> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _specializationField() {
+    return InkWell(
+      onTap: isLoadingSpecialization ? null : _showSpecializationSheet,
+      child: InputDecorator(
+        decoration: _inputDecoration(),
+        child: Text(
+          isLoadingSpecialization ? 'Memuat...' : _selectedSpecializationName(),
+          style: TextStyle(
+            color: specializationId == null ? AppColors.dark4 : AppColors.dark1,
+            fontSize: 13,
+          ),
         ),
       ),
     );
@@ -114,7 +301,8 @@ class _RegisterDoctorStep2PageState extends State<RegisterDoctorStep2Page> {
           Row(
             children: [
               IconButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed:
+                    isRegistering ? null : () => Navigator.pop(context),
                 icon: const Icon(Icons.arrow_back, color: AppColors.dark2),
               ),
               const Expanded(
@@ -192,75 +380,31 @@ class _RegisterDoctorStep2PageState extends State<RegisterDoctorStep2Page> {
   Widget _input(TextEditingController controller, String hint) {
     return TextFormField(
       controller: controller,
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.dark4, fontSize: 13),
-        filled: true,
-        fillColor: AppColors.white,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 15,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: const BorderSide(color: AppColors.light1),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: const BorderSide(
-            color: AppColors.primaryBlue,
-            width: 1.4,
-          ),
-        ),
-      ),
+      decoration: _inputDecoration(hint: hint),
     );
   }
 
-  Widget _dropdown() {
-    return DropdownButtonFormField<String>(
-      value: specialization,
-      hint: const Text(
-        'Pilih spesialisasi',
-        style: TextStyle(color: AppColors.dark4, fontSize: 13),
+  InputDecoration _inputDecoration({String? hint}) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: AppColors.dark4, fontSize: 13),
+      filled: true,
+      fillColor: AppColors.white,
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 14,
+        vertical: 15,
       ),
-      icon: const Icon(
-        Icons.keyboard_arrow_down_rounded,
-        color: AppColors.primaryBlue,
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(6),
+        borderSide: const BorderSide(color: AppColors.light1),
       ),
-      items: const [
-        DropdownMenuItem(
-          value: 'Penyakit Dalam',
-          child: Text('Penyakit Dalam'),
-        ),
-        DropdownMenuItem(value: 'Endokrin', child: Text('Endokrin')),
-        DropdownMenuItem(value: 'Dokter Umum', child: Text('Dokter Umum')),
-      ],
-      onChanged: (value) {
-        setState(() {
-          specialization = value;
-        });
-      },
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: AppColors.white,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 15,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: const BorderSide(color: AppColors.light1),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: const BorderSide(
-            color: AppColors.primaryBlue,
-            width: 1.4,
-          ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(6),
+        borderSide: const BorderSide(
+          color: AppColors.primaryBlue,
+          width: 1.4,
         ),
       ),
-      style: const TextStyle(color: AppColors.dark1, fontSize: 13),
-      dropdownColor: AppColors.white,
     );
   }
 }

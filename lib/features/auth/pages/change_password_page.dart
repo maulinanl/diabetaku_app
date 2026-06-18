@@ -153,8 +153,8 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                             : _savePassword,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryBlue,
-                          disabledBackgroundColor: AppColors.light2,
-                          disabledForegroundColor: AppColors.dark3,
+                          disabledBackgroundColor: const Color(0xFFAFCBEA),
+                          disabledForegroundColor: AppColors.white,
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
@@ -170,7 +170,10 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : const Text('Simpan Kata Sandi'),
+                            : const Text(
+                                'Simpan Kata Sandi',
+                                style: TextStyle(fontWeight: FontWeight.w600),
+                              ),
                       ),
                     ),
                   ],

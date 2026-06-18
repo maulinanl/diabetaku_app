@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import 'login_page.dart';
+import '../../../data/services/api_service.dart';
 
 class ResetPasswordPage extends StatefulWidget {
-  const ResetPasswordPage({super.key});
+  final String token;
+  final String email;
+
+  const ResetPasswordPage({
+    super.key,
+    required this.token,
+    required this.email,
+  });
 
   @override
   State<ResetPasswordPage> createState() => _ResetPasswordPageState();
@@ -43,9 +51,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
           padding: const EdgeInsets.all(24),
           decoration: const BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(28),
-            ),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -73,10 +79,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
               const Text(
                 'Kata sandi Anda telah berhasil diperbarui. Silakan gunakan kata sandi baru untuk masuk ke akun Anda.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppColors.dark2,
-                  fontSize: 13,
-                ),
+                style: TextStyle(color: AppColors.dark2, fontSize: 13),
               ),
               const SizedBox(height: 22),
               SizedBox(
@@ -86,9 +89,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                   onPressed: () {
                     Navigator.pushAndRemoveUntil(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => const LoginPage(),
-                      ),
+                      MaterialPageRoute(builder: (_) => const LoginPage()),
                       (route) => false,
                     );
                   },
@@ -138,10 +139,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
               const SizedBox(height: 8),
               const Text(
                 'Masukkan kata sandi setidaknya 8 karakter',
-                style: TextStyle(
-                  color: AppColors.dark2,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: AppColors.dark2, fontSize: 12),
               ),
               const SizedBox(height: 24),
               TextFormField(
@@ -178,7 +176,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                 width: double.infinity,
                 height: 46,
                 child: ElevatedButton(
-                  onPressed: isValid ? _showSuccessSheet : null,
+                  onPressed: isValid ? _resetPassword : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryBlue,
                     disabledBackgroundColor: const Color(0xFFAFCBEA),
@@ -196,6 +194,27 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _resetPassword() async {
+    try {
+      await ApiService.resetPassword(
+        token: widget.token,
+        email: widget.email,
+        password: passwordController.text.trim(),
+        passwordConfirmation: confirmController.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      _showSuccessSheet();
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
   }
 
   InputDecoration _inputDecoration({
