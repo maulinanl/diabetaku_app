@@ -1,13 +1,113 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../core/theme/app_colors.dart';
+import '../../../data/services/api_service.dart';
 import '../../auth/pages/login_page.dart';
 import 'family_edit_profile_page.dart';
 
-class FamilyProfilePage extends StatelessWidget {
+class FamilyProfilePage extends StatefulWidget {
   const FamilyProfilePage({super.key});
 
   @override
+  State<FamilyProfilePage> createState() => _FamilyProfilePageState();
+}
+
+class _FamilyProfilePageState extends State<FamilyProfilePage> {
+  bool isLoading = true;
+  String? errorMessage;
+
+  Map<String, dynamic>? profile;
+  int totalInputs = 0;
+  int totalPatients = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final familyId = prefs.getInt('family_id');
+
+      if (familyId == null) {
+        throw Exception('Family ID tidak ditemukan. Coba login ulang.');
+      }
+
+      final data = await ApiService.getFamilyProfile(familyId);
+
+      if (!mounted) return;
+
+      setState(() {
+        profile = data;
+        totalInputs = int.tryParse(data['total_inputs']?.toString() ?? '0') ?? 0;
+        totalPatients =
+            int.tryParse(data['total_patients']?.toString() ?? '0') ?? 0;
+        isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        errorMessage = e.toString().replaceFirst('Exception: ', '');
+        isLoading = false;
+      });
+    }
+  }
+
+  String get fullName =>
+      profile?['full_name']?.toString() ??
+      profile?['user']?['full_name']?.toString() ??
+      '-';
+
+  String get email =>
+      profile?['email']?.toString() ??
+      profile?['user']?['email']?.toString() ??
+      '-';
+
+  String get phone =>
+      profile?['phone_number']?.toString() ??
+      profile?['user']?['phone_number']?.toString() ??
+      '-';
+
+  String get gender =>
+      profile?['gender']?.toString() ??
+      profile?['user']?['gender']?.toString() ??
+      '-';
+
+  String get emailBadge {
+    final verified = profile?['email_verified_at'] ??
+        profile?['user']?['email_verified_at'];
+
+    return verified == null ? 'Belum Verifikasi' : 'Terverifikasi';
+  }
+
+  String _initial(String name) {
+    final parts = name.trim().split(' ').where((e) => e.isNotEmpty).toList();
+
+    if (parts.isEmpty) return '-';
+    if (parts.length == 1) return parts.first[0].toUpperCase();
+
+    return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (errorMessage != null) {
+      return _errorState();
+    }
+
     return Container(
       color: AppColors.primaryBlue,
       child: SafeArea(
@@ -18,27 +118,71 @@ class FamilyProfilePage extends StatelessWidget {
             Expanded(
               child: Container(
                 color: AppColors.background,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 22, 20, 120),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(child: _statCard('47', 'Data Input')),
-                          const SizedBox(width: 12),
-                          Expanded(child: _statCard('2', 'Pasien didampingi')),
-                        ],
-                      ),
-                      const SizedBox(height: 18),
-                      _dataSection(context),
-                      const SizedBox(height: 18),
-                      _menuSection(),
-                      const SizedBox(height: 18),
-                      _logoutTile(context),
-                    ],
+                child: RefreshIndicator(
+                  onRefresh: _loadProfile,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(20, 22, 20, 120),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _statCard(
+                                totalInputs.toString(),
+                                'Data Input',
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _statCard(
+                                totalPatients.toString(),
+                                'Pasien didampingi',
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 18),
+                        _dataSection(context),
+                        const SizedBox(height: 18),
+                        _menuSection(),
+                        const SizedBox(height: 18),
+                        _logoutTile(context),
+                      ],
+                    ),
                   ),
                 ),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _errorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, color: AppColors.red, size: 42),
+            const SizedBox(height: 12),
+            Text(
+              errorMessage ?? 'Gagal memuat profil keluarga',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.dark2, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _loadProfile,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryBlue,
+                foregroundColor: Colors.white,
+                elevation: 0,
+              ),
+              child: const Text('Coba lagi'),
             ),
           ],
         ),
@@ -61,12 +205,12 @@ class FamilyProfilePage extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const CircleAvatar(
+          CircleAvatar(
             radius: 44,
             backgroundColor: AppColors.lightBlue,
             child: Text(
-              'AS',
-              style: TextStyle(
+              _initial(fullName),
+              style: const TextStyle(
                 color: AppColors.primaryBlue,
                 fontSize: 30,
                 fontWeight: FontWeight.bold,
@@ -74,20 +218,20 @@ class FamilyProfilePage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Angelica Sabi Gita',
+          Text(
+            fullName,
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 19,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
-            '32 Tahun • Perempuan',
+          Text(
+            gender,
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white, fontSize: 12),
+            style: const TextStyle(color: Colors.white, fontSize: 12),
           ),
           const SizedBox(height: 12),
           _roleBadge('Keluarga'),
@@ -104,18 +248,13 @@ class FamilyProfilePage extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            text,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -169,13 +308,15 @@ class FamilyProfilePage extends StatelessWidget {
                 ),
               ),
               OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.push(
+                onPressed: () async {
+                  await Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (_) => const FamilyEditProfilePage(),
                     ),
                   );
+
+                  _loadProfile();
                 },
                 icon: const Icon(Icons.edit, size: 16),
                 label: const Text('Ubah'),
@@ -195,18 +336,15 @@ class FamilyProfilePage extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          _profileItem(
-            Icons.person_outline,
-            'Nama Lengkap',
-            'Angelica Sabi Gita',
-          ),
+          _profileItem(Icons.person_outline, 'Nama Lengkap', fullName),
           _profileItem(
             Icons.email_outlined,
             'Email',
-            'angelicaSabGit@gmail.com',
-            badge: 'Terverifikasi',
+            email,
+            badge: emailBadge,
           ),
-          _profileItem(Icons.phone_outlined, 'Nomor Telepon', '081234567890'),
+          _profileItem(Icons.phone_outlined, 'Nomor Telepon', phone),
+          _profileItem(Icons.wc_outlined, 'Jenis Kelamin', gender),
         ],
       ),
     );
@@ -395,7 +533,7 @@ class FamilyProfilePage extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Sesi login Anda akan dihapus dari perangkat ini. Anda perlu masuk kembali untuk mengakses diabetAku.',
+                'Sesi login Anda akan dihapus dari perangkat ini.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppColors.dark2, fontSize: 13),
               ),
@@ -417,7 +555,11 @@ class FamilyProfilePage extends StatelessWidget {
                 ),
               ),
               TextButton(
-                onPressed: () {
+                onPressed: () async {
+                  await ApiService.logout();
+
+                  if (!context.mounted) return;
+
                   Navigator.pop(sheetContext);
                   Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (_) => const LoginPage()),

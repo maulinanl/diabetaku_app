@@ -35,15 +35,15 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
       widget.roleType == VerificationRoleType.doctor;
 
   String get successMessage {
-  switch (widget.roleType) {
-    case VerificationRoleType.doctor:
-      return 'Email berhasil diverifikasi. Menunggu verifikasi admin.';
-    case VerificationRoleType.patient:
-      return 'Email berhasil diverifikasi. Silakan login.';
-    case VerificationRoleType.family:
-      return 'Email berhasil diverifikasi. Silakan login.';
+    switch (widget.roleType) {
+      case VerificationRoleType.doctor:
+        return 'Email berhasil diverifikasi. Menunggu verifikasi admin.';
+      case VerificationRoleType.patient:
+        return 'Email berhasil diverifikasi. Silakan login.';
+      case VerificationRoleType.family:
+        return 'Email berhasil diverifikasi. Silakan login.';
+    }
   }
-}
 
   @override
   void initState() {
@@ -331,29 +331,22 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
   }
 
   List<Widget> _buildVerificationSteps() {
-  final steps = <Widget>[
-    const _VerificationStep(
-      text: 'Registrasi berhasil',
-      isDone: true,
-    ),
+    final steps = <Widget>[
+      const _VerificationStep(text: 'Registrasi berhasil', isDone: true),
+      const _VerificationStep(text: 'Email belum terverifikasi', isDone: false),
+    ];
 
-    const _VerificationStep(
-      text: 'Email Terverifikasi',
-      isDone: false,
-    ),
-  ];
+    if (widget.roleType == VerificationRoleType.doctor) {
+      steps.add(
+        const _VerificationStep(
+          text: 'Menunggu verifikasi admin',
+          isDone: false,
+        ),
+      );
+    }
 
-  if (widget.roleType == VerificationRoleType.doctor) {
-    steps.add(
-      const _VerificationStep(
-        text: 'Menunggu Verifikasi Admin',
-        isDone: false,
-      ),
-    );
+    return steps;
   }
-
-  return steps;
-}
 
   void _showStyledSnackBar({required String message, bool isError = true}) {
     ScaffoldMessenger.of(context).showSnackBar(

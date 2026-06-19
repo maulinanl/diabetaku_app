@@ -179,6 +179,48 @@ class ApiService {
     throw Exception(data['message'] ?? 'Registrasi pasien gagal');
   }
 
+  static Future<void> registerFamily({
+    required String fullName,
+    required String email,
+    required String phoneNumber,
+    required String password,
+    required String confirmPassword,
+    required String gender,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/register/family'),
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'full_name': fullName,
+        'email': email,
+        'phone_number': phoneNumber,
+        'password': password,
+        'password_confirmation': confirmPassword,
+        'gender': gender,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 201) {
+      return;
+    }
+
+    if (response.statusCode == 422 && data['errors'] != null) {
+      final errors = data['errors'] as Map<String, dynamic>;
+      final firstError = errors.values.first;
+
+      if (firstError is List && firstError.isNotEmpty) {
+        throw Exception(firstError.first.toString());
+      }
+    }
+
+    throw Exception(data['message'] ?? 'Registrasi keluarga gagal');
+  }
+
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('token');
@@ -224,16 +266,9 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> getPatientDashboard(int patientId) async {
-    final url = Uri.parse('$baseUrl/doctor/patients/$patientId/dashboard');
-
-    final token = await getToken();
-
     final response = await http.get(
-      url,
-      headers: {
-        'Accept': 'application/json',
-        if (token != null) 'Authorization': 'Bearer $token',
-      },
+      Uri.parse('$baseUrl/patient/dashboard/$patientId'),
+      headers: await _authHeaders(),
     );
 
     final data = jsonDecode(response.body);
@@ -242,7 +277,7 @@ class ApiService {
       return Map<String, dynamic>.from(data['data']);
     }
 
-    throw Exception(data['message'] ?? 'Gagal mengambil detail pasien');
+    throw Exception(data['message'] ?? 'Gagal mengambil dashboard pasien');
   }
 
   static Future<List<Map<String, dynamic>>> getPatientGlucoseRecords(
@@ -817,6 +852,840 @@ class ApiService {
 
     if (response.statusCode != 200) {
       throw Exception(data['message'] ?? 'Gagal mengubah kata sandi');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getPatientProfile(int patientId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/patient/profile/$patientId'),
+      headers: await _authHeaders(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(data['data']);
+    }
+    throw Exception(data['message'] ?? 'Gagal mengambil profil pasien');
+  }
+
+  static Future<Map<String, dynamic>?> getPatientLatestRecommendation(
+    int patientId,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/patient/latest-recommendation/$patientId'),
+      headers: await _authHeaders(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return data['data'] == null
+          ? null
+          : Map<String, dynamic>.from(data['data']);
+    }
+
+    throw Exception(data['message'] ?? 'Gagal mengambil rekomendasi terbaru');
+  }
+
+  static Future<void> updatePatientProfile({
+    required int patientId,
+    required String fullName,
+    required String phoneNumber,
+    required String gender,
+    required String diabetesType,
+    required String diagnosisDate,
+    required double heightCm,
+    required int bloodTypeId,
+    required int rhesusTypeId,
+    String? dateOfBirth,
+  }) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/patient/profile/$patientId'),
+      headers: await _authHeaders(),
+      body: jsonEncode({
+        'full_name': fullName,
+        'phone_number': phoneNumber,
+        'date_of_birth': dateOfBirth,
+        'gender': gender,
+        'diabetes_type': diabetesType,
+        'diagnosis_date': diagnosisDate,
+        'height_cm': heightCm,
+        'blood_type_id': bloodTypeId,
+        'rhesus_type_id': rhesusTypeId,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Gagal memperbarui profil pasien');
+    }
+  }
+
+  static Future<int> _getUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getInt('user_id');
+
+    if (userId == null) {
+      throw Exception('User ID tidak ditemukan. Coba login ulang.');
+    }
+
+    return userId;
+  }
+
+  static Future<void> storeGlucose({
+    required int patientId,
+    required String measurementType,
+    required double glucoseValue,
+    required DateTime measuredAt,
+  }) async {
+    final userId = await _getUserId();
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/patient/health/glucose'),
+      headers: await _authHeaders(),
+      body: jsonEncode({
+        'patient_id': patientId,
+        'input_by_user_id': userId,
+        'measurement_type': measurementType,
+        'glucose_value': glucoseValue,
+        'measured_at': measuredAt.toIso8601String(),
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 201 && response.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Gagal menyimpan data glukosa');
+    }
+  }
+
+  static Future<void> storePhysiological({
+    required int patientId,
+    int? systolic,
+    int? diastolic,
+    double? weightKg,
+    double? bmi,
+    required DateTime measuredAt,
+  }) async {
+    final userId = await _getUserId();
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/patient/health/physiological'),
+      headers: await _authHeaders(),
+      body: jsonEncode({
+        'patient_id': patientId,
+        'input_by_user_id': userId,
+        'systolic': systolic,
+        'diastolic': diastolic,
+        'weight_kg': weightKg,
+        'bmi': bmi,
+        'measured_at': measuredAt.toIso8601String(),
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 201 && response.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Gagal menyimpan data fisiologis');
+    }
+  }
+
+  static int _mealTypeIdFromName(String mealType) {
+    switch (mealType) {
+      case 'Sarapan':
+        return 1;
+      case 'Makan siang':
+        return 2;
+      case 'Makan malam':
+        return 3;
+      case 'Camilan':
+        return 4;
+      default:
+        return 1;
+    }
+  }
+
+  static Future<void> storeMeal({
+    required int patientId,
+    required String mealType,
+    double? carbohydrateGram,
+    double? calories,
+    String? description,
+    required DateTime mealDate,
+  }) async {
+    final userId = await _getUserId();
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/patient/health/meal'),
+      headers: await _authHeaders(),
+      body: jsonEncode({
+        'patient_id': patientId,
+        'input_by_user_id': userId,
+        'meal_type_id': _mealTypeIdFromName(mealType),
+        'food_description': description,
+        'carbohydrate_estimate': carbohydrateGram,
+        'calories': calories,
+        'meal_date':
+            '${mealDate.year}-${mealDate.month.toString().padLeft(2, '0')}-${mealDate.day.toString().padLeft(2, '0')}',
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 201 && response.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Gagal menyimpan data pola makan');
+    }
+  }
+
+  static Future<void> storeActivity({
+    required int patientId,
+    required int activityTypeId,
+    required int durationMinutes,
+    required String intensity,
+    required DateTime activityDate,
+  }) async {
+    final userId = await _getUserId();
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/patient/health/activity'),
+      headers: await _authHeaders(),
+      body: jsonEncode({
+        'patient_id': patientId,
+        'input_by_user_id': userId,
+        'activity_type_id': activityTypeId,
+        'duration_minutes': durationMinutes,
+        'intensity': intensity,
+        'activity_date': activityDate.toIso8601String().split('T').first,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 201 && response.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Gagal menyimpan data aktivitas');
+    }
+  }
+
+  static Future<void> storeMedication({
+    required int patientId,
+    required int prescriptionId,
+    required int scheduleId,
+    required String status,
+    String? note,
+    required DateTime consumedAt,
+  }) async {
+    final userId = await _getUserId();
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/patient/health/medication'),
+      headers: await _authHeaders(),
+      body: jsonEncode({
+        'prescription_id': prescriptionId,
+        'patient_id': patientId,
+        'input_by_user_id': userId,
+        'schedule_id': scheduleId,
+        'log_date': consumedAt.toIso8601String().split('T').first,
+        'status': status,
+        'note': note,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 201 && response.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Gagal menyimpan kepatuhan obat');
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getActivePrescriptions(
+    int patientId,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/patient/prescriptions/$patientId/active'),
+      headers: await _authHeaders(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(data['data']);
+    }
+
+    throw Exception(data['message'] ?? 'Gagal mengambil resep aktif');
+  }
+
+  static Future<List<Map<String, dynamic>>> getConnectedDoctors(
+    int patientId,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/patient/connections/doctors/$patientId'),
+      headers: await _authHeaders(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(data['data']);
+    }
+
+    throw Exception(data['message'] ?? 'Gagal mengambil dokter terhubung');
+  }
+
+  static Future<List<Map<String, dynamic>>> getConnectedFamilies(
+    int patientId,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/patient/connections/families/$patientId'),
+      headers: await _authHeaders(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(data['data']);
+    }
+
+    throw Exception(data['message'] ?? 'Gagal mengambil keluarga terhubung');
+  }
+
+  static Future<List<Map<String, dynamic>>> getIncomingFamilyRequests(
+    int patientId,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/patient/connections/requests/$patientId'),
+      headers: await _authHeaders(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(data['data']);
+    }
+
+    throw Exception(data['message'] ?? 'Gagal mengambil permintaan koneksi');
+  }
+
+  static Future<List<Map<String, dynamic>>> searchDoctors({
+    required int patientId,
+    required String keyword,
+  }) async {
+    final uri = Uri.parse('$baseUrl/patient/doctors/search').replace(
+      queryParameters: {'patient_id': patientId.toString(), 'keyword': keyword},
+    );
+
+    final response = await http.get(uri, headers: await _authHeaders());
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(data['data']);
+    }
+
+    throw Exception(data['message'] ?? 'Gagal mencari dokter');
+  }
+
+  static Future<void> requestDoctorConnection({
+    required int patientId,
+    required int doctorId,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/patient/doctors/$doctorId/request'),
+      headers: await _authHeaders(),
+      body: jsonEncode({'patient_id': patientId}),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception(data['message'] ?? 'Gagal mengajukan koneksi dokter');
+    }
+  }
+
+  static Future<void> acceptFamilyRequest({
+    required int patientId,
+    required int familyId,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/patient/family-requests/accept'),
+      headers: await _authHeaders(),
+      body: jsonEncode({'patient_id': patientId, 'family_id': familyId}),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Gagal menerima permintaan');
+    }
+  }
+
+  static Future<void> rejectFamilyRequest({
+    required int patientId,
+    required int familyId,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/patient/family-requests/reject'),
+      headers: await _authHeaders(),
+      body: jsonEncode({'patient_id': patientId, 'family_id': familyId}),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Gagal menolak permintaan');
+    }
+  }
+
+  static Future<void> disconnectDoctorConnection({
+    required int patientId,
+    required int doctorId,
+  }) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/patient/connections/doctors/$doctorId'),
+      headers: await _authHeaders(),
+      body: jsonEncode({'patient_id': patientId}),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Gagal memutus relasi dokter');
+    }
+  }
+
+  static Future<void> disconnectFamilyConnection({
+    required int patientId,
+    required int familyId,
+  }) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/patient/connections/families/$familyId'),
+      headers: await _authHeaders(),
+      body: jsonEncode({'patient_id': patientId}),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Gagal memutus relasi keluarga');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getPatientHealthHistory(
+    int patientId,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/patient/health-history/$patientId'),
+      headers: await _authHeaders(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(data['data']);
+    }
+
+    throw Exception(data['message'] ?? 'Gagal mengambil riwayat kesehatan');
+  }
+
+  static Future<List<Map<String, dynamic>>> getPatientRecommendations(
+    int patientId,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/patient/recommendations/$patientId'),
+      headers: await _authHeaders(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(data['data'] ?? []);
+    }
+
+    throw Exception(data['message'] ?? 'Gagal mengambil rekomendasi');
+  }
+
+  static Future<Map<String, dynamic>> getPatientHomeSummary(
+    int patientId,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/patient/home-summary/$patientId'),
+      headers: await _authHeaders(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(data['data']);
+    }
+
+    throw Exception(data['message'] ?? 'Gagal mengambil ringkasan home pasien');
+  }
+
+  static Future<List<Map<String, dynamic>>> getPatientPendingValidations(
+    int patientId,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/patient/pending-validations/$patientId'),
+      headers: await _authHeaders(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(data['data'] ?? []);
+    }
+
+    throw Exception(data['message'] ?? 'Gagal mengambil data validasi');
+  }
+
+  static Future<void> respondPatientValidation({
+    required String recordType,
+    required int recordId,
+    required String status,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/patient/respond-validation'),
+      headers: await _authHeaders(),
+      body: jsonEncode({
+        'record_type': recordType,
+        'record_id': recordId,
+        'status': status,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Gagal memproses validasi');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getFamilyProfile(int familyId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/family/profile/$familyId'),
+      headers: await _authHeaders(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(data['data']);
+    }
+
+    throw Exception(data['message'] ?? 'Gagal mengambil profil keluarga');
+  }
+
+  static Future<List<Map<String, dynamic>>> getFamilyPatients(
+    int familyId,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/family/patients/$familyId'),
+      headers: await _authHeaders(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(data['data']);
+    }
+
+    throw Exception(data['message'] ?? 'Gagal mengambil pasien keluarga');
+  }
+
+  static Future<Map<String, dynamic>> getFamilyPatientDashboard(
+    int patientId,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/family/patients/$patientId/dashboard'),
+      headers: await _authHeaders(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(data['data']);
+    }
+
+    throw Exception(data['message'] ?? 'Gagal mengambil dashboard pasien');
+  }
+
+  static Future<Map<String, dynamic>> getFamilyPatientHealthData(
+    int patientId,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/family/patients/$patientId/health-data'),
+      headers: await _authHeaders(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(data['data']);
+    }
+
+    throw Exception(data['message'] ?? 'Gagal mengambil data kesehatan pasien');
+  }
+
+  static Future<List<Map<String, dynamic>>> getFamilyPatientRecommendations(
+    int patientId,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/family/patients/$patientId/recommendations'),
+      headers: await _authHeaders(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(data['data']);
+    }
+
+    throw Exception(data['message'] ?? 'Gagal mengambil rekomendasi pasien');
+  }
+
+  static Future<void> storeFamilyGlucose({
+    required int patientId,
+    required String measurementType,
+    required double glucoseValue,
+    required DateTime measuredAt,
+  }) async {
+    final userId = await _getUserId();
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/family/patients/$patientId/glucose'),
+      headers: await _authHeaders(),
+      body: jsonEncode({
+        'input_by_user_id': userId,
+        'measurement_type': measurementType,
+        'glucose_value': glucoseValue,
+        'measured_at': measuredAt.toIso8601String(),
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 201 && response.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Gagal menyimpan data glukosa');
+    }
+  }
+
+  static Future<void> storeFamilyPhysiological({
+    required int patientId,
+    int? systolic,
+    int? diastolic,
+    double? weightKg,
+    double? bmi,
+    required DateTime measuredAt,
+  }) async {
+    final userId = await _getUserId();
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/family/patients/$patientId/physiological'),
+      headers: await _authHeaders(),
+      body: jsonEncode({
+        'input_by_user_id': userId,
+        'systolic': systolic,
+        'diastolic': diastolic,
+        'weight_kg': weightKg,
+        'bmi': bmi,
+        'measured_at': measuredAt.toIso8601String(),
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 201 && response.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Gagal menyimpan data fisiologis');
+    }
+  }
+
+  static Future<void> storeFamilyActivity({
+    required int patientId,
+    required int activityTypeId,
+    required int durationMinutes,
+    required String intensity,
+    required DateTime activityDate,
+  }) async {
+    final userId = await _getUserId();
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/family/patients/$patientId/activity'),
+      headers: await _authHeaders(),
+      body: jsonEncode({
+        'input_by_user_id': userId,
+        'activity_type_id': activityTypeId,
+        'duration_minutes': durationMinutes,
+        'intensity': intensity,
+        'activity_date': activityDate.toIso8601String().split('T').first,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 201 && response.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Gagal menyimpan data aktivitas');
+    }
+  }
+
+  static Future<void> storeFamilyMeal({
+    required int patientId,
+    required int mealTypeId,
+    double? carbohydrateGram,
+    double? calories,
+    String? description,
+    required DateTime mealDate,
+  }) async {
+    final userId = await _getUserId();
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/family/patients/$patientId/meal'),
+      headers: await _authHeaders(),
+      body: jsonEncode({
+        'input_by_user_id': userId,
+        'meal_type_id': mealTypeId,
+        'food_description': description,
+        'carbohydrate_estimate': carbohydrateGram,
+        'calories': calories,
+        'meal_date': mealDate.toIso8601String().split('T').first,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 201 && response.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Gagal menyimpan data makan');
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getFamilyPatientHistories(
+    int patientId,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/family/patients/$patientId/histories'),
+      headers: await _authHeaders(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    return List<Map<String, dynamic>>.from(data['data'] ?? []);
+  }
+
+  static Future<List<Map<String, dynamic>>> getRelationTypes() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/master/relation-types'),
+      headers: await _authHeaders(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(data['data'] ?? []);
+    }
+
+    throw Exception(data['message'] ?? 'Gagal mengambil tipe relasi');
+  }
+
+  static Future<List<Map<String, dynamic>>> findFamilyPatient({
+    required String email,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final familyId = prefs.getInt('family_id');
+
+    if (familyId == null) {
+      throw Exception('Family ID tidak ditemukan. Coba login ulang.');
+    }
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/family/find-patient'),
+      headers: await _authHeaders(),
+      body: jsonEncode({
+        'email': email.trim().toLowerCase(),
+        'family_id': familyId,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(data['data'] ?? []);
+    }
+
+    throw Exception(data['message'] ?? 'Gagal mencari pasien');
+  }
+
+  static Future<void> requestFamilyConnection({
+    required int familyId,
+    required int patientId,
+    required int relationTypeId,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/family/request-connection'),
+      headers: await _authHeaders(),
+      body: jsonEncode({
+        'family_id': familyId,
+        'patient_id': patientId,
+        'relation_type_id': relationTypeId,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception(data['message'] ?? 'Gagal mengajukan koneksi pasien');
+    }
+  }
+
+  static Future<void> storeFamilyMedication({
+    required int patientId,
+    int? prescriptionId,
+    int? scheduleId,
+    required String status,
+    String? note,
+    required DateTime logDate,
+  }) async {
+    final userId = await _getUserId();
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/family/patients/$patientId/medication'),
+      headers: await _authHeaders(),
+      body: jsonEncode({
+        'input_by_user_id': userId,
+        'prescription_id': prescriptionId,
+        'schedule_id': scheduleId,
+        'log_date': logDate.toIso8601String().split('T').first,
+        'status': status,
+        'note': note,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 201 && response.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Gagal menyimpan kepatuhan obat');
+    }
+  }
+
+  static Future<void> updateFamilyProfile({
+    required int familyId,
+    required String fullName,
+    required String phoneNumber,
+    required String gender,
+  }) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/family/profile/$familyId'),
+      headers: await _authHeaders(),
+      body: jsonEncode({
+        'full_name': fullName,
+        'phone_number': phoneNumber,
+        'gender': gender,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Gagal memperbarui profil keluarga');
     }
   }
 }

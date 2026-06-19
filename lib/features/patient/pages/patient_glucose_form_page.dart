@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../core/theme/app_colors.dart';
+import '../../../data/services/api_service.dart';
 
 class PatientGlucoseFormPage extends StatefulWidget {
   const PatientGlucoseFormPage({super.key});
@@ -12,13 +16,17 @@ class _PatientGlucoseFormPageState extends State<PatientGlucoseFormPage> {
   final glucoseCtr = TextEditingController();
   final noteCtr = TextEditingController();
 
-  DateTime selectedDate = DateTime(2025, 6, 7);
-  TimeOfDay selectedTime = const TimeOfDay(hour: 7, minute: 26);
+  DateTime selectedDate = DateTime.now();
+  TimeOfDay selectedTime = TimeOfDay.now();
   String selectedType = 'Puasa';
+
+  bool isSaving = false;
 
   final types = ['Puasa', 'Postprandial', 'Sewaktu', 'HbA1c'];
 
-  bool get isValid => glucoseCtr.text.trim().isNotEmpty;
+  bool get isValid {
+    return double.tryParse(glucoseCtr.text.trim()) != null;
+  }
 
   @override
   void initState() {
@@ -39,6 +47,50 @@ class _PatientGlucoseFormPageState extends State<PatientGlucoseFormPage> {
 
   String get timeText {
     return '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _save() async {
+    FocusScope.of(context).unfocus();
+
+    setState(() => isSaving = true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final patientId = prefs.getInt('patient_id');
+
+      if (patientId == null) {
+        throw Exception('Patient ID tidak ditemukan');
+      }
+
+      final recordedAt = DateTime(
+        selectedDate.year,
+        selectedDate.month,
+        selectedDate.day,
+        selectedTime.hour,
+        selectedTime.minute,
+      );
+
+      await ApiService.storeGlucose(
+        patientId: patientId,
+        measurementType: selectedType,
+        glucoseValue: double.parse(glucoseCtr.text.trim()),
+        measuredAt: recordedAt,
+      );
+
+      if (!mounted) return;
+
+      _showSuccessSheet();
+    } catch (e) {
+      if (!mounted) return;
+
+      _showStyledSnackBar(
+        message: e.toString().replaceFirst('Exception: ', ''),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => isSaving = false);
+      }
+    }
   }
 
   Future<void> _pickDate() async {
@@ -85,11 +137,11 @@ class _PatientGlucoseFormPageState extends State<PatientGlucoseFormPage> {
     }
   }
 
-  void _save() {
+  void _showSuccessSheet() {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) {
+      builder: (sheetContext) {
         return Container(
           padding: const EdgeInsets.all(24),
           decoration: const BoxDecoration(
@@ -99,14 +151,19 @@ class _PatientGlucoseFormPageState extends State<PatientGlucoseFormPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              Container(
+                width: 44,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.light1,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              const SizedBox(height: 24),
               const CircleAvatar(
                 radius: 36,
                 backgroundColor: Color(0xFFEAFBF3),
-                child: Icon(
-                  Icons.check,
-                  color: Color(0xFF10C878),
-                  size: 36,
-                ),
+                child: Icon(Icons.check, color: Color(0xFF10C878), size: 36),
               ),
               const SizedBox(height: 18),
               const Text(
@@ -129,8 +186,8 @@ class _PatientGlucoseFormPageState extends State<PatientGlucoseFormPage> {
                 height: 46,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.pop(context);
-                    Navigator.pop(context);
+                    Navigator.pop(sheetContext);
+                    Navigator.pop(context, true);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryBlue,
@@ -145,9 +202,8 @@ class _PatientGlucoseFormPageState extends State<PatientGlucoseFormPage> {
               ),
               TextButton(
                 onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.pop(context);
-                  Navigator.pop(context);
+                  Navigator.pop(sheetContext);
+                  Navigator.pop(context, true);
                 },
                 child: const Text(
                   'Kembali ke beranda',
@@ -158,6 +214,25 @@ class _PatientGlucoseFormPageState extends State<PatientGlucoseFormPage> {
           ),
         );
       },
+    );
+  }
+
+  void _showStyledSnackBar({required String message}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: AppColors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        content: Row(
+          children: [
+            const Icon(Icons.info_outline, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(message, style: const TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -196,13 +271,13 @@ class _PatientGlucoseFormPageState extends State<PatientGlucoseFormPage> {
                         ),
                       ],
                     ),
-
                     _label('Tipe pengukuran*'),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
                       children: types.map((type) {
                         final selected = selectedType == type;
+
                         return GestureDetector(
                           onTap: () => setState(() => selectedType = type),
                           child: Container(
@@ -215,7 +290,11 @@ class _PatientGlucoseFormPageState extends State<PatientGlucoseFormPage> {
                                   ? AppColors.primaryBlue
                                   : AppColors.white,
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: AppColors.light1),
+                              border: Border.all(
+                                color: selected
+                                    ? AppColors.primaryBlue
+                                    : AppColors.light1,
+                              ),
                             ),
                             child: Text(
                               type,
@@ -231,45 +310,52 @@ class _PatientGlucoseFormPageState extends State<PatientGlucoseFormPage> {
                         );
                       }).toList(),
                     ),
-
                     _label('Nilai Glukosa*'),
                     _input(
                       controller: glucoseCtr,
                       hint: 'Masukkan nilai glukosa',
                       keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'^\d*\.?\d*'),
+                        ),
+                      ],
                     ),
-
                     _label('Catatan (opsional)'),
-                    _input(
-                      controller: noteCtr,
-                      hint: 'Tambahkan catatan',
-                    ),
-
+                    _input(controller: noteCtr, hint: 'Tambahkan catatan'),
                     const SizedBox(height: 26),
-
                     SizedBox(
                       width: double.infinity,
                       height: 48,
                       child: ElevatedButton(
-                        onPressed: isValid ? _save : null,
+                        onPressed: isValid && !isSaving ? _save : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryBlue,
                           disabledBackgroundColor: const Color(0xFFAFCBEA),
+                          disabledForegroundColor: AppColors.white,
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(6),
                           ),
                         ),
-                        child: const Text(
-                          'Simpan',
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
+                        child: isSaving
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
+                                'Simpan',
+                                style: TextStyle(fontWeight: FontWeight.w600),
+                              ),
                       ),
                     ),
-
                     TextButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: isSaving ? null : () => Navigator.pop(context),
                       child: const Center(
                         child: Text(
                           'Batal',
@@ -297,12 +383,12 @@ class _PatientGlucoseFormPageState extends State<PatientGlucoseFormPage> {
       child: Row(
         children: [
           IconButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: isSaving ? null : () => Navigator.pop(context),
             icon: const Icon(Icons.arrow_back, color: Colors.white),
           ),
           const Expanded(
             child: Text(
-              'Tambah Data',
+              'Tambah Data Glukosa',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
@@ -337,7 +423,7 @@ class _PatientGlucoseFormPageState extends State<PatientGlucoseFormPage> {
     required VoidCallback onTap,
   }) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: isSaving ? null : onTap,
       child: Container(
         height: 48,
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -365,10 +451,13 @@ class _PatientGlucoseFormPageState extends State<PatientGlucoseFormPage> {
     required TextEditingController controller,
     required String hint,
     TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
+      enabled: !isSaving,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(color: AppColors.dark4, fontSize: 13),
@@ -379,6 +468,10 @@ class _PatientGlucoseFormPageState extends State<PatientGlucoseFormPage> {
           vertical: 15,
         ),
         enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: const BorderSide(color: AppColors.light1),
+        ),
+        disabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6),
           borderSide: const BorderSide(color: AppColors.light1),
         ),

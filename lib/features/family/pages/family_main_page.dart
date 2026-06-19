@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../core/theme/app_colors.dart';
+import '../../../data/services/api_service.dart';
 import '../widgets/family_bottom_nav.dart';
-import 'family_connection_page.dart';
-import 'family_notification_page.dart';
 import 'family_add_data_page.dart';
+import 'family_connection_page.dart';
 import 'family_history_page.dart';
+import 'family_notification_page.dart';
 import 'family_profile_page.dart';
 
 class FamilyMainPage extends StatefulWidget {
@@ -17,40 +20,27 @@ class FamilyMainPage extends StatefulWidget {
 class _FamilyMainPageState extends State<FamilyMainPage> {
   int currentIndex = 0;
   int selectedPatientIndex = 0;
-  bool hasUnreadNotification = true;
 
-  final patients = [
-    {
-      'initial': 'BS',
-      'name': 'Budi Santoso',
-      'relation': 'Ayah',
-      'dm': 'DM Tipe 2',
-      'age': '58 th',
-      'glucose': '142',
-      'bloodPressure': '135/88',
-      'weight': '70.2',
-    },
-    {
-      'initial': 'SR',
-      'name': 'Sari Rahayu',
-      'relation': 'Ibu',
-      'dm': 'DM Tipe 2',
-      'age': '55 th',
-      'glucose': '187',
-      'bloodPressure': '128/82',
-      'weight': '78.5',
-    },
-  ];
+  bool isLoading = true;
+  bool hasUnreadNotification = false;
+  String? errorMessage;
 
-  final dailyChecks = [
+  int? familyId;
+  String familyName = '-';
+
+  List<Map<String, dynamic>> patients = [];
+  Map<String, dynamic>? dashboardData;
+  List<Map<String, dynamic>> recommendations = [];
+
+  final dailyChecks = const [
     ['Glukosa', Icons.opacity, true],
     ['Obat', Icons.medication_outlined, true],
     ['Aktivitas', Icons.directions_run, false],
     ['Makan', Icons.restaurant_outlined, false],
   ];
 
-  DateTime currentMonth = DateTime(2025, 6);
-  DateTime selectedDate = DateTime(2025, 6, 7);
+  DateTime currentMonth = DateTime(DateTime.now().year, DateTime.now().month);
+  DateTime selectedDate = DateTime.now();
 
   final Map<String, String> consistencyStatus = {
     '2025-06-01': 'lengkap',
@@ -61,6 +51,104 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
     '2025-06-06': 'lengkap',
     '2025-06-07': 'lengkap',
   };
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFamilyHome();
+  }
+
+  List<Map<String, dynamic>> _acceptedPatientsOnly(
+    List<Map<String, dynamic>> data,
+  ) {
+    return data.where((item) {
+      final status = item['status']?.toString();
+      return status == 'Diterima' || status == 'Terhubung';
+    }).toList();
+  }
+
+  Future<void> _loadFamilyHome() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final storedFamilyId = prefs.getInt('family_id');
+      final storedUserId = prefs.getInt('user_id');
+      final storedName = prefs.getString('full_name') ?? '-';
+
+      if (storedFamilyId == null) {
+        throw Exception('Family ID tidak ditemukan. Coba login ulang.');
+      }
+
+      final profile = await ApiService.getFamilyProfile(storedFamilyId);
+      final rawPatients = await ApiService.getFamilyPatients(storedFamilyId);
+      final acceptedPatients = _acceptedPatientsOnly(rawPatients);
+
+      Map<String, dynamic>? dashboard;
+      List<Map<String, dynamic>> loadedRecommendations = [];
+      List<Map<String, dynamic>> loadedNotifications = [];
+
+      if (acceptedPatients.isNotEmpty) {
+        final firstPatientId = int.parse(
+          acceptedPatients.first['patient_id'].toString(),
+        );
+
+        dashboard = await ApiService.getFamilyPatientDashboard(firstPatientId);
+
+        loadedRecommendations =
+            await ApiService.getFamilyPatientRecommendations(firstPatientId);
+      }
+
+      if (storedUserId != null) {
+        loadedNotifications = await ApiService.getNotifications(storedUserId);
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        familyId = storedFamilyId;
+        familyName = profile['full_name']?.toString() ?? storedName;
+        patients = acceptedPatients;
+        dashboardData = dashboard;
+        recommendations = loadedRecommendations;
+        selectedPatientIndex = 0;
+
+        hasUnreadNotification = loadedNotifications.any((n) {
+          final isRead = n['is_read'];
+          return isRead == false || isRead == 0 || isRead?.toString() == '0';
+        });
+
+        isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        errorMessage = e.toString().replaceAll('Exception: ', '');
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadSelectedPatientDashboard(int index) async {
+    final patientId = int.parse(patients[index]['patient_id'].toString());
+
+    final dashboard = await ApiService.getFamilyPatientDashboard(patientId);
+
+    final loadedRecommendations =
+        await ApiService.getFamilyPatientRecommendations(patientId);
+
+    if (!mounted) return;
+
+    setState(() {
+      selectedPatientIndex = index;
+      dashboardData = dashboard;
+      recommendations = loadedRecommendations;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -74,10 +162,7 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
           setState(() => currentIndex = index);
         },
         onAddTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const FamilyAddDataPage()),
-          );
+          setState(() => currentIndex = 4);
         },
       ),
     );
@@ -87,10 +172,29 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
     if (currentIndex == 0) return _familyHomeContent();
     if (currentIndex == 1) return const FamilyConnectionPage();
     if (currentIndex == 2) return const FamilyHistoryPage();
-    return const FamilyProfilePage();
+    if (currentIndex == 3) return const FamilyProfilePage();
+
+    return FamilyAddDataPage(
+      showBackButton: false,
+      onGoConnection: () {
+        setState(() => currentIndex = 1);
+      },
+    );
   }
 
   Widget _familyHomeContent() {
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (errorMessage != null) {
+      return _errorState();
+    }
+
+    if (patients.isEmpty) {
+      return _emptyPatientState();
+    }
+
     return Container(
       color: AppColors.primaryBlue,
       child: SafeArea(
@@ -101,20 +205,24 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
             Expanded(
               child: Container(
                 color: AppColors.background,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 120),
-                  child: Column(
-                    children: [
-                      _recommendationCard(),
-                      const SizedBox(height: 12),
-                      _validationCard(),
-                      const SizedBox(height: 14),
-                      _summaryCards(),
-                      const SizedBox(height: 14),
-                      _dailyChecklistCard(),
-                      const SizedBox(height: 14),
-                      _calendarCard(),
-                    ],
+                child: RefreshIndicator(
+                  onRefresh: _loadFamilyHome,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 120),
+                    child: Column(
+                      children: [
+                        _recommendationCard(),
+                        const SizedBox(height: 12),
+                        _validationCard(),
+                        const SizedBox(height: 14),
+                        _summaryCards(),
+                        const SizedBox(height: 14),
+                        _dailyChecklistCard(),
+                        const SizedBox(height: 14),
+                        _calendarCard(),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -125,34 +233,117 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
     );
   }
 
-  String _dateKey(DateTime date) {
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  Widget _errorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, color: AppColors.red, size: 42),
+            const SizedBox(height: 12),
+            Text(
+              errorMessage ?? 'Gagal memuat data keluarga',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.dark2, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _loadFamilyHome,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryBlue,
+                foregroundColor: Colors.white,
+                elevation: 0,
+              ),
+              child: const Text('Coba lagi'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
-  int _daysInMonth(DateTime date) {
-    return DateTime(date.year, date.month + 1, 0).day;
+  Widget _emptyPatientState() {
+    return Container(
+      color: AppColors.background,
+      child: SafeArea(
+        top: false,
+        child: Column(
+          children: [
+            _emptyHeader(context),
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(24, 42, 24, 120),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 120,
+                      height: 120,
+                      decoration: const BoxDecoration(
+                        color: AppColors.veryLightBlue,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.person_add_alt_1_rounded,
+                        size: 56,
+                        color: AppColors.primaryBlue,
+                      ),
+                    ),
+                    const SizedBox(height: 26),
+                    const Text(
+                      'Belum Ada Pasien Terhubung',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.primaryBlue,
+                        fontSize: 21,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Hubungkan akun keluarga dengan pasien agar kamu bisa membantu memantau data kesehatannya.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.dark2,
+                        fontSize: 13,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          setState(() => currentIndex = 1);
+                        },
+                        icon: const Icon(Icons.person_add_alt_1_rounded),
+                        label: const Text(
+                          'Ajukan Koneksi Pasien',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryBlue,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
-  String _monthName(int month) {
-    const names = [
-      'Januari',
-      'Februari',
-      'Maret',
-      'April',
-      'Mei',
-      'Juni',
-      'Juli',
-      'Agustus',
-      'September',
-      'Oktober',
-      'November',
-      'Desember',
-    ];
-    return names[month - 1];
-  }
-
-  Widget _header(BuildContext context) {
-    final patient = patients[selectedPatientIndex];
+  Widget _emptyHeader(BuildContext context) {
     final topPad = MediaQuery.of(context).padding.top;
 
     return Container(
@@ -170,10 +361,10 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Selamat Pagi\nSandra Ayu',
-                  style: TextStyle(
+                  '$greeting\n$familyName',
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 18,
                     height: 1.35,
@@ -181,63 +372,173 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
                   ),
                 ),
               ),
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
+              _notificationButton(),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(13),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: AppColors.lightBlue,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(
+                    Icons.family_restroom_rounded,
+                    color: AppColors.primaryBlue,
+                    size: 28,
+                  ),
                 ),
-                child: GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      hasUnreadNotification = false;
-                    });
-
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const FamilyNotificationPage(),
-                      ),
-                    );
-                  },
-                  child: Stack(
-                    clipBehavior: Clip.none,
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
+                      Text(
+                        'Akun Keluarga',
+                        style: TextStyle(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: const Icon(
-                          Icons.notifications_none_rounded,
-                          color: AppColors.primaryBlue,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
-
-                      if (hasUnreadNotification)
-                        Positioned(
-                          top: 9,
-                          right: 9,
-                          child: Container(
-                            width: 9,
-                            height: 9,
-                            decoration: BoxDecoration(
-                              color: AppColors.red,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white,
-                                width: 1.5,
-                              ),
-                            ),
-                          ),
-                        ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Belum ada pasien yang terhubung',
+                        style: TextStyle(color: Colors.white, fontSize: 11),
+                      ),
                     ],
                   ),
                 ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _notificationButton() {
+    return GestureDetector(
+      onTap: () {
+        setState(() => hasUnreadNotification = false);
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const FamilyNotificationPage()),
+        ).then((_) => _loadFamilyHome());
+      },
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(
+              Icons.notifications_none_rounded,
+              color: AppColors.primaryBlue,
+            ),
+          ),
+          if (hasUnreadNotification)
+            Positioned(
+              top: 9,
+              right: 9,
+              child: Container(
+                width: 9,
+                height: 9,
+                decoration: BoxDecoration(
+                  color: AppColors.red,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1.5),
+                ),
               ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  String get greeting {
+    final hour = DateTime.now().hour;
+
+    if (hour < 12) return 'Selamat Pagi';
+    if (hour < 15) return 'Selamat Siang';
+    if (hour < 18) return 'Selamat Sore';
+
+    return 'Selamat Malam';
+  }
+
+  String _initial(String name) {
+    final parts = name.trim().split(' ').where((e) => e.isNotEmpty).toList();
+
+    if (parts.isEmpty) return '-';
+    if (parts.length == 1) return parts.first[0].toUpperCase();
+
+    return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+  }
+
+  String _patientName(Map<String, dynamic> patient) {
+    return patient['full_name']?.toString() ??
+        patient['name']?.toString() ??
+        '-';
+  }
+
+  String _patientRelation(Map<String, dynamic> patient) {
+    return patient['relation_name']?.toString() ??
+        patient['relation']?.toString() ??
+        '-';
+  }
+
+  String _patientDm(Map<String, dynamic> patient) {
+    return patient['diabetes_type']?.toString() ?? '-';
+  }
+
+  Widget _header(BuildContext context) {
+    final patient = patients[selectedPatientIndex];
+    final patientName = _patientName(patient);
+    final topPad = MediaQuery.of(context).padding.top;
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(22, topPad + 24, 22, 22),
+      decoration: const BoxDecoration(
+        color: AppColors.primaryBlue,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(22),
+          bottomRight: Radius.circular(22),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '$greeting\n$familyName',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    height: 1.35,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              _notificationButton(),
             ],
           ),
           const SizedBox(height: 16),
@@ -254,7 +555,7 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
                   radius: 26,
                   backgroundColor: AppColors.lightBlue,
                   child: Text(
-                    patient['initial']!,
+                    _initial(patientName),
                     style: const TextStyle(
                       color: AppColors.primaryBlue,
                       fontWeight: FontWeight.bold,
@@ -267,7 +568,7 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        patient['name']!,
+                        patientName,
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 14,
@@ -276,7 +577,7 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        '${patient['relation']} • ${patient['dm']} • ${patient['age']}',
+                        '${_patientRelation(patient)} • ${_patientDm(patient)}',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 11,
@@ -285,20 +586,21 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
                     ],
                   ),
                 ),
-                OutlinedButton.icon(
-                  onPressed: _showPatientSelector,
-                  icon: const Icon(Icons.swap_horiz, size: 15),
-                  label: const Text('Ganti'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.dark1,
-                    backgroundColor: AppColors.lightBlue,
-                    side: BorderSide.none,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                if (patients.length > 1)
+                  OutlinedButton.icon(
+                    onPressed: _showPatientSelector,
+                    icon: const Icon(Icons.swap_horiz, size: 15),
+                    label: const Text('Ganti'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.dark1,
+                      backgroundColor: AppColors.lightBlue,
+                      side: BorderSide.none,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
           ),
@@ -344,12 +646,13 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
               const SizedBox(height: 12),
               ...List.generate(patients.length, (index) {
                 final patient = patients[index];
+                final name = _patientName(patient);
                 final selected = selectedPatientIndex == index;
 
                 return InkWell(
-                  onTap: () {
-                    setState(() => selectedPatientIndex = index);
+                  onTap: () async {
                     Navigator.pop(sheetContext);
+                    await _loadSelectedPatientDashboard(index);
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 12),
@@ -361,7 +664,7 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
                               ? AppColors.primaryBlue
                               : AppColors.lightBlue,
                           child: Text(
-                            patient['initial']!,
+                            _initial(name),
                             style: TextStyle(
                               color: selected
                                   ? Colors.white
@@ -376,7 +679,7 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                patient['name']!,
+                                name,
                                 style: const TextStyle(
                                   color: AppColors.dark1,
                                   fontSize: 14,
@@ -385,7 +688,7 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
                               ),
                               const SizedBox(height: 3),
                               Text(
-                                '${patient['relation']} • ${patient['dm']} • ${patient['age']}',
+                                '${_patientRelation(patient)} • ${_patientDm(patient)}',
                                 style: const TextStyle(
                                   color: AppColors.dark2,
                                   fontSize: 11,
@@ -405,22 +708,6 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
                   ),
                 );
               }),
-              const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.veryLightBlue,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Text(
-                  'Data beranda, riwayat, dan kalender akan berubah sesuai pasien yang dipilih.',
-                  style: TextStyle(
-                    color: AppColors.primaryBlue,
-                    fontSize: 11,
-                    height: 1.35,
-                  ),
-                ),
-              ),
             ],
           ),
         );
@@ -429,10 +716,21 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
   }
 
   Widget _recommendationCard() {
+    if (recommendations.isEmpty) {
+      return _smallInfoCard(
+        icon: Icons.description_outlined,
+        title: 'Belum ada rekomendasi',
+        subtitle: 'Dokter belum memberikan rekomendasi',
+        onTap: () {},
+      );
+    }
+
+    final latest = recommendations.first;
+
     return _smallInfoCard(
       icon: Icons.description_outlined,
-      title: 'Rekomendasi baru dari dokter',
-      subtitle: 'dr. Agus Setiawan, Sp.PD • 7 Jun 2025',
+      title: latest['category']?.toString() ?? 'Rekomendasi',
+      subtitle: latest['recommendation_text']?.toString() ?? '-',
       onTap: () {},
     );
   }
@@ -440,8 +738,8 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
   Widget _validationCard() {
     return _smallInfoCard(
       icon: Icons.assignment_outlined,
-      title: 'Data menunggu validasi pasien',
-      subtitle: '1 data belum dikonfirmasi Angelica Sabi Gita',
+      title: 'Validasi data pasien',
+      subtitle: 'Data yang kamu input menunggu konfirmasi pasien',
       onTap: () {},
     );
   }
@@ -485,6 +783,8 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
                   const SizedBox(height: 3),
                   Text(
                     subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: AppColors.dark2,
                       fontSize: 10,
@@ -501,41 +801,72 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
   }
 
   Widget _summaryCards() {
-    final patient = patients[selectedPatientIndex];
+    final glucose = dashboardData?['latest_glucose'];
+    final physiological = dashboardData?['latest_physiological'];
+
+    final glucoseValue = glucose?['glucose_value']?.toString() ?? '-';
+
+    final systolic = physiological?['systolic']?.toString();
+    final diastolic = physiological?['diastolic']?.toString();
+
+    final bloodPressureValue = systolic != null && diastolic != null
+        ? '$systolic/$diastolic'
+        : '-';
+
+    final weightValue = physiological?['weight_kg']?.toString() ?? '-';
 
     return Row(
       children: [
         Expanded(
           child: _HealthSummaryCard(
             title: 'Glukosa',
-            value: patient['glucose']!,
+            value: glucoseValue,
             unit: 'mg/dL',
-            status: 'Tinggi',
-            color: AppColors.red,
+            status: _glucoseStatus(glucoseValue),
+            color: _glucoseColor(glucoseValue),
           ),
         ),
         const SizedBox(width: 8),
         Expanded(
           child: _HealthSummaryCard(
             title: 'Tekanan Darah',
-            value: patient['bloodPressure']!,
+            value: bloodPressureValue,
             unit: 'mmHg',
-            status: 'Normal',
-            color: Color(0xFF10C878),
+            status: bloodPressureValue == '-' ? '-' : 'Normal',
+            color: const Color(0xFF10C878),
           ),
         ),
         const SizedBox(width: 8),
         Expanded(
           child: _HealthSummaryCard(
             title: 'Berat Badan',
-            value: patient['weight']!,
+            value: weightValue,
             unit: 'kg',
-            status: 'Stabil',
-            color: Color(0xFFFFC542),
+            status: weightValue == '-' ? '-' : 'Stabil',
+            color: const Color(0xFFFFC542),
           ),
         ),
       ],
     );
+  }
+
+  String _glucoseStatus(String value) {
+    final glucose = double.tryParse(value);
+
+    if (glucose == null) return '-';
+    if (glucose > 180) return 'Tinggi';
+    if (glucose < 70) return 'Rendah';
+
+    return 'Normal';
+  }
+
+  Color _glucoseColor(String value) {
+    final status = _glucoseStatus(value);
+
+    if (status == 'Normal') return const Color(0xFF10C878);
+    if (status == '-') return AppColors.dark3;
+
+    return AppColors.red;
   }
 
   Widget _dailyChecklistCard() {
@@ -543,13 +874,13 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
       decoration: _cardDecoration(),
       child: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(14, 14, 14, 10),
             child: Row(
-              children: const [
+              children: [
                 Expanded(
                   child: Text(
-                    'Kepatuhan pasien — 7 Jun',
+                    'Kepatuhan pasien — Hari ini',
                     style: TextStyle(
                       color: AppColors.primaryBlue,
                       fontSize: 13,
@@ -648,6 +979,32 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
     );
   }
 
+  String _dateKey(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  int _daysInMonth(DateTime date) {
+    return DateTime(date.year, date.month + 1, 0).day;
+  }
+
+  String _monthName(int month) {
+    const names = [
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember',
+    ];
+    return names[month - 1];
+  }
+
   Widget _calendarCard() {
     final year = currentMonth.year;
     final month = currentMonth.month;
@@ -677,18 +1034,14 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
               ),
               GestureDetector(
                 onTap: () {
-                  setState(() {
-                    currentMonth = DateTime(year, month - 1);
-                  });
+                  setState(() => currentMonth = DateTime(year, month - 1));
                 },
                 child: _smallArrow(Icons.chevron_left),
               ),
               const SizedBox(width: 10),
               GestureDetector(
                 onTap: () {
-                  setState(() {
-                    currentMonth = DateTime(year, month + 1);
-                  });
+                  setState(() => currentMonth = DateTime(year, month + 1));
                 },
                 child: _smallArrow(Icons.chevron_right),
               ),
@@ -714,7 +1067,6 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 7,
               mainAxisSpacing: 14,
-              crossAxisSpacing: 0,
               childAspectRatio: 1,
             ),
             itemBuilder: (context, index) {
@@ -733,14 +1085,13 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
                   date.day == selectedDate.day;
 
               if (status == 'lengkap') {
-                final prevStatus =
-                    consistencyStatus[_dateKey(
-                      date.subtract(const Duration(days: 1)),
-                    )];
-                final nextStatus =
-                    consistencyStatus[_dateKey(
-                      date.add(const Duration(days: 1)),
-                    )];
+                final prevStatus = consistencyStatus[_dateKey(
+                  date.subtract(const Duration(days: 1)),
+                )];
+
+                final nextStatus = consistencyStatus[_dateKey(
+                  date.add(const Duration(days: 1)),
+                )];
 
                 final baseDay = _calendarRangeDay(
                   text: '$dayNumber',
@@ -795,7 +1146,6 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
           ),
           const SizedBox(height: 22),
           const Row(
-            mainAxisAlignment: MainAxisAlignment.start,
             children: [
               _Legend(color: Color(0xFFEAFBF3), label: 'Lengkap'),
               SizedBox(width: 18),

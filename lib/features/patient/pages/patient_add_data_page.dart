@@ -6,44 +6,65 @@ import 'patient_meal_form_page.dart';
 import 'patient_activity_form_page.dart';
 import 'patient_medication_form_page.dart';
 
-class PatientAddDataPage extends StatelessWidget {
+class PatientAddDataPage extends StatefulWidget {
   const PatientAddDataPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final items = [
-      {
-        'title': 'Glukosa Darah',
-        'subtitle': 'Terakhir: 07.41',
-        'status': 'Sudah diisi',
-        'icon': Icons.opacity_outlined,
-      },
-      {
-        'title': 'Data Fisiologis',
-        'subtitle': 'Terakhir: kemarin',
-        'status': 'Belum diisi',
-        'icon': Icons.bar_chart_rounded,
-      },
-      {
-        'title': 'Aktivitas Fisik',
-        'subtitle': 'Belum ada hari ini',
-        'status': 'Belum diisi',
-        'icon': Icons.directions_run_rounded,
-      },
-      {
-        'title': 'Pola Makan',
-        'subtitle': 'Belum ada hari ini',
-        'status': 'Belum diisi',
-        'icon': Icons.restaurant_outlined,
-      },
-      {
-        'title': 'Kepatuhan Obat',
-        'subtitle': 'Terakhir: 17.30',
-        'status': 'Sudah diisi',
-        'icon': Icons.medication_outlined,
-      },
-    ];
+  State<PatientAddDataPage> createState() => _PatientAddDataPageState();
+}
 
+class _PatientAddDataPageState extends State<PatientAddDataPage> {
+  final List<Map<String, dynamic>> items = [
+    {
+      'title': 'Glukosa Darah',
+      'subtitle': 'Catat kadar gula darah',
+      'status': 'Isi data',
+      'icon': Icons.opacity_outlined,
+      'page': const PatientGlucoseFormPage(),
+    },
+    {
+      'title': 'Data Fisiologis',
+      'subtitle': 'Tekanan darah dan BMI',
+      'status': 'Isi data',
+      'icon': Icons.bar_chart_rounded,
+      'page': const PatientPhysiologyFormPage(),
+    },
+    {
+      'title': 'Aktivitas Fisik',
+      'subtitle': 'Catat olahraga harian',
+      'status': 'Isi data',
+      'icon': Icons.directions_run_rounded,
+      'page': const PatientActivityFormPage(),
+    },
+    {
+      'title': 'Pola Makan',
+      'subtitle': 'Catat makanan harian',
+      'status': 'Isi data',
+      'icon': Icons.restaurant_outlined,
+      'page': const PatientMealFormPage(),
+    },
+    {
+      'title': 'Kepatuhan Obat',
+      'subtitle': 'Catat konsumsi obat',
+      'status': 'Isi data',
+      'icon': Icons.medication_outlined,
+      'page': const PatientMedicationFormPage(),
+    },
+  ];
+
+  Future<void> _openForm(Widget page) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => page),
+    );
+
+    if (result == true && mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -53,127 +74,88 @@ class PatientAddDataPage extends StatelessWidget {
             _header(context),
             Expanded(
               child: GridView.builder(
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 120),
                 itemCount: items.length,
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
                   mainAxisSpacing: 14,
                   crossAxisSpacing: 14,
-                  childAspectRatio: 1.25,
+                  childAspectRatio: 1.18,
                 ),
                 itemBuilder: (context, index) {
                   final item = items[index];
-                  final done = item['status'] == 'Sudah diisi';
 
                   return InkWell(
                     borderRadius: BorderRadius.circular(12),
-                    onTap: () {
-                      if (index == 0) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const PatientGlucoseFormPage(),
-                          ),
-                        );
-                      } else if (index == 1) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const PatientPhysiologyFormPage(),
-                          ),
-                        );
-                      } else if (index == 3) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const PatientMealFormPage(),
-                          ),
-                        );
-                      } else if (index == 2) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const PatientActivityFormPage(),
-                          ),
-                        );
-                      } else if (index == 4) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const PatientMedicationFormPage(),
-                          ),
-                        );
-                      }
-                    },
+                    onTap: () => _openForm(item['page'] as Widget),
                     child: Container(
                       padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: AppColors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.light1),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.06),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
+                      decoration: _cardDecoration(),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Container(
-                            width: 34,
-                            height: 34,
+                            width: 38,
+                            height: 38,
                             decoration: BoxDecoration(
                               color: AppColors.veryLightBlue,
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(9),
                             ),
                             child: Icon(
                               item['icon'] as IconData,
                               color: AppColors.primaryBlue,
-                              size: 18,
+                              size: 20,
                             ),
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            item['title'] as String,
+                            item['title'].toString(),
                             style: const TextStyle(
                               color: AppColors.dark1,
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 5),
                           Text(
-                            item['subtitle'] as String,
+                            item['subtitle'].toString(),
                             style: const TextStyle(
                               color: AppColors.dark2,
                               fontSize: 10,
+                              height: 1.3,
                             ),
                           ),
                           const Spacer(),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: done
-                                  ? const Color(0xFFEAFBF3)
-                                  : AppColors.veryLightBlue,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              item['status'] as String,
-                              style: TextStyle(
-                                color: done
-                                    ? const Color(0xFF10C878)
-                                    : AppColors.primaryBlue,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w600,
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 9,
+                                  vertical: 5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.veryLightBlue,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: AppColors.lightBlue,
+                                  ),
+                                ),
+                                child: Text(
+                                  item['status'].toString(),
+                                  style: const TextStyle(
+                                    color: AppColors.primaryBlue,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                               ),
-                            ),
+                              const Spacer(),
+                              const Icon(
+                                Icons.chevron_right,
+                                color: AppColors.dark3,
+                                size: 20,
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -193,8 +175,14 @@ class PatientAddDataPage extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(20, topPad + 14, 20, 18),
-      color: AppColors.primaryBlue,
+      padding: EdgeInsets.fromLTRB(20, topPad + 18, 20, 20),
+      decoration: const BoxDecoration(
+        color: AppColors.primaryBlue,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(22),
+          bottomRight: Radius.circular(22),
+        ),
+      ),
       child: const Center(
         child: Text(
           'Tambah Data',
@@ -205,6 +193,21 @@ class PatientAddDataPage extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  BoxDecoration _cardDecoration() {
+    return BoxDecoration(
+      color: AppColors.white,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: AppColors.light1),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.06),
+          blurRadius: 8,
+          offset: const Offset(0, 3),
+        ),
+      ],
     );
   }
 }

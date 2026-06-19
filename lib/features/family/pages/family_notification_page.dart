@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../core/theme/app_colors.dart';
+import '../../../data/services/api_service.dart';
 
 class FamilyNotificationPage extends StatefulWidget {
   const FamilyNotificationPage({super.key});
@@ -11,77 +14,160 @@ class FamilyNotificationPage extends StatefulWidget {
 class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
   int selectedTab = 0;
 
-  final todayNotifications = const [
-    _FamilyNotificationItem(
-      icon: Icons.description_outlined,
-      iconBg: AppColors.lightBlue,
-      iconColor: AppColors.primaryBlue,
-      title: 'Rekomendasi baru dari dokter',
-      message: 'dr. Agus Setiawan, Sp.PD telah membuat rekomendasi untukmu.',
-      time: '09:41 • Baru saja',
-      unread: true,
-    ),
-    _FamilyNotificationItem(
-      icon: Icons.assignment_outlined,
-      iconBg: Color(0xFFFFF4DA),
-      iconColor: Colors.orange,
-      title: 'Data dari Anda dikonfirmasi pasien',
-      message: 'Angelica Sabi Gita mengonfirmasi data glukosa yang Anda input.',
-      time: '08:30 • 1 jam lalu',
-      unread: true,
-    ),
-    _FamilyNotificationItem(
-      icon: Icons.person_outline,
-      iconBg: Color(0xFFEAFBF3),
-      iconColor: Color(0xFF10C878),
-      title: 'Permintaan koneksi diterima',
-      message:
-          'Maya Putri Sari menyetujui permintaan koneksi Anda sebagai pendamping.',
-      time: '07:15 • 2 jam lalu',
-      unread: true,
-    ),
-  ];
+  bool isLoading = true;
+  String? errorMessage;
 
-  final yesterdayNotifications = const [
-    _FamilyNotificationItem(
-      icon: Icons.person_outline,
-      iconBg: Color(0xFFEAFBF3),
-      iconColor: Color(0xFF10C878),
-      title: 'Permintaan koneksi dokter diterima',
-      message: 'dr. Rina Wulandari menerima permintaan koneksimu.',
-      time: '6 Jun • 09:41',
-      unread: false,
-    ),
-    _FamilyNotificationItem(
-      icon: Icons.assignment_outlined,
-      iconBg: Color(0xFFFFF4DA),
-      iconColor: Colors.orange,
-      title: 'Data dari Anda ditolak pasien',
-      message:
-          'Angelica Sabi Gita menolak data tekanan darah yang kamu input kemarin.',
-      time: '6 Jun • 09:30',
-      unread: false,
-    ),
-    _FamilyNotificationItem(
-      icon: Icons.link_off_rounded,
-      iconBg: AppColors.lightRed,
-      iconColor: AppColors.red,
-      title: 'Pasien memutus relasi',
-      message: 'Hendra Gunawan memutus relasi denganmu sebagai pendamping.',
-      time: '6 Jun • 09:00',
-      unread: false,
-    ),
-  ];
+  List<Map<String, dynamic>> notifications = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotifications();
+  }
+
+  Future<void> _loadNotifications() async {
+    try {
+      setState(() {
+        isLoading = true;
+        errorMessage = null;
+      });
+
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getInt('user_id');
+
+      if (userId == null) {
+        throw Exception('User ID tidak ditemukan. Coba login ulang.');
+      }
+
+      final data = await ApiService.getNotifications(userId);
+
+      if (!mounted) return;
+
+      setState(() {
+        notifications = data;
+        isLoading = false;
+      });
+
+      await ApiService.markAllNotificationsAsRead(userId);
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        errorMessage = e.toString().replaceAll('Exception: ', '');
+        isLoading = false;
+      });
+    }
+  }
+
+  bool _isUnread(Map<String, dynamic> item) {
+    final isRead = item['is_read'];
+
+    return isRead == false || isRead == 0 || isRead?.toString() == '0';
+  }
+
+  String _title(Map<String, dynamic> item) {
+    return item['title']?.toString() ??
+        item['notification_title']?.toString() ??
+        'Notifikasi';
+  }
+
+  String _message(Map<String, dynamic> item) {
+    return item['message']?.toString() ??
+        item['notification_message']?.toString() ??
+        '-';
+  }
+
+  String _time(Map<String, dynamic> item) {
+    return item['created_at']?.toString() ??
+        item['notification_date']?.toString() ??
+        '';
+  }
+
+  String _type(Map<String, dynamic> item) {
+    return item['notification_type']?.toString() ??
+        item['type']?.toString() ??
+        '';
+  }
+
+  IconData _iconFromType(String type) {
+    final lowerType = type.toLowerCase();
+
+    if (lowerType.contains('recommendation') ||
+        lowerType.contains('rekomendasi')) {
+      return Icons.description_outlined;
+    }
+
+    if (lowerType.contains('validation') ||
+        lowerType.contains('validasi') ||
+        lowerType.contains('data')) {
+      return Icons.assignment_outlined;
+    }
+
+    if (lowerType.contains('connection') ||
+        lowerType.contains('koneksi') ||
+        lowerType.contains('relation')) {
+      return Icons.person_outline;
+    }
+
+    if (lowerType.contains('disconnect') ||
+        lowerType.contains('putus')) {
+      return Icons.link_off_rounded;
+    }
+
+    return Icons.notifications_none_outlined;
+  }
+
+  Color _iconBgFromType(String type) {
+    final lowerType = type.toLowerCase();
+
+    if (lowerType.contains('validation') ||
+        lowerType.contains('validasi') ||
+        lowerType.contains('data')) {
+      return const Color(0xFFFFF4DA);
+    }
+
+    if (lowerType.contains('connection') ||
+        lowerType.contains('koneksi') ||
+        lowerType.contains('relation')) {
+      return const Color(0xFFEAFBF3);
+    }
+
+    if (lowerType.contains('disconnect') ||
+        lowerType.contains('putus')) {
+      return AppColors.lightRed;
+    }
+
+    return AppColors.lightBlue;
+  }
+
+  Color _iconColorFromType(String type) {
+    final lowerType = type.toLowerCase();
+
+    if (lowerType.contains('validation') ||
+        lowerType.contains('validasi') ||
+        lowerType.contains('data')) {
+      return Colors.orange;
+    }
+
+    if (lowerType.contains('connection') ||
+        lowerType.contains('koneksi') ||
+        lowerType.contains('relation')) {
+      return const Color(0xFF10C878);
+    }
+
+    if (lowerType.contains('disconnect') ||
+        lowerType.contains('putus')) {
+      return AppColors.red;
+    }
+
+    return AppColors.primaryBlue;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final todayData = selectedTab == 0
-        ? todayNotifications
-        : todayNotifications.where((item) => item.unread).toList();
-
-    final yesterdayData = selectedTab == 0
-        ? yesterdayNotifications
-        : yesterdayNotifications.where((item) => item.unread).toList();
+    final filteredNotifications = selectedTab == 0
+        ? notifications
+        : notifications.where(_isUnread).toList();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -95,24 +181,9 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
               Expanded(
                 child: Container(
                   color: AppColors.background,
-                  child: ListView(
-                    padding: EdgeInsets.zero,
-                    children: [
-                      _tabs(),
-                      if (todayData.isEmpty && yesterdayData.isEmpty)
-                        _emptyNotification()
-                      else ...[
-                        if (todayData.isNotEmpty) ...[
-                          _sectionHeader('Hari Ini'),
-                          ...todayData,
-                        ],
-                        if (yesterdayData.isNotEmpty) ...[
-                          _sectionHeader('Kemarin'),
-                          ...yesterdayData,
-                        ],
-                        const SizedBox(height: 24),
-                      ],
-                    ],
+                  child: RefreshIndicator(
+                    onRefresh: _loadNotifications,
+                    child: _body(filteredNotifications),
                   ),
                 ),
               ),
@@ -120,6 +191,43 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _body(List<Map<String, dynamic>> data) {
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (errorMessage != null) {
+      return _errorState();
+    }
+
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.zero,
+      children: [
+        _tabs(),
+        if (data.isEmpty)
+          _emptyNotification()
+        else ...[
+          _sectionHeader(selectedTab == 0 ? 'Semua Notifikasi' : 'Belum Dibaca'),
+          ...data.map((item) {
+            final type = _type(item);
+
+            return _FamilyNotificationItem(
+              icon: _iconFromType(type),
+              iconBg: _iconBgFromType(type),
+              iconColor: _iconColorFromType(type),
+              title: _title(item),
+              message: _message(item),
+              time: _time(item),
+              unread: _isUnread(item),
+            );
+          }),
+          const SizedBox(height: 24),
+        ],
+      ],
     );
   }
 
@@ -133,7 +241,7 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
       child: Row(
         children: [
           IconButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context, true),
             icon: const Icon(Icons.arrow_back, color: Colors.white),
           ),
           const Expanded(
@@ -164,7 +272,10 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
           border: Border.all(color: AppColors.light1),
         ),
         child: Row(
-          children: [_tabItem('Semua', 0), _tabItem('Belum Dibaca', 1)],
+          children: [
+            _tabItem('Semua', 0),
+            _tabItem('Belum Dibaca', 1),
+          ],
         ),
       ),
     );
@@ -214,10 +325,10 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
   }
 
   Widget _emptyNotification() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 120),
+    return const Padding(
+      padding: EdgeInsets.only(top: 120),
       child: Column(
-        children: const [
+        children: [
           CircleAvatar(
             radius: 36,
             backgroundColor: AppColors.lightBlue,
@@ -245,6 +356,34 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
       ),
     );
   }
+
+  Widget _errorState() {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(24, 120, 24, 24),
+      children: [
+        const Icon(Icons.error_outline, color: AppColors.red, size: 42),
+        const SizedBox(height: 12),
+        Text(
+          errorMessage ?? 'Gagal memuat notifikasi',
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: AppColors.dark2, fontSize: 13),
+        ),
+        const SizedBox(height: 16),
+        Center(
+          child: ElevatedButton(
+            onPressed: _loadNotifications,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryBlue,
+              foregroundColor: Colors.white,
+              elevation: 0,
+            ),
+            child: const Text('Coba lagi'),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _FamilyNotificationItem extends StatelessWidget {
@@ -255,7 +394,6 @@ class _FamilyNotificationItem extends StatelessWidget {
   final String message;
   final String time;
   final bool unread;
-  final VoidCallback? onTap;
 
   const _FamilyNotificationItem({
     required this.icon,
@@ -265,13 +403,26 @@ class _FamilyNotificationItem extends StatelessWidget {
     required this.message,
     required this.time,
     required this.unread,
-    this.onTap,
   });
+
+  String _formatTime(String raw) {
+    if (raw.isEmpty) return '-';
+
+    try {
+      final dt = DateTime.parse(raw).toLocal();
+
+      return '${dt.day}/${dt.month}/${dt.year} • '
+          '${dt.hour.toString().padLeft(2, '0')}:'
+          '${dt.minute.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return raw;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: onTap ?? () {},
+      onTap: () {},
       child: Container(
         color: unread ? const Color(0xFFF3F8FF) : AppColors.white,
         padding: const EdgeInsets.fromLTRB(22, 14, 14, 14),
@@ -336,7 +487,7 @@ class _FamilyNotificationItem extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        time,
+                        _formatTime(time),
                         style: const TextStyle(
                           color: AppColors.primaryBlue,
                           fontSize: 10,

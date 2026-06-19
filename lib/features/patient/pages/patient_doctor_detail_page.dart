@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class PatientDoctorDetailPage extends StatelessWidget {
+import '../../../core/theme/app_colors.dart';
+import '../../../data/services/api_service.dart';
+
+class PatientDoctorDetailPage extends StatefulWidget {
+  final int doctorId;
   final String initial;
   final String name;
   final String info;
@@ -10,39 +14,150 @@ class PatientDoctorDetailPage extends StatelessWidget {
 
   const PatientDoctorDetailPage({
     super.key,
-    this.initial = 'AS',
-    this.name = 'dr. Agus Setiawan, Sp.PD',
-    this.info = 'Penyakit Dalam • RS Cipto Mangunkusumo',
-    this.status = 'Terhubung',
-    this.date = 'Sejak 1 Jan 2025',
+    required this.doctorId,
+    required this.initial,
+    required this.name,
+    required this.info,
+    required this.status,
+    required this.date,
   });
 
-  bool get isConnected => status == 'Terhubung';
-  bool get isWaiting => status == 'Menunggu';
-  bool get isNotConnected => status == 'Belum Terhubung';
+  @override
+  State<PatientDoctorDetailPage> createState() =>
+      _PatientDoctorDetailPageState();
+}
+
+class _PatientDoctorDetailPageState extends State<PatientDoctorDetailPage> {
+  late String currentStatus;
+  bool isProcessing = false;
+  bool hasChanged = false;
+
+  bool get isConnected =>
+      currentStatus == 'Terhubung' || currentStatus == 'Diterima';
+
+  bool get isWaiting =>
+      currentStatus == 'Menunggu' ||
+      currentStatus == 'Menunggu Persetujuan' ||
+      currentStatus == 'Menunggu persetujuan dokter';
+
+  @override
+  void initState() {
+    super.initState();
+    currentStatus = widget.status == 'Diterima' ? 'Terhubung' : widget.status;
+  }
+
+  Future<int> _getPatientId() async {
+    final prefs = await SharedPreferences.getInstance();
+    final patientId = prefs.getInt('patient_id');
+
+    if (patientId == null) {
+      throw Exception('Patient ID tidak ditemukan');
+    }
+
+    return patientId;
+  }
+
+  Future<void> _requestConnection() async {
+    setState(() => isProcessing = true);
+
+    try {
+      final patientId = await _getPatientId();
+
+      await ApiService.requestDoctorConnection(
+        patientId: patientId,
+        doctorId: widget.doctorId,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        currentStatus = 'Menunggu';
+        isProcessing = false;
+        hasChanged = true;
+      });
+
+      _showSuccessSheet(
+        title: 'Permintaan Terkirim',
+        message:
+            'Permintaan koneksi dokter berhasil diajukan. Silakan menunggu persetujuan dokter.',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => isProcessing = false);
+      _showSnackBar(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  Future<void> _disconnectDoctor() async {
+    setState(() => isProcessing = true);
+
+    try {
+      final patientId = await _getPatientId();
+
+      await ApiService.disconnectDoctorConnection(
+        patientId: patientId,
+        doctorId: widget.doctorId,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        currentStatus = 'Belum Terhubung';
+        isProcessing = false;
+        hasChanged = true;
+      });
+
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => isProcessing = false);
+      _showSnackBar(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: AppColors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        content: Text(message, style: const TextStyle(color: Colors.white)),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        top: false,
-        child: Column(
-          children: [
-            _header(context),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 22, 20, 28),
-                child: Column(
-                  children: [
-                    _infoCard(),
-                    const SizedBox(height: 22),
-                    _actionButton(context),
-                  ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+
+        if (!isProcessing) {
+          Navigator.pop(context, hasChanged);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(
+          top: false,
+          child: Column(
+            children: [
+              _header(context),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 22, 20, 28),
+                  child: Column(
+                    children: [
+                      _infoCard(),
+                      const SizedBox(height: 22),
+                      _actionButton(context),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -66,7 +181,11 @@ class PatientDoctorDetailPage extends StatelessWidget {
           Row(
             children: [
               IconButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () {
+                  if (!isProcessing) {
+                    Navigator.pop(context, hasChanged);
+                  }
+                },
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
               ),
               const Expanded(
@@ -88,7 +207,7 @@ class PatientDoctorDetailPage extends StatelessWidget {
             radius: 42,
             backgroundColor: AppColors.lightBlue,
             child: Text(
-              initial,
+              widget.initial,
               style: const TextStyle(
                 color: AppColors.primaryBlue,
                 fontSize: 28,
@@ -98,7 +217,7 @@ class PatientDoctorDetailPage extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            name,
+            widget.name,
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: Colors.white,
@@ -108,7 +227,7 @@ class PatientDoctorDetailPage extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            info,
+            widget.info,
             textAlign: TextAlign.center,
             style: const TextStyle(color: Colors.white, fontSize: 12),
           ),
@@ -118,7 +237,7 @@ class PatientDoctorDetailPage extends StatelessWidget {
             children: [
               const _HeaderBadge(text: 'Terverifikasi'),
               const SizedBox(width: 8),
-              _HeaderBadge(text: status),
+              _HeaderBadge(text: currentStatus),
             ],
           ),
         ],
@@ -150,7 +269,7 @@ class PatientDoctorDetailPage extends StatelessWidget {
           _InfoRow(
             icon: Icons.calendar_today_outlined,
             label: isConnected ? 'Terhubung sejak' : 'Status koneksi',
-            value: isConnected ? date : status,
+            value: isConnected ? widget.date : currentStatus,
           ),
         ],
       ),
@@ -158,20 +277,22 @@ class PatientDoctorDetailPage extends StatelessWidget {
   }
 
   String _getSpecialist() {
-    final parts = info.split('•');
-    return parts.isNotEmpty ? parts[0].trim() : '-';
+    if (!widget.info.contains('•')) return widget.info;
+
+    return widget.info.split('•').first.trim();
   }
 
   String _getHospital() {
-    final parts = info.split('•');
-    return parts.length > 1 ? parts[1].trim() : '-';
+    if (!widget.info.contains('•')) return '-';
+
+    return widget.info.split('•').last.trim();
   }
 
   Widget _actionButton(BuildContext context) {
     if (isConnected) {
       return _redButton(
-        text: 'Putus Relasi',
-        onPressed: () => _showDisconnectSheet(context),
+        text: isProcessing ? 'Memproses...' : 'Putus Relasi',
+        onPressed: isProcessing ? null : () => _showDisconnectSheet(context),
       );
     }
 
@@ -199,12 +320,16 @@ class PatientDoctorDetailPage extends StatelessWidget {
       width: double.infinity,
       height: 46,
       child: ElevatedButton.icon(
-        onPressed: () => _showRequestSheet(context),
+        onPressed: isProcessing ? null : () => _showRequestSheet(context),
         icon: const Icon(Icons.person_add_alt_1_rounded, size: 16),
-        label: const Text('Ajukan Permintaan Koneksi'),
+        label: Text(
+          isProcessing ? 'Memproses...' : 'Ajukan Permintaan Koneksi',
+        ),
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primaryBlue,
+          disabledBackgroundColor: const Color(0xFFAFCBEA),
           foregroundColor: Colors.white,
+          disabledForegroundColor: Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         ),
@@ -212,7 +337,7 @@ class PatientDoctorDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _redButton({required String text, required VoidCallback onPressed}) {
+  Widget _redButton({required String text, required VoidCallback? onPressed}) {
     return SizedBox(
       width: double.infinity,
       height: 46,
@@ -220,6 +345,7 @@ class PatientDoctorDetailPage extends StatelessWidget {
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.red,
+          disabledBackgroundColor: AppColors.lightRed,
           foregroundColor: Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
@@ -245,14 +371,14 @@ class PatientDoctorDetailPage extends StatelessWidget {
           primaryColor: AppColors.primaryBlue,
           onPrimaryTap: () {
             Navigator.pop(sheetContext);
-            _showSuccessSheet(context);
+            _requestConnection();
           },
         );
       },
     );
   }
 
-  void _showSuccessSheet(BuildContext context) {
+  void _showSuccessSheet({required String title, required String message}) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -261,12 +387,13 @@ class PatientDoctorDetailPage extends StatelessWidget {
           icon: Icons.check_circle,
           iconBg: const Color(0xFFEAFBF3),
           iconColor: const Color(0xFF10C878),
-          title: 'Permintaan Terkirim',
-          message:
-              'Permintaan koneksi dokter berhasil diajukan. Silakan menunggu persetujuan dokter.',
+          title: title,
+          message: message,
           primaryText: 'OK',
           primaryColor: AppColors.primaryBlue,
-          onPrimaryTap: () => Navigator.pop(sheetContext),
+          onPrimaryTap: () {
+            Navigator.pop(sheetContext);
+          },
           showCancel: false,
         );
       },
@@ -287,7 +414,10 @@ class PatientDoctorDetailPage extends StatelessWidget {
               'Dokter tidak lagi dapat memantau data kesehatanmu setelah relasi diputus.',
           primaryText: 'Ya, Putus Relasi',
           primaryColor: AppColors.red,
-          onPrimaryTap: () => Navigator.pop(sheetContext),
+          onPrimaryTap: () {
+            Navigator.pop(sheetContext);
+            _disconnectDoctor();
+          },
         );
       },
     );

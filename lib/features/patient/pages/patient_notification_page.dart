@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../core/theme/app_colors.dart';
-import 'patient_recommendation_detail_page.dart';
-import 'patient_validation_detail_page.dart';
+import '../../../data/services/api_service.dart';
 import 'patient_connection_page.dart';
 import 'patient_doctor_detail_page.dart';
+import 'patient_recommendation_detail_page.dart';
+import 'patient_validation_page.dart';
 
 class PatientNotificationPage extends StatefulWidget {
   const PatientNotificationPage({super.key});
@@ -15,72 +18,17 @@ class PatientNotificationPage extends StatefulWidget {
 
 class _PatientNotificationPageState extends State<PatientNotificationPage> {
   int selectedTab = 0;
-  final searchController = TextEditingController();
+  bool isLoading = true;
+  String? errorMessage;
 
-  final List<Map<String, Object>> notifications = [
-    {
-      'section': 'Hari Ini',
-      'title': 'Rekomendasi baru dari dokter',
-      'desc': 'dr. Agus Setiawan, Sp.PD telah mengirim rekomendasi untukmu.',
-      'time': '09:41 • Baru saja',
-      'type': 'recommendation',
-      'icon': Icons.send_outlined,
-      'bg': AppColors.veryLightBlue,
-      'color': AppColors.primaryBlue,
-      'read': false,
-    },
-    {
-      'section': 'Hari Ini',
-      'title': 'Data dari keluarga perlu validasi',
-      'desc':
-          'Aditya Yoga Saputra menginput data glukosa 165 mg/dL atas namamu.',
-      'time': '08:30 • 1 jam lalu',
-      'type': 'validation',
-      'icon': Icons.assignment_outlined,
-      'bg': Color(0xFFFFF4DA),
-      'color': Color(0xFFFF8A00),
-      'read': false,
-    },
-    {
-      'section': 'Hari Ini',
-      'title': 'Permintaan koneksi dari keluarga',
-      'desc': 'Maya Putri Sari ingin terhubung sebagai pendamping (Anak).',
-      'time': '07:15 · 2 jam lalu',
-      'type': 'family_request',
-      'icon': Icons.person_outline,
-      'bg': Color(0xFFEAFBF3),
-      'color': Color(0xFF10C878),
-      'read': false,
-    },
-    {
-      'section': 'Kemarin',
-      'title': 'Permintaan koneksi dokter diterima',
-      'desc': 'dr. Rina Wulandari menerima permintaan koneksimu.',
-      'time': '6 Jun • 09:41',
-      'type': 'doctor_connection',
-      'icon': Icons.person_outline,
-      'bg': Color(0xFFEAFBF3),
-      'color': Color(0xFF10C878),
-      'read': true,
-    },
-    {
-      'section': 'Kemarin',
-      'title': 'Dokter memutus relasi',
-      'desc':
-          'dr. Hendra Gunawan telah memutus relasi denganmu sebagai pasien.',
-      'time': '6 Jun • 09:00',
-      'type': 'disconnected',
-      'icon': Icons.link_off_rounded,
-      'bg': AppColors.lightRed,
-      'color': AppColors.red,
-      'read': true,
-    },
-  ];
+  final searchController = TextEditingController();
+  List<Map<String, dynamic>> notifications = [];
 
   @override
   void initState() {
     super.initState();
     searchController.addListener(() => setState(() {}));
+    _loadNotifications();
   }
 
   @override
@@ -89,67 +37,221 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
     super.dispose();
   }
 
-  Future<void> _openNotification(Map<String, Object> item) async {
+  Future<void> _loadNotifications() async {
     setState(() {
-      item['read'] = true;
+      isLoading = true;
+      errorMessage = null;
     });
 
-    final type = item['type'] as String;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getInt('user_id');
 
-    if (type == 'recommendation') {
+      if (userId == null) {
+        throw Exception('User ID tidak ditemukan. Coba login ulang.');
+      }
+
+      final data = await ApiService.getNotifications(userId);
+
+      if (!mounted) return;
+
+      setState(() {
+        notifications = data;
+        isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        errorMessage = e.toString().replaceAll('Exception: ', '');
+        isLoading = false;
+      });
+    }
+  }
+
+  bool _isRead(Map<String, dynamic> item) {
+    final value = item['is_read'] ?? item['read'];
+    return value == true || value == 1 || value.toString() == '1';
+  }
+
+  String _title(Map<String, dynamic> item) {
+    return item['title']?.toString() ??
+        item['notification_title']?.toString() ??
+        'Notifikasi';
+  }
+
+  String _desc(Map<String, dynamic> item) {
+    return item['message']?.toString() ??
+        item['desc']?.toString() ??
+        item['description']?.toString() ??
+        '-';
+  }
+
+  String _type(Map<String, dynamic> item) {
+    return item['type']?.toString() ??
+        item['notification_type']?.toString() ??
+        '';
+  }
+
+  String _time(Map<String, dynamic> item) {
+    final raw = item['created_at'] ?? item['time'];
+    if (raw == null) return '-';
+
+    final date = DateTime.tryParse(raw.toString());
+    if (date == null) return raw.toString();
+
+    return '${date.day}/${date.month}/${date.year} • ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
+  String _section(Map<String, dynamic> item) {
+    final raw = item['created_at'];
+    final date = raw == null ? null : DateTime.tryParse(raw.toString());
+
+    if (date == null) return 'Notifikasi';
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final target = DateTime(date.year, date.month, date.day);
+
+    if (target == today) return 'Hari Ini';
+    if (target == today.subtract(const Duration(days: 1))) return 'Kemarin';
+
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
+  IconData _iconByType(String type) {
+    if (type.contains('recommendation')) return Icons.send_outlined;
+    if (type.contains('validation')) return Icons.assignment_outlined;
+    if (type.contains('family')) return Icons.person_outline;
+    if (type.contains('doctor')) return Icons.person_outline;
+    if (type.contains('disconnect')) return Icons.link_off_rounded;
+
+    return Icons.notifications_none_rounded;
+  }
+
+  Color _bgByType(String type) {
+    if (type.contains('validation')) return const Color(0xFFFFF4DA);
+    if (type.contains('family') || type.contains('doctor')) {
+      return const Color(0xFFEAFBF3);
+    }
+    if (type.contains('disconnect')) return AppColors.lightRed;
+
+    return AppColors.veryLightBlue;
+  }
+
+  Color _colorByType(String type) {
+    if (type.contains('validation')) return Colors.orange;
+    if (type.contains('family') || type.contains('doctor')) {
+      return const Color(0xFF10C878);
+    }
+    if (type.contains('disconnect')) return AppColors.red;
+
+    return AppColors.primaryBlue;
+  }
+
+  Future<void> _openNotification(Map<String, dynamic> item) async {
+    final notificationId = item['notification_id'] ?? item['id'];
+
+    if (!_isRead(item) && notificationId != null) {
+      try {
+        await ApiService.markNotificationAsRead(
+          int.parse(notificationId.toString()),
+        );
+
+        setState(() {
+          item['is_read'] = true;
+          item['read'] = true;
+        });
+      } catch (_) {}
+    }
+
+    final type = _type(item);
+
+    if (type.contains('recommendation')) {
       await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => const PatientRecommendationDetailPage(),
-        ),
-      );
-    } else if (type == 'validation') {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const PatientValidationDetailPage(
-            name: 'Aditya Yoga Saputra',
-            relation: 'Anak',
-            type: 'Glukosa Darah',
-            value: '165 mg/dL',
-            time: '7 Jun 2025 • 08:30',
-            note: 'Diinput oleh keluarga dan menunggu validasi pasien.',
-            icon: Icons.opacity,
+          builder: (_) => PatientRecommendationDetailPage(
+            item: {
+              'doctor': item['doctor_name']?.toString() ?? 'Dokter',
+              'date': _time(item),
+              'status': item['category']?.toString() ?? 'Rekomendasi',
+              'description':
+                  item['recommendation_text']?.toString() ??
+                  item['content']?.toString() ??
+                  _desc(item),
+            },
           ),
         ),
       );
-    } else if (type == 'family_request') {
+    } else if (type.contains('validation')) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const PatientValidationPage()),
+      );
+    } else if (type.contains('family')) {
       await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => PatientRequestDetailPage(
-            initial: 'MP',
-            name: 'Maya Putri Sari',
-            relation: 'Anak',
-            time: '2 jam lalu',
-            date: '7 Jun 2025 • 07:15',
-            onAccept: () {
-              Navigator.pop(context);
-            },
-            onReject: () {
-              Navigator.pop(context);
-            },
+            initial: item['initial']?.toString() ?? 'K',
+            name: item['family_name']?.toString() ?? 'Keluarga',
+            relation: item['relation']?.toString() ?? 'Keluarga',
+            time: _time(item),
+            date: _time(item),
+            onAccept: () => Navigator.pop(context),
+            onReject: () => Navigator.pop(context),
           ),
         ),
       );
-    } else if (type == 'doctor_connection') {
+    } else if (type.contains('doctor_connection')) {
       await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => const DoctorConnectionAcceptedDetailPage(),
+          builder: (_) => DoctorConnectionAcceptedDetailPage(
+            doctorId: int.tryParse(item['doctor_id']?.toString() ?? '') ?? 0,
+            initial: item['initial']?.toString() ?? 'D',
+            name: item['doctor_name']?.toString() ?? 'Dokter',
+            info: item['info']?.toString() ?? '-',
+            status: item['status']?.toString() ?? 'Terhubung',
+            date: _time(item),
+          ),
         ),
       );
-    } else if (type == 'disconnected') {
+    } else if (type.contains('disconnect')) {
       await Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => const DoctorDisconnectedDetailPage()),
+        MaterialPageRoute(
+          builder: (_) => DoctorDisconnectedDetailPage(
+            doctorId: int.tryParse(item['doctor_id']?.toString() ?? '') ?? 0,
+            initial: item['initial']?.toString() ?? 'D',
+            name: item['doctor_name']?.toString() ?? 'Dokter',
+            info: item['info']?.toString() ?? '-',
+            status: item['status']?.toString() ?? 'Tidak Terhubung',
+            date: _time(item),
+          ),
+        ),
       );
     }
+
+    _loadNotifications();
+  }
+
+  List<Map<String, dynamic>> _filteredNotifications() {
+    final keyword = searchController.text.trim().toLowerCase();
+
+    final tabFiltered = selectedTab == 0
+        ? notifications
+        : notifications.where((item) => !_isRead(item)).toList();
+
+    if (keyword.isEmpty) return tabFiltered;
+
+    return tabFiltered.where((item) {
+      return _title(item).toLowerCase().contains(keyword) ||
+          _desc(item).toLowerCase().contains(keyword) ||
+          _time(item).toLowerCase().contains(keyword) ||
+          _section(item).toLowerCase().contains(keyword);
+    }).toList();
   }
 
   @override
@@ -166,18 +268,25 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
             Expanded(
               child: Container(
                 color: AppColors.background,
-                child: ListView(
-                  padding: EdgeInsets.zero,
-                  children: [
-                    _tabBar(),
-                    if (filtered.isEmpty)
-                      _emptyState()
-                    else ...[
-                      ..._groupedNotifications(filtered),
-                      const SizedBox(height: 24),
-                    ],
-                  ],
-                ),
+                child: isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : errorMessage != null
+                    ? _errorState()
+                    : RefreshIndicator(
+                        onRefresh: _loadNotifications,
+                        child: ListView(
+                          padding: EdgeInsets.zero,
+                          children: [
+                            _tabBar(),
+                            if (filtered.isEmpty)
+                              _emptyState()
+                            else ...[
+                              ..._groupedNotifications(filtered),
+                              const SizedBox(height: 24),
+                            ],
+                          ],
+                        ),
+                      ),
               ),
             ),
           ],
@@ -186,26 +295,34 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
     );
   }
 
-  List<Map<String, Object>> _filteredNotifications() {
-    final keyword = searchController.text.trim().toLowerCase();
-
-    final tabFiltered = selectedTab == 0
-        ? notifications
-        : notifications.where((item) => item['read'] == false).toList();
-
-    if (keyword.isEmpty) return tabFiltered;
-
-    return tabFiltered.where((item) {
-      final title = item['title'].toString().toLowerCase();
-      final desc = item['desc'].toString().toLowerCase();
-      final time = item['time'].toString().toLowerCase();
-      final section = item['section'].toString().toLowerCase();
-
-      return title.contains(keyword) ||
-          desc.contains(keyword) ||
-          time.contains(keyword) ||
-          section.contains(keyword);
-    }).toList();
+  Widget _errorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, color: AppColors.red, size: 42),
+            const SizedBox(height: 12),
+            Text(
+              errorMessage ?? 'Gagal memuat notifikasi',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.dark2, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _loadNotifications,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryBlue,
+                foregroundColor: Colors.white,
+                elevation: 0,
+              ),
+              child: const Text('Coba lagi'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _header(BuildContext context) {
@@ -323,12 +440,12 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
     );
   }
 
-  List<Widget> _groupedNotifications(List<Map<String, Object>> data) {
+  List<Widget> _groupedNotifications(List<Map<String, dynamic>> data) {
     final widgets = <Widget>[];
     String? lastSection;
 
     for (final item in data) {
-      final section = item['section'] as String;
+      final section = _section(item);
 
       if (section != lastSection) {
         widgets.add(_sectionHeader(section));
@@ -357,8 +474,9 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
     );
   }
 
-  Widget _notificationTile(Map<String, Object> item) {
-    final read = item['read'] as bool? ?? false;
+  Widget _notificationTile(Map<String, dynamic> item) {
+    final read = _isRead(item);
+    final type = _type(item);
 
     return InkWell(
       onTap: () => _openNotification(item),
@@ -384,12 +502,12 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: item['bg'] as Color,
+                color: _bgByType(type),
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                item['icon'] as IconData,
-                color: item['color'] as Color,
+                _iconByType(type),
+                color: _colorByType(type),
                 size: 22,
               ),
             ),
@@ -399,7 +517,7 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    item['title'] as String,
+                    _title(item),
                     style: const TextStyle(
                       color: AppColors.primaryBlue,
                       fontSize: 13,
@@ -408,7 +526,7 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    item['desc'] as String,
+                    _desc(item),
                     style: const TextStyle(
                       color: AppColors.dark1,
                       fontSize: 12,
@@ -425,7 +543,7 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        item['time'] as String,
+                        _time(item),
                         style: const TextStyle(
                           color: AppColors.primaryBlue,
                           fontSize: 11,
@@ -485,22 +603,40 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
 }
 
 class DoctorConnectionAcceptedDetailPage extends StatelessWidget {
-  const DoctorConnectionAcceptedDetailPage({super.key});
+  final int doctorId;
+  final String initial;
+  final String name;
+  final String info;
+  final String status;
+  final String date;
+
+  const DoctorConnectionAcceptedDetailPage({
+    super.key,
+    required this.doctorId,
+    required this.initial,
+    required this.name,
+    required this.info,
+    required this.status,
+    required this.date,
+  });
 
   @override
   Widget build(BuildContext context) {
     return _NotificationDetailScaffold(
       title: 'Koneksi Dokter Diterima',
       icon: Icons.check_circle_outline,
-      headerText: 'Permintaan koneksi diterima\ndr. Rina Wulandari\n6 Jun 2025',
+      headerText: 'Permintaan koneksi diterima\n$name\n$date',
       children: [
         _whiteCard(
           title: 'Data Dokter',
           children: [
-            const _InfoRow(label: 'Nama', value: 'dr. Rina Wulandari'),
-            const _InfoRow(label: 'Spesialisasi', value: 'Sp.PD'),
+            _InfoRow(label: 'Nama', value: name),
+            _InfoRow(
+              label: 'Spesialisasi',
+              value: info.split('•').first.trim(),
+            ),
             const _InfoRow(label: 'Status relasi', value: 'Terhubung'),
-            const _InfoRow(label: 'Terhubung sejak', value: '6 Jun 2025'),
+            _InfoRow(label: 'Terhubung sejak', value: date),
             const SizedBox(height: 8),
             InkWell(
               onTap: () {
@@ -508,11 +644,12 @@ class DoctorConnectionAcceptedDetailPage extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                     builder: (_) => PatientDoctorDetailPage(
-                      initial: 'RW',
-                      name: 'dr. Rina Wulandari',
-                      info: 'Penyakit Dalam • RSUD Surabaya',
-                      status: 'Terhubung',
-                      date: 'Sejak 6 Jun 2025',
+                      doctorId: doctorId,
+                      initial: initial,
+                      name: name,
+                      info: info,
+                      status: status,
+                      date: date,
                     ),
                   ),
                 );
@@ -531,20 +668,6 @@ class DoctorConnectionAcceptedDetailPage extends StatelessWidget {
                   ),
                   Icon(Icons.chevron_right, color: AppColors.primaryBlue),
                 ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        _whiteCard(
-          title: 'Keterangan',
-          children: const [
-            Text(
-              'Dokter telah menerima permintaan koneksimu. Data kesehatanmu dapat dipantau oleh dokter terkait selama relasi masih aktif.',
-              style: TextStyle(
-                color: AppColors.dark2,
-                fontSize: 12,
-                height: 1.45,
               ),
             ),
           ],
@@ -723,22 +846,40 @@ class _InfoRow extends StatelessWidget {
 }
 
 class DoctorDisconnectedDetailPage extends StatelessWidget {
-  const DoctorDisconnectedDetailPage({super.key});
+  final int doctorId;
+  final String initial;
+  final String name;
+  final String info;
+  final String status;
+  final String date;
+
+  const DoctorDisconnectedDetailPage({
+    super.key,
+    required this.doctorId,
+    required this.initial,
+    required this.name,
+    required this.info,
+    required this.status,
+    required this.date,
+  });
 
   @override
   Widget build(BuildContext context) {
     return _NotificationDetailScaffold(
       title: 'Relasi Terputus',
       icon: Icons.link_off_rounded,
-      headerText: 'Relasi dokter terputus\ndr. Hendra Gunawan\n6 Jun 2025',
+      headerText: 'Relasi dokter terputus\n$name\n$date',
       children: [
         _whiteCard(
           title: 'Data Dokter',
           children: [
-            const _InfoRow(label: 'Nama', value: 'dr. Hendra Gunawan'),
-            const _InfoRow(label: 'Spesialisasi', value: 'Sp.PD'),
+            _InfoRow(label: 'Nama', value: name),
+            _InfoRow(
+              label: 'Spesialisasi',
+              value: info.split('•').first.trim(),
+            ),
             const _InfoRow(label: 'Status relasi', value: 'Tidak Terhubung'),
-            const _InfoRow(label: 'Relasi berakhir', value: '6 Jun 2025'),
+            _InfoRow(label: 'Relasi berakhir', value: date),
             const SizedBox(height: 8),
             InkWell(
               onTap: () {
@@ -746,11 +887,12 @@ class DoctorDisconnectedDetailPage extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                     builder: (_) => PatientDoctorDetailPage(
-                      initial: 'HG',
-                      name: 'dr. Hendra Gunawan',
-                      info: 'Penyakit Dalam • RSUD Surabaya',
-                      status: 'Tidak Terhubung',
-                      date: 'Berakhir 6 Jun 2025',
+                      doctorId: doctorId,
+                      initial: initial,
+                      name: name,
+                      info: info,
+                      status: status,
+                      date: '',
                     ),
                   ),
                 );
@@ -769,20 +911,6 @@ class DoctorDisconnectedDetailPage extends StatelessWidget {
                   ),
                   Icon(Icons.chevron_right, color: AppColors.primaryBlue),
                 ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        _whiteCard(
-          title: 'Keterangan',
-          children: const [
-            Text(
-              'Relasi dengan dokter ini telah terputus. Dokter tidak dapat melihat pembaruan data terbaru setelah relasi berakhir.',
-              style: TextStyle(
-                color: AppColors.dark2,
-                fontSize: 12,
-                height: 1.45,
               ),
             ),
           ],

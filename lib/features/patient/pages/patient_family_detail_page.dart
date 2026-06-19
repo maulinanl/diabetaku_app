@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class PatientFamilyDetailPage extends StatelessWidget {
+import '../../../core/theme/app_colors.dart';
+import '../../../data/services/api_service.dart';
+
+class PatientFamilyDetailPage extends StatefulWidget {
+  final int familyId;
   final String initial;
   final String name;
   final String relation;
@@ -9,11 +13,66 @@ class PatientFamilyDetailPage extends StatelessWidget {
 
   const PatientFamilyDetailPage({
     super.key,
+    required this.familyId,
     required this.initial,
     required this.name,
     required this.relation,
     required this.date,
   });
+
+  @override
+  State<PatientFamilyDetailPage> createState() =>
+      _PatientFamilyDetailPageState();
+}
+
+class _PatientFamilyDetailPageState extends State<PatientFamilyDetailPage> {
+  bool isProcessing = false;
+
+  Future<int> _getPatientId() async {
+    final prefs = await SharedPreferences.getInstance();
+    final patientId = prefs.getInt('patient_id');
+
+    if (patientId == null) {
+      throw Exception('Patient ID tidak ditemukan');
+    }
+
+    return patientId;
+  }
+
+  Future<void> _disconnectFamily() async {
+    setState(() => isProcessing = true);
+
+    try {
+      final patientId = await _getPatientId();
+
+      await ApiService.disconnectFamilyConnection(
+        patientId: patientId,
+        familyId: widget.familyId,
+      );
+
+      if (!mounted) return;
+
+      setState(() => isProcessing = false);
+
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() => isProcessing = false);
+      _showSnackBar(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: AppColors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        content: Text(message, style: const TextStyle(color: Colors.white)),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +119,7 @@ class PatientFamilyDetailPage extends StatelessWidget {
           Row(
             children: [
               IconButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: isProcessing ? null : () => Navigator.pop(context),
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
               ),
               const Expanded(
@@ -82,7 +141,7 @@ class PatientFamilyDetailPage extends StatelessWidget {
             radius: 42,
             backgroundColor: AppColors.lightBlue,
             child: Text(
-              initial,
+              widget.initial,
               style: const TextStyle(
                 color: AppColors.primaryBlue,
                 fontSize: 28,
@@ -92,7 +151,7 @@ class PatientFamilyDetailPage extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            name,
+            widget.name,
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: Colors.white,
@@ -102,14 +161,14 @@ class PatientFamilyDetailPage extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            relation,
+            widget.relation,
             textAlign: TextAlign.center,
             style: const TextStyle(color: Colors.white, fontSize: 12),
           ),
           const SizedBox(height: 12),
-          Row(
+          const Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
+            children: [
               _HeaderBadge(text: 'Pendamping'),
               SizedBox(width: 8),
               _HeaderBadge(text: 'Terhubung'),
@@ -126,11 +185,15 @@ class PatientFamilyDetailPage extends StatelessWidget {
       decoration: _cardDecoration(),
       child: Column(
         children: [
-          _InfoRow(icon: Icons.person_outline, label: 'Nama', value: name),
+          _InfoRow(
+            icon: Icons.person_outline,
+            label: 'Nama',
+            value: widget.name,
+          ),
           _InfoRow(
             icon: Icons.people_alt_outlined,
             label: 'Hubungan',
-            value: relation,
+            value: widget.relation,
           ),
           const _InfoRow(
             icon: Icons.check_circle_outline,
@@ -140,7 +203,7 @@ class PatientFamilyDetailPage extends StatelessWidget {
           _InfoRow(
             icon: Icons.calendar_today_outlined,
             label: 'Terhubung sejak',
-            value: date,
+            value: widget.date,
           ),
           const _InfoRow(
             icon: Icons.health_and_safety_outlined,
@@ -159,18 +222,17 @@ class PatientFamilyDetailPage extends StatelessWidget {
       width: double.infinity,
       height: 46,
       child: ElevatedButton(
-        onPressed: () {
-          _showDisconnectSheet(context);
-        },
+        onPressed: isProcessing ? null : () => _showDisconnectSheet(context),
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.red,
+          disabledBackgroundColor: AppColors.lightRed,
           foregroundColor: Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         ),
-        child: const Text(
-          'Putus Relasi',
-          style: TextStyle(fontWeight: FontWeight.w600),
+        child: Text(
+          isProcessing ? 'Memproses...' : 'Putus Relasi',
+          style: const TextStyle(fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -223,7 +285,10 @@ class PatientFamilyDetailPage extends StatelessWidget {
                 width: double.infinity,
                 height: 46,
                 child: ElevatedButton(
-                  onPressed: () => Navigator.pop(sheetContext),
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    _disconnectFamily();
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.red,
                     foregroundColor: Colors.white,

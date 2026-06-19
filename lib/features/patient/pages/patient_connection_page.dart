@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import 'patient_doctor_detail_page.dart';
 import 'patient_family_detail_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../data/services/api_service.dart';
 
 class PatientConnectionPage extends StatefulWidget {
   const PatientConnectionPage({super.key});
@@ -15,90 +17,36 @@ class _PatientConnectionPageState extends State<PatientConnectionPage> {
   bool isSearchMode = false;
 
   final searchCtr = TextEditingController();
-
   final tabs = ['Dokter', 'Keluarga', 'Permintaan'];
 
-  final doctors = [
-    {
-      'initial': 'AS',
-      'name': 'dr. Agus Setiawan, Sp.PD',
-      'info': 'Penyakit Dalam • RS Cipto Mangunkusumo',
-      'status': 'Terhubung',
-      'date': 'Sejak 1 Jan 2025',
-    },
-    {
-      'initial': 'SK',
-      'name': 'dr. Sarah Kumalasari, Sp.PD',
-      'info': 'Endokrinologi • RS Fatmawati',
-      'status': 'Terhubung',
-      'date': 'Sejak 5 Mar 2025',
-    },
-  ];
+  bool isLoading = true;
+  bool isSearching = false;
+  String? errorMessage;
 
-  final families = [
-    {
-      'initial': 'KP',
-      'name': 'Kartika Putri Citra',
-      'info': 'Istri',
-      'status': 'Terhubung',
-      'date': 'Sejak 10 Jun 2025',
-    },
-    {
-      'initial': 'AY',
-      'name': 'Aditya Yoga Saputra',
-      'info': 'Anak',
-      'status': 'Terhubung',
-      'date': 'Sejak 7 Jun 2025',
-    },
-  ];
+  List<Map<String, dynamic>> doctors = [];
+  List<Map<String, dynamic>> families = [];
+  List<Map<String, dynamic>> requests = [];
+  List<Map<String, dynamic>> searchedDoctors = [];
 
-  final requests = [
-    {
-      'initial': 'YT',
-      'name': 'Yoanda Tri Setyani',
-      'info': 'Ingin terhubung sebagai Kakak',
-      'relation': 'Kakak',
-      'time': '30 menit lalu',
-      'date': '7 Jun 2025 • 08:30',
-    },
-    {
-      'initial': 'MP',
-      'name': 'Maya Putri Sari',
-      'info': 'Ingin terhubung sebagai Adik',
-      'relation': 'Adik',
-      'time': '2 jam lalu',
-      'date': '7 Jun 2025 • 07:15',
-    },
-  ];
+  String formatDate(String? value) {
+    if (value == null || value.isEmpty) return '-';
 
-  final searchDoctors = [
-    {
-      'initial': 'SP',
-      'name': 'dr. Sarwo Puja, Sp.PD',
-      'info': 'Penyakit Dalam • RS Cipto Mangunkusumo',
-      'status': 'Terhubung',
-      'date': 'Sejak 1 Jan 2025',
-    },
-    {
-      'initial': 'SD',
-      'name': 'dr. Santika Dwi Astuti',
-      'info': 'Endokrinologi • RS Fatmawati',
-      'status': 'Menunggu',
-      'date': '',
-    },
-    {
-      'initial': 'SK',
-      'name': 'dr. Sarah Kumalasari, Sp.PD',
-      'info': 'Endokrinologi • RS Fatmawati',
-      'status': 'Belum Terhubung',
-      'date': '',
-    },
-  ];
+    final date = DateTime.tryParse(value);
+
+    if (date == null) return value;
+
+    return '${date.day}/${date.month}/${date.year}';
+  }
 
   @override
   void initState() {
     super.initState();
-    searchCtr.addListener(() => setState(() {}));
+    _loadConnections();
+
+    searchCtr.addListener(() {
+      setState(() {});
+      _searchDoctors();
+    });
   }
 
   @override
@@ -107,7 +55,81 @@ class _PatientConnectionPageState extends State<PatientConnectionPage> {
     super.dispose();
   }
 
+  String _initialFromName(String name) {
+    final parts = name.trim().split(' ').where((e) => e.isNotEmpty).toList();
+    if (parts.isEmpty) return '-';
+    if (parts.length == 1) return parts.first[0].toUpperCase();
+    return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+  }
+
+  Future<void> _loadConnections() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final patientId = prefs.getInt('patient_id');
+
+      if (patientId == null) {
+        throw Exception('Patient ID tidak ditemukan');
+      }
+
+      final doctorData = await ApiService.getConnectedDoctors(patientId);
+      final familyData = await ApiService.getConnectedFamilies(patientId);
+      final requestData = await ApiService.getIncomingFamilyRequests(patientId);
+
+      if (!mounted) return;
+
+      setState(() {
+        doctors = doctorData;
+        families = familyData;
+        requests = requestData;
+        isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        errorMessage = e.toString().replaceFirst('Exception: ', '');
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _searchDoctors() async {
+    final keyword = searchCtr.text.trim();
+
+    if (keyword.isEmpty) {
+      setState(() => searchedDoctors = []);
+      return;
+    }
+
+    setState(() => isSearching = true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final patientId = prefs.getInt('patient_id');
+
+      if (patientId == null) {
+        throw Exception('Patient ID tidak ditemukan');
+      }
+
+      final data = await ApiService.searchDoctors(
+        patientId: patientId,
+        keyword: keyword,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        searchedDoctors = data;
+        isSearching = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => isSearching = false);
+    }
+  }
+
   Future<void> _showConfirmAction({
+    required int familyId,
     required String name,
     required bool isAccept,
   }) async {
@@ -127,7 +149,28 @@ class _PatientConnectionPageState extends State<PatientConnectionPage> {
       },
     );
 
-    if (result == true && mounted) {
+    if (result != true) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final patientId = prefs.getInt('patient_id')!;
+
+    try {
+      if (isAccept) {
+        await ApiService.acceptFamilyRequest(
+          patientId: patientId,
+          familyId: familyId,
+        );
+      } else {
+        await ApiService.rejectFamilyRequest(
+          patientId: patientId,
+          familyId: familyId,
+        );
+      }
+
+      await _loadConnections();
+
+      if (!mounted) return;
+
       await showModalBottomSheet(
         context: context,
         backgroundColor: Colors.transparent,
@@ -140,7 +183,21 @@ class _PatientConnectionPageState extends State<PatientConnectionPage> {
           );
         },
       );
+    } catch (e) {
+      if (!mounted) return;
+      _showSnackBar(e.toString().replaceFirst('Exception: ', ''));
     }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: AppColors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        content: Text(message, style: const TextStyle(color: Colors.white)),
+      ),
+    );
   }
 
   @override
@@ -167,6 +224,36 @@ class _PatientConnectionPageState extends State<PatientConnectionPage> {
         ),
       ),
     );
+  }
+
+  Widget _content() {
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (errorMessage != null) {
+      return Center(child: Text(errorMessage!));
+    }
+
+    if (isSearchMode) return _searchDoctorContent();
+
+    if (selectedTab == 0) {
+      return _connectionList(
+        title: 'DOKTER SAYA - ${doctors.length} TERHUBUNG',
+        data: doctors,
+        isDoctor: true,
+      );
+    }
+
+    if (selectedTab == 1) {
+      return _connectionList(
+        title: 'KELUARGA SAYA - ${families.length} TERHUBUNG',
+        data: families,
+        isDoctor: false,
+      );
+    }
+
+    return _requestList();
   }
 
   Widget _header(BuildContext context) {
@@ -257,33 +344,22 @@ class _PatientConnectionPageState extends State<PatientConnectionPage> {
     );
   }
 
-  Widget _content() {
-    if (isSearchMode) return _searchDoctorContent();
-
-    if (selectedTab == 0) {
-      return _connectionList(
-        title: 'DOKTER SAYA - ${doctors.length} TERHUBUNG',
-        data: doctors,
-        isDoctor: true,
-      );
-    }
-
-    if (selectedTab == 1) {
-      return _connectionList(
-        title: 'KELUARGA SAYA - ${families.length} TERHUBUNG',
-        data: families,
-        isDoctor: false,
-      );
-    }
-
-    return _requestList();
-  }
-
   Widget _connectionList({
     required String title,
-    required List<Map<String, String>> data,
+    required List<Map<String, dynamic>> data,
     required bool isDoctor,
   }) {
+    if (data.isEmpty) {
+      return Center(
+        child: Text(
+          isDoctor
+              ? 'Belum ada dokter yang terhubung'
+              : 'Belum ada keluarga yang terhubung',
+          style: const TextStyle(color: AppColors.dark2, fontSize: 13),
+        ),
+      );
+    }
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 6, 18, 120),
       children: [
@@ -296,45 +372,78 @@ class _PatientConnectionPageState extends State<PatientConnectionPage> {
           ),
         ),
         const SizedBox(height: 12),
-        ...data.map(
-          (item) => Padding(
+        ...data.map((item) {
+          final name = isDoctor
+              ? (item['doctor_name'] ?? item['full_name'] ?? '-').toString()
+              : (item['family_name'] ?? item['full_name'] ?? '-').toString();
+
+          final info = isDoctor
+              ? '${item['specialization_name'] ?? '-'} • ${item['institution'] ?? '-'}'
+              : (item['relation_name'] ?? '-').toString();
+
+          final initial = item['initial']?.toString() ?? _initialFromName(name);
+          final rawStatus = item['status']?.toString() ?? 'Diterima';
+
+          final status = rawStatus == 'Diterima' ? 'Terhubung' : rawStatus;
+          final date = formatDate(
+            item['connected_since']?.toString() ??
+                item['connected_at']?.toString(),
+          );
+
+          return Padding(
             padding: const EdgeInsets.only(bottom: 14),
             child: _ConnectionCard(
-              initial: item['initial']!,
-              name: item['name']!,
-              info: item['info']!,
-              status: item['status']!,
-              date: item['date']!,
+              initial: initial,
+              name: name,
+              info: info,
+              status: status,
+              date: date,
               showVerified: isDoctor,
-              onTap: () {
-                Navigator.push(
+              onTap: () async {
+                final changed = await Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => isDoctor
                         ? PatientDoctorDetailPage(
-                            initial: item['initial']!,
-                            name: item['name']!,
-                            info: item['info']!,
-                            status: item['status']!,
-                            date: item['date']!,
+                            doctorId: int.parse(item['doctor_id'].toString()),
+                            initial: initial,
+                            name: name,
+                            info: info,
+                            status: status,
+                            date: date,
                           )
                         : PatientFamilyDetailPage(
-                            initial: item['initial']!,
-                            name: item['name']!,
-                            relation: item['info']!,
-                            date: item['date']!,
+                          familyId: int.parse(item['family_id'].toString()),
+                            initial: initial,
+                            name: name,
+                            relation: info,
+                            date: date,
                           ),
                   ),
                 );
+
+                if (changed == true) {
+                  await _loadConnections();
+                  if (isSearchMode) await _searchDoctors();
+                }
               },
             ),
-          ),
-        ),
+          );
+        }),
       ],
     );
   }
 
   Widget _requestList() {
+    if (requests.isEmpty) {
+      return const Center(
+        child: Text(
+          'Belum ada permintaan koneksi',
+          style: TextStyle(color: AppColors.dark2, fontSize: 13),
+        ),
+      );
+    }
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 6, 18, 120),
       children: [
@@ -347,70 +456,86 @@ class _PatientConnectionPageState extends State<PatientConnectionPage> {
           ),
         ),
         const SizedBox(height: 12),
-        ...requests.map(
-          (item) => Padding(
+        ...requests.map((item) {
+          final familyId = int.tryParse(item['family_id'].toString());
+
+          if (familyId == null) {
+            return const SizedBox();
+          }
+
+          final name = (item['family_name'] ?? item['full_name'] ?? '-')
+              .toString();
+
+          final relation = (item['relation_name'] ?? '-').toString();
+          final initial = item['initial']?.toString() ?? _initialFromName(name);
+          final date = formatDate(item['requested_at']?.toString());
+
+          return Padding(
             padding: const EdgeInsets.only(bottom: 14),
             child: _RequestCard(
-              initial: item['initial']!,
-              name: item['name']!,
-              info: item['info']!,
-              time: item['time']!,
+              initial: initial,
+              name: name,
+              info: 'Ingin terhubung sebagai $relation',
+              time: '-',
               onTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => PatientRequestDetailPage(
-                      initial: item['initial']!,
-                      name: item['name']!,
-                      relation: item['relation']!,
-                      time: item['time']!,
-                      date: item['date']!,
+                      initial: initial,
+                      name: name,
+                      relation: relation,
+                      time: '-',
+                      date: date,
                       onAccept: () => _showConfirmAction(
-                        name: item['name']!,
+                        familyId: familyId,
+                        name: name,
                         isAccept: true,
                       ),
                       onReject: () => _showConfirmAction(
-                        name: item['name']!,
+                        familyId: familyId,
+                        name: name,
                         isAccept: false,
                       ),
                     ),
                   ),
                 );
               },
-              onAccept: () =>
-                  _showConfirmAction(name: item['name']!, isAccept: true),
-              onReject: () =>
-                  _showConfirmAction(name: item['name']!, isAccept: false),
+              onAccept: () => _showConfirmAction(
+                familyId: familyId,
+                name: name,
+                isAccept: true,
+              ),
+              onReject: () => _showConfirmAction(
+                familyId: familyId,
+                name: name,
+                isAccept: false,
+              ),
             ),
-          ),
-        ),
+          );
+        }),
       ],
     );
   }
 
   Widget _searchDoctorContent() {
-    final keyword = searchCtr.text.trim().toLowerCase();
-
-    final filteredDoctors = keyword.isEmpty
-        ? <Map<String, String>>[]
-        : searchDoctors.where((doctor) {
-            return doctor['name']!.toLowerCase().contains(keyword) ||
-                doctor['info']!.toLowerCase().contains(keyword) ||
-                doctor['status']!.toLowerCase().contains(keyword);
-          }).toList();
+    final keyword = searchCtr.text.trim();
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 6, 18, 120),
       children: [
         _searchBox(),
         const SizedBox(height: 24),
+
         if (keyword.isEmpty)
           _emptySearchDoctor()
-        else if (filteredDoctors.isEmpty)
+        else if (isSearching)
+          const Center(child: CircularProgressIndicator())
+        else if (searchedDoctors.isEmpty)
           _doctorNotFound()
         else ...[
           Text(
-            'HASIL PENCARIAN - ${filteredDoctors.length} DOKTER',
+            'HASIL PENCARIAN - ${searchedDoctors.length} DOKTER',
             style: const TextStyle(
               color: AppColors.primaryBlue,
               fontSize: 11,
@@ -418,32 +543,55 @@ class _PatientConnectionPageState extends State<PatientConnectionPage> {
             ),
           ),
           const SizedBox(height: 12),
-          ...filteredDoctors.map(
-            (item) => Padding(
+
+          ...searchedDoctors.map((item) {
+            final name = (item['doctor_name'] ?? item['full_name'] ?? '-')
+                .toString();
+
+            final info =
+                '${item['specialization_name'] ?? '-'} • ${item['institution'] ?? '-'}';
+
+            final initial =
+                item['initial']?.toString() ?? _initialFromName(name);
+
+            final rawStatus =
+                item['connection_status']?.toString() ??
+                item['status']?.toString() ??
+                'Belum Terhubung';
+
+            final status = rawStatus == 'Diterima' ? 'Terhubung' : rawStatus;
+
+            return Padding(
               padding: const EdgeInsets.only(bottom: 14),
               child: _SearchDoctorCard(
-                initial: item['initial']!,
-                name: item['name']!,
-                info: item['info']!,
-                status: item['status']!,
-                date: item['date']!,
-                onTap: () {
-                  Navigator.push(
+                initial: initial,
+                name: name,
+                info: info,
+                status: status,
+                date: '',
+                onTap: () async {
+                  final changed = await Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (_) => PatientDoctorDetailPage(
-                        initial: item['initial']!,
-                        name: item['name']!,
-                        info: item['info']!,
-                        status: item['status']!,
-                        date: item['date']!,
+                        doctorId: int.parse(item['doctor_id'].toString()),
+                        initial: initial,
+                        name: name,
+                        info: info,
+                        status: status,
+                        date: '',
                       ),
                     ),
                   );
+
+                  if (changed == true) {
+                    await _searchDoctors();
+                    await _loadConnections();
+                  }
                 },
               ),
-            ),
-          ),
+            );
+          }),
         ],
       ],
     );
@@ -486,16 +634,12 @@ class _PatientConnectionPageState extends State<PatientConnectionPage> {
   }
 
   Widget _emptySearchDoctor() {
-    return Column(
+    return const Column(
       children: [
-        const SizedBox(height: 70),
-        Icon(
-          Icons.search,
-          size: 64,
-          color: AppColors.primaryBlue.withOpacity(0.4),
-        ),
-        const SizedBox(height: 16),
-        const Text(
+        SizedBox(height: 70),
+        Icon(Icons.search, size: 64, color: AppColors.dark3),
+        SizedBox(height: 16),
+        Text(
           'Cari Dokter',
           style: TextStyle(
             fontSize: 16,
@@ -503,8 +647,8 @@ class _PatientConnectionPageState extends State<PatientConnectionPage> {
             color: AppColors.primaryBlue,
           ),
         ),
-        const SizedBox(height: 8),
-        const Text(
+        SizedBox(height: 8),
+        Text(
           'Masukkan nama dokter, spesialisasi, atau rumah sakit untuk mencari dokter.',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 12, color: AppColors.dark2),
@@ -1040,7 +1184,7 @@ class _ConnectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isConnected = status == 'Terhubung';
+    final isConnected = status == 'Diterima' || status == 'Terhubung';
 
     return InkWell(
       onTap: onTap,
@@ -1254,7 +1398,7 @@ class _SearchDoctorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isConnected = status == 'Terhubung';
+    final isConnected = status == 'Diterima' || status == 'Terhubung';
     final isWaiting = status == 'Menunggu';
 
     return InkWell(

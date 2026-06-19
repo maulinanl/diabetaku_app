@@ -1,33 +1,93 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../core/theme/app_colors.dart';
+import '../../../data/services/api_service.dart';
 import 'patient_validation_detail_page.dart';
 
-class PatientValidationPage extends StatelessWidget {
+class PatientValidationPage extends StatefulWidget {
   const PatientValidationPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final data = [
-      {
-        'name': 'Kartika Putri Citra',
-        'relation': 'Istri',
-        'type': 'Glukosa Darah',
-        'value': '182 mg/dL',
-        'time': '7 Jun 2025 • 08:10',
-        'note': 'Diinput setelah sarapan',
-        'icon': Icons.opacity,
-      },
-      {
-        'name': 'Aditya Yoga Saputra',
-        'relation': 'Anak',
-        'type': 'Berat Badan',
-        'value': '78.5 kg',
-        'time': '7 Jun 2025 • 07:30',
-        'note': 'Diinput dari timbangan rumah',
-        'icon': Icons.monitor_weight_outlined,
-      },
-    ];
+  State<PatientValidationPage> createState() => _PatientValidationPageState();
+}
 
+class _PatientValidationPageState extends State<PatientValidationPage> {
+  bool isLoading = true;
+  String? errorMessage;
+  List<Map<String, dynamic>> data = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final patientId = prefs.getInt('patient_id');
+
+      if (patientId == null) {
+        throw Exception('Patient ID tidak ditemukan. Coba login ulang.');
+      }
+
+      final result = await ApiService.getPatientPendingValidations(patientId);
+
+      if (!mounted) return;
+
+      setState(() {
+        data = result;
+        isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        errorMessage = e.toString().replaceAll('Exception: ', '');
+        isLoading = false;
+      });
+    }
+  }
+
+  String _formatDate(dynamic value) {
+    if (value == null) return '-';
+
+    final date = DateTime.tryParse(value.toString());
+    if (date == null) return value.toString();
+
+    return '${date.day}/${date.month}/${date.year} • ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
+  IconData _iconByType(String type) {
+    switch (type) {
+      case 'glucose':
+        return Icons.opacity;
+      case 'physiological':
+        return Icons.favorite_border;
+      case 'activity':
+        return Icons.directions_run;
+      case 'meal':
+        return Icons.restaurant_outlined;
+      default:
+        return Icons.assignment_outlined;
+    }
+  }
+
+  String _valueWithUnit(Map<String, dynamic> item) {
+    final value = item['value']?.toString() ?? '-';
+    final unit = item['unit']?.toString() ?? '';
+
+    return unit.isEmpty ? value : '$value $unit';
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -35,30 +95,97 @@ class PatientValidationPage extends StatelessWidget {
         child: Column(
           children: [
             _header(context),
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
-                itemCount: data.length,
-                itemBuilder: (context, index) {
-                  final item = data[index];
-
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 14),
-                    child: _ValidationCard(
-                      name: item['name'] as String,
-                      relation: item['relation'] as String,
-                      type: item['type'] as String,
-                      value: item['value'] as String,
-                      time: item['time'] as String,
-                      note: item['note'] as String,
-                      icon: item['icon'] as IconData,
-                    ),
-                  );
-                },
-              ),
-            ),
+            Expanded(child: _body()),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _body() {
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, color: AppColors.red, size: 42),
+              const SizedBox(height: 12),
+              Text(
+                errorMessage!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.dark2, fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _loadData,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryBlue,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                ),
+                child: const Text('Coba lagi'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (data.isEmpty) {
+      return _emptyState();
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+        itemCount: data.length,
+        itemBuilder: (context, index) {
+          final item = data[index];
+
+          final type = item['record_type']?.toString() ?? '';
+          final name =
+              item['input_by']?.toString() ??
+              item['inputBy']?.toString() ??
+              '-';
+
+          final relation = item['relation']?.toString() ?? 'Keluarga';
+          final title = item['title']?.toString() ?? '-';
+          final time = _formatDate(item['date']);
+          final value = _valueWithUnit(item);
+          final note = item['note']?.toString() ?? 'Tidak ada catatan.';
+
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: _ValidationCard(
+              name: name,
+              relation: relation,
+              type: title,
+              value: value,
+              time: time,
+              note: note,
+              icon: _iconByType(type),
+              onTap: () async {
+                final changed = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => PatientValidationDetailPage(item: item),
+                  ),
+                );
+
+                if (changed == true) {
+                  _loadData();
+                }
+              },
+            ),
+          );
+        },
       ),
     );
   }
@@ -92,6 +219,47 @@ class PatientValidationPage extends StatelessWidget {
       ),
     );
   }
+
+  Widget _emptyState() {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 38),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircleAvatar(
+              radius: 38,
+              backgroundColor: AppColors.veryLightBlue,
+              child: Icon(
+                Icons.verified_outlined,
+                color: AppColors.primaryBlue,
+                size: 38,
+              ),
+            ),
+            SizedBox(height: 18),
+            Text(
+              'Tidak ada data menunggu validasi',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.dark1,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Data dari keluarga yang perlu dikonfirmasi akan muncul di halaman ini.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.primaryBlue,
+                fontSize: 12,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _ValidationCard extends StatelessWidget {
@@ -102,6 +270,7 @@ class _ValidationCard extends StatelessWidget {
   final String time;
   final String note;
   final IconData icon;
+  final VoidCallback onTap;
 
   const _ValidationCard({
     required this.name,
@@ -111,28 +280,27 @@ class _ValidationCard extends StatelessWidget {
     required this.time,
     required this.note,
     required this.icon,
+    required this.onTap,
   });
+
+  String get initial {
+    final cleanName = name.trim();
+
+    if (cleanName.isEmpty || cleanName == '-') return 'K';
+
+    final parts = cleanName.split(' ');
+    if (parts.length == 1) {
+      return parts.first.substring(0, 1).toUpperCase();
+    }
+
+    return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+  }
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       borderRadius: BorderRadius.circular(12),
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => PatientValidationDetailPage(
-              name: name,
-              relation: relation,
-              type: type,
-              value: value,
-              time: time,
-              note: note,
-              icon: icon,
-            ),
-          ),
-        );
-      },
+      onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: _cardDecoration(),
@@ -145,7 +313,7 @@ class _ValidationCard extends StatelessWidget {
                   radius: 24,
                   backgroundColor: AppColors.lightBlue,
                   child: Text(
-                    name.substring(0, 2).toUpperCase(),
+                    initial,
                     style: const TextStyle(
                       color: AppColors.primaryBlue,
                       fontWeight: FontWeight.bold,
@@ -179,9 +347,7 @@ class _ValidationCard extends StatelessWidget {
                 _badge('Menunggu'),
               ],
             ),
-
             const SizedBox(height: 14),
-
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -227,9 +393,7 @@ class _ValidationCard extends StatelessWidget {
                 ],
               ),
             ),
-
             const SizedBox(height: 10),
-
             Text(
               note,
               style: const TextStyle(
@@ -238,9 +402,7 @@ class _ValidationCard extends StatelessWidget {
                 height: 1.4,
               ),
             ),
-
             const Divider(height: 24),
-
             const Row(
               children: [
                 Icon(

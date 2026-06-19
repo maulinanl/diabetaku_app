@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../core/theme/app_colors.dart';
+import '../../../data/services/api_service.dart';
 
 class PatientMealFormPage extends StatefulWidget {
   const PatientMealFormPage({super.key});
@@ -13,19 +17,24 @@ class _PatientMealFormPageState extends State<PatientMealFormPage> {
   final calorieCtr = TextEditingController();
   final descriptionCtr = TextEditingController();
 
-  DateTime selectedDate = DateTime(2025, 6, 7);
-  TimeOfDay selectedTime = const TimeOfDay(hour: 7, minute: 26);
+  DateTime selectedDate = DateTime.now();
+  TimeOfDay selectedTime = TimeOfDay.now();
 
   String selectedMealType = 'Sarapan';
+  bool isSaving = false;
 
-  final mealTypes = [
+  final mealTypes = const [
     ['Sarapan', Icons.wb_sunny_outlined],
-    ['Makan siang', Icons.restaurant_outlined],
-    ['Makan malam', Icons.dinner_dining_outlined],
-    ['Snack', Icons.cookie_outlined],
+    ['Makan Siang', Icons.restaurant_outlined],
+    ['Makan Malam', Icons.dinner_dining_outlined],
+    ['Camilan', Icons.cookie_outlined],
   ];
 
-  bool get isValid => true;
+  bool get isValid {
+    return carbCtr.text.trim().isNotEmpty ||
+        calorieCtr.text.trim().isNotEmpty ||
+        descriptionCtr.text.trim().isNotEmpty;
+  }
 
   @override
   void initState() {
@@ -69,7 +78,9 @@ class _PatientMealFormPageState extends State<PatientMealFormPage> {
       },
     );
 
-    if (picked != null) setState(() => selectedDate = picked);
+    if (picked != null) {
+      setState(() => selectedDate = picked);
+    }
   }
 
   Future<void> _pickTime() async {
@@ -88,14 +99,67 @@ class _PatientMealFormPageState extends State<PatientMealFormPage> {
       },
     );
 
-    if (picked != null) setState(() => selectedTime = picked);
+    if (picked != null) {
+      setState(() => selectedTime = picked);
+    }
   }
 
-  void _save() {
+  Future<void> _save() async {
+    FocusScope.of(context).unfocus();
+
+    setState(() => isSaving = true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final patientId = prefs.getInt('patient_id');
+
+      if (patientId == null) {
+        throw Exception('Patient ID tidak ditemukan');
+      }
+
+      final mealDate = DateTime(
+        selectedDate.year,
+        selectedDate.month,
+        selectedDate.day,
+        selectedTime.hour,
+        selectedTime.minute,
+      );
+
+      await ApiService.storeMeal(
+        patientId: patientId,
+        mealType: selectedMealType,
+        carbohydrateGram: carbCtr.text.trim().isEmpty
+            ? null
+            : double.parse(carbCtr.text.trim()),
+        calories: calorieCtr.text.trim().isEmpty
+            ? null
+            : double.parse(calorieCtr.text.trim()),
+        description: descriptionCtr.text.trim().isEmpty
+            ? null
+            : descriptionCtr.text.trim(),
+        mealDate: mealDate,
+      );
+
+      if (!mounted) return;
+      _showSuccessSheet();
+    } catch (e) {
+      if (!mounted) return;
+
+      _showStyledSnackBar(
+        message: e.toString().replaceFirst('Exception: ', ''),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => isSaving = false);
+      }
+    }
+  }
+
+  void _showSuccessSheet() {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) {
+      builder: (sheetContext) {
         return Container(
           padding: const EdgeInsets.all(24),
           decoration: const BoxDecoration(
@@ -105,10 +169,23 @@ class _PatientMealFormPageState extends State<PatientMealFormPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              Container(
+                width: 44,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.light1,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              const SizedBox(height: 24),
               const CircleAvatar(
                 radius: 36,
                 backgroundColor: Color(0xFFEAFBF3),
-                child: Icon(Icons.check, color: Color(0xFF10C878), size: 36),
+                child: Icon(
+                  Icons.check,
+                  color: Color(0xFF10C878),
+                  size: 36,
+                ),
               ),
               const SizedBox(height: 18),
               const Text(
@@ -131,8 +208,8 @@ class _PatientMealFormPageState extends State<PatientMealFormPage> {
                 height: 46,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.pop(context);
-                    Navigator.pop(context);
+                    Navigator.pop(sheetContext);
+                    Navigator.pop(context, true);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryBlue,
@@ -147,9 +224,8 @@ class _PatientMealFormPageState extends State<PatientMealFormPage> {
               ),
               TextButton(
                 onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.pop(context);
-                  Navigator.pop(context);
+                  Navigator.pop(sheetContext);
+                  Navigator.pop(context, true);
                 },
                 child: const Text(
                   'Kembali ke beranda',
@@ -160,6 +236,28 @@ class _PatientMealFormPageState extends State<PatientMealFormPage> {
           ),
         );
       },
+    );
+  }
+
+  void _showStyledSnackBar({required String message}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: AppColors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        content: Row(
+          children: [
+            const Icon(Icons.info_outline, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -208,11 +306,11 @@ class _PatientMealFormPageState extends State<PatientMealFormPage> {
                       itemCount: mealTypes.length,
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 4,
-                            mainAxisSpacing: 8,
-                            crossAxisSpacing: 8,
-                            childAspectRatio: 0.95,
-                          ),
+                        crossAxisCount: 4,
+                        mainAxisSpacing: 8,
+                        crossAxisSpacing: 8,
+                        childAspectRatio: 0.95,
+                      ),
                       itemBuilder: (context, index) {
                         final item = mealTypes[index];
                         final title = item[0] as String;
@@ -220,9 +318,11 @@ class _PatientMealFormPageState extends State<PatientMealFormPage> {
                         final selected = selectedMealType == title;
 
                         return GestureDetector(
-                          onTap: () {
-                            setState(() => selectedMealType = title);
-                          },
+                          onTap: isSaving
+                              ? null
+                              : () {
+                                  setState(() => selectedMealType = title);
+                                },
                           child: Container(
                             decoration: BoxDecoration(
                               color: selected
@@ -265,6 +365,11 @@ class _PatientMealFormPageState extends State<PatientMealFormPage> {
                       controller: carbCtr,
                       hint: 'Masukkan estimasi karbohidrat',
                       keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'^\d*\.?\d*'),
+                        ),
+                      ],
                     ),
 
                     _label('Estimasi kalori (kkal)'),
@@ -272,6 +377,11 @@ class _PatientMealFormPageState extends State<PatientMealFormPage> {
                       controller: calorieCtr,
                       hint: 'Masukkan estimasi kalori',
                       keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'^\d*\.?\d*'),
+                        ),
+                      ],
                     ),
 
                     _label('Deskripsi makanan'),
@@ -286,25 +396,35 @@ class _PatientMealFormPageState extends State<PatientMealFormPage> {
                       width: double.infinity,
                       height: 48,
                       child: ElevatedButton(
-                        onPressed: isValid ? _save : null,
+                        onPressed: isValid && !isSaving ? _save : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryBlue,
                           disabledBackgroundColor: const Color(0xFFAFCBEA),
                           foregroundColor: Colors.white,
+                          disabledForegroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(6),
                           ),
                         ),
-                        child: const Text(
-                          'Simpan',
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
+                        child: isSaving
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
+                                'Simpan',
+                                style: TextStyle(fontWeight: FontWeight.w600),
+                              ),
                       ),
                     ),
 
                     TextButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: isSaving ? null : () => Navigator.pop(context),
                       child: const Center(
                         child: Text(
                           'Batal',
@@ -332,12 +452,12 @@ class _PatientMealFormPageState extends State<PatientMealFormPage> {
       child: Row(
         children: [
           IconButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: isSaving ? null : () => Navigator.pop(context),
             icon: const Icon(Icons.arrow_back, color: Colors.white),
           ),
           const Expanded(
             child: Text(
-              'Tambah Data',
+              'Tambah Data Pola Makan',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
@@ -383,7 +503,7 @@ class _PatientMealFormPageState extends State<PatientMealFormPage> {
     required VoidCallback onTap,
   }) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: isSaving ? null : onTap,
       child: Container(
         height: 48,
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -411,10 +531,13 @@ class _PatientMealFormPageState extends State<PatientMealFormPage> {
     required TextEditingController controller,
     required String hint,
     TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
+      enabled: !isSaving,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(color: AppColors.dark4, fontSize: 13),
@@ -425,6 +548,10 @@ class _PatientMealFormPageState extends State<PatientMealFormPage> {
           vertical: 15,
         ),
         enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: const BorderSide(color: AppColors.light1),
+        ),
+        disabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6),
           borderSide: const BorderSide(color: AppColors.light1),
         ),

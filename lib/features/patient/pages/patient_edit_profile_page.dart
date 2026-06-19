@@ -1,26 +1,67 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/services/api_service.dart';
 
 class PatientEditProfilePage extends StatefulWidget {
-  const PatientEditProfilePage({super.key});
+  final Map<String, dynamic> profile;
+
+  const PatientEditProfilePage({super.key, required this.profile});
 
   @override
   State<PatientEditProfilePage> createState() => _PatientEditProfilePageState();
 }
 
 class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
-  final nameCtr = TextEditingController(text: 'Angelica Sabi Gita');
-  final emailCtr = TextEditingController(text: 'angelicaSabiGit@gmail.com');
-  final phoneCtr = TextEditingController(text: '081234567890');
-  final birthCtr = TextEditingController(text: '12 Mei 1994');
-  final addressCtr = TextEditingController(
-    text: 'Jl. Kertanegara No. 12 Majapahit',
-  );
+  final nameCtr = TextEditingController();
+  final emailCtr = TextEditingController();
+  final phoneCtr = TextEditingController();
+  final birthCtr = TextEditingController();
+  final diagnosisCtr = TextEditingController();
+  final heightCtr = TextEditingController();
 
-  String dmType = 'DM Tipe 2';
+  String gender = 'Perempuan';
+  String dmType = 'Tipe 2';
   String bloodType = 'O';
   String rhesus = 'Positif (+)';
-  final heightCtr = TextEditingController(text: '168');
+
+  bool isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    final profile = widget.profile;
+
+    nameCtr.text = profile['full_name']?.toString() ?? '';
+    emailCtr.text = profile['email']?.toString() ?? '';
+    phoneCtr.text = profile['phone_number']?.toString() ?? '';
+    birthCtr.text = profile['date_of_birth']?.toString() ?? '';
+    diagnosisCtr.text = profile['diagnosis_date']?.toString() ?? '';
+    heightCtr.text = profile['height_cm']?.toString() ?? '';
+
+    gender = profile['gender']?.toString() ?? 'Perempuan';
+    dmType = profile['diabetes_type']?.toString() ?? 'Tipe 2';
+    bloodType = profile['blood_type']?.toString() ?? 'O';
+    rhesus = profile['rhesus_type']?.toString() ?? 'Positif (+)';
+  }
+
+  int get bloodTypeId {
+    switch (bloodType) {
+      case 'A':
+        return 1;
+      case 'B':
+        return 2;
+      case 'AB':
+        return 3;
+      default:
+        return 4;
+    }
+  }
+
+  int get rhesusTypeId {
+    return rhesus.contains('Positif') ? 1 : 2;
+  }
 
   @override
   void dispose() {
@@ -28,89 +69,27 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
     emailCtr.dispose();
     phoneCtr.dispose();
     birthCtr.dispose();
-    addressCtr.dispose();
+    diagnosisCtr.dispose();
     heightCtr.dispose();
     super.dispose();
   }
 
-  void _showSuccessSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 44,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.light1,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ),
-              const SizedBox(height: 24),
-              const CircleAvatar(
-                radius: 36,
-                backgroundColor: Color(0xFFEAFBF3),
-                child: Icon(
-                  Icons.check,
-                  color: Color(0xFF10C878),
-                  size: 36,
-                ),
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'Profil berhasil diperbarui',
-                style: TextStyle(
-                  color: AppColors.primaryBlue,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Data profil Anda telah tersimpan. Perubahan langsung berlaku di seluruh fitur aplikasi.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.dark2, fontSize: 13),
-              ),
-              const SizedBox(height: 22),
-              SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(sheetContext);
-                    Navigator.pop(context);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryBlue,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
-                  child: const Text('Kembali ke Profil'),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+  DateTime _parseDate(String? value) {
+    if (value == null || value.isEmpty) return DateTime.now();
+    return DateTime.tryParse(value) ?? DateTime.now();
   }
 
-  Future<void> _pickBirthDate() async {
+  String _formatDateForApi(DateTime date) {
+    return date.toIso8601String().split('T').first;
+  }
+
+  Future<void> _pickDate({
+    required TextEditingController controller,
+    required DateTime initialDate,
+  }) async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: DateTime(1994, 5, 12),
+      initialDate: initialDate,
       firstDate: DateTime(1950),
       lastDate: DateTime.now(),
       builder: (context, child) {
@@ -127,9 +106,50 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
 
     if (picked != null) {
       setState(() {
-        birthCtr.text =
-            '${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}';
+        controller.text = _formatDateForApi(picked);
       });
+    }
+  }
+
+  Future<void> _saveProfile() async {
+    FocusScope.of(context).unfocus();
+
+    setState(() => isSaving = true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final patientId = prefs.getInt('patient_id');
+
+      if (patientId == null) {
+        throw Exception('Patient ID tidak ditemukan');
+      }
+
+      await ApiService.updatePatientProfile(
+        patientId: patientId,
+        fullName: nameCtr.text.trim(),
+        phoneNumber: phoneCtr.text.trim(),
+        gender: gender,
+        diabetesType: dmType,
+        diagnosisDate: diagnosisCtr.text.trim(),
+        dateOfBirth: birthCtr.text.trim(),
+        heightCm: double.tryParse(heightCtr.text.trim()) ?? 0,
+        bloodTypeId: bloodTypeId,
+        rhesusTypeId: rhesusTypeId,
+      );
+
+      if (!mounted) return;
+
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+
+      _showStyledSnackBar(
+        message: e.toString().replaceFirst('Exception: ', ''),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => isSaving = false);
+      }
     }
   }
 
@@ -149,25 +169,56 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _sectionTitle(Icons.person, 'Data Diri'),
+
                     _label('Nama Lengkap'),
                     _input(nameCtr),
+
                     _label('Email'),
-                    _input(emailCtr, keyboardType: TextInputType.emailAddress),
+                    _input(
+                      emailCtr,
+                      keyboardType: TextInputType.emailAddress,
+                      enabled: false,
+                    ),
+
                     _label('Nomor Telepon'),
                     _input(phoneCtr, keyboardType: TextInputType.phone),
+
                     _label('Tanggal Lahir'),
-                    _dateInput(),
-                    _label('Alamat'),
-                    _input(addressCtr),
+                    _dateInput(
+                      controller: birthCtr,
+                      onTap: () => _pickDate(
+                        controller: birthCtr,
+                        initialDate: _parseDate(birthCtr.text),
+                      ),
+                    ),
+
+                    _label('Jenis Kelamin'),
+                    _dropdown(
+                      value: gender,
+                      items: const ['Laki-laki', 'Perempuan'],
+                      onChanged: (v) => setState(() => gender = v!),
+                    ),
 
                     const SizedBox(height: 18),
+
                     _sectionTitle(Icons.medical_services, 'Data Medis'),
+
                     _label('Tipe DM'),
                     _dropdown(
                       value: dmType,
-                      items: const ['DM Tipe 1', 'DM Tipe 2'],
+                      items: const ['Tipe 1', 'Tipe 2'],
                       onChanged: (v) => setState(() => dmType = v!),
                     ),
+
+                    _label('Tanggal Diagnosis'),
+                    _dateInput(
+                      controller: diagnosisCtr,
+                      onTap: () => _pickDate(
+                        controller: diagnosisCtr,
+                        initialDate: _parseDate(diagnosisCtr.text),
+                      ),
+                    ),
+
                     _label('Golongan Darah'),
                     Row(
                       children: [
@@ -188,31 +239,44 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
                         ),
                       ],
                     ),
+
                     _label('Tinggi Badan (cm)'),
                     _input(heightCtr, keyboardType: TextInputType.number),
 
                     const SizedBox(height: 26),
+
                     SizedBox(
                       width: double.infinity,
                       height: 48,
                       child: ElevatedButton(
-                        onPressed: () => _showSuccessSheet(context),
+                        onPressed: isSaving ? null : _saveProfile,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryBlue,
                           foregroundColor: Colors.white,
+                          disabledBackgroundColor: const Color(0xFFAFCBEA),
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(6),
                           ),
                         ),
-                        child: const Text(
-                          'Simpan Perubahan',
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
+                        child: isSaving
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
+                                'Simpan Perubahan',
+                                style: TextStyle(fontWeight: FontWeight.w600),
+                              ),
                       ),
                     ),
+
                     TextButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: isSaving ? null : () => Navigator.pop(context),
                       child: const Center(
                         child: Text(
                           'Batal',
@@ -240,7 +304,7 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
       child: Row(
         children: [
           IconButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: isSaving ? null : () => Navigator.pop(context),
             icon: const Icon(Icons.arrow_back, color: Colors.white),
           ),
           const Expanded(
@@ -297,19 +361,24 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
   Widget _input(
     TextEditingController controller, {
     TextInputType? keyboardType,
+    bool enabled = true,
   }) {
     return TextFormField(
       controller: controller,
+      enabled: enabled,
       keyboardType: keyboardType,
       decoration: _inputDecoration(),
     );
   }
 
-  Widget _dateInput() {
+  Widget _dateInput({
+    required TextEditingController controller,
+    required VoidCallback onTap,
+  }) {
     return TextFormField(
-      controller: birthCtr,
+      controller: controller,
       readOnly: true,
-      onTap: _pickBirthDate,
+      onTap: onTap,
       decoration: _inputDecoration(
         suffixIcon: const Icon(
           Icons.calendar_today_outlined,
@@ -326,7 +395,7 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
     required ValueChanged<String?> onChanged,
   }) {
     return DropdownButtonFormField<String>(
-      value: value,
+      value: items.contains(value) ? value : items.first,
       items: items
           .map(
             (item) => DropdownMenuItem(
@@ -349,19 +418,39 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
       suffixIcon: suffixIcon,
       filled: true,
       fillColor: AppColors.white,
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 14,
-        vertical: 15,
-      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
       enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(6),
+        borderSide: const BorderSide(color: AppColors.light1),
+      ),
+      disabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(6),
         borderSide: const BorderSide(color: AppColors.light1),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(6),
-        borderSide: const BorderSide(
-          color: AppColors.primaryBlue,
-          width: 1.4,
+        borderSide: const BorderSide(color: AppColors.primaryBlue, width: 1.4),
+      ),
+    );
+  }
+
+  void _showStyledSnackBar({required String message, bool isError = true}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: isError ? AppColors.red : AppColors.primaryBlue,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        content: Row(
+          children: [
+            Icon(
+              isError ? Icons.info_outline : Icons.check_circle_outline,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(message, style: const TextStyle(color: Colors.white)),
+            ),
+          ],
         ),
       ),
     );

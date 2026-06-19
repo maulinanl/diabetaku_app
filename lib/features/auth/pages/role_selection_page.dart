@@ -2,6 +2,7 @@ import 'package:diabetaku_app/core/widgets/role_card.dart';
 import 'package:flutter/material.dart';
 import 'register_doctor_step1_page.dart';
 import 'register_patient_page.dart';
+import 'register_family_page.dart';
 
 class RoleSelectionPage extends StatelessWidget {
   const RoleSelectionPage({super.key});
@@ -71,7 +72,12 @@ class RoleSelectionPage extends StatelessWidget {
               icon: Icons.groups,
               title: "Daftar sebagai Keluarga",
               subtitle: "Bantu memantau kondisi anggota keluarga",
-              onTap: () {},
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const RegisterFamilyPage()),
+                );
+              },
             ),
 
             const Spacer(),

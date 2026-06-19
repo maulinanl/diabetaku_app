@@ -16,8 +16,10 @@ class FamilyBottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
+    final isAddSelected = currentIndex == 4;
 
-    return SizedBox(
+    return Container(
+      color: AppColors.background,
       height: 98 + bottomInset,
       child: Stack(
         clipBehavior: Clip.none,
@@ -46,33 +48,22 @@ class FamilyBottomNavBar extends StatelessWidget {
             ),
             child: Row(
               children: [
-                _navItem(
-                  index: 0,
-                  icon: Icons.home_rounded,
-                  label: 'Beranda',
-                ),
+                _navItem(index: 0, icon: Icons.home_rounded, label: 'Beranda'),
                 _navItem(
                   index: 1,
                   icon: Icons.person_add_alt_1_rounded,
                   label: 'Koneksi',
                 ),
-
                 const SizedBox(width: 70),
-
                 _navItem(
                   index: 2,
                   icon: Icons.description_rounded,
                   label: 'Riwayat',
                 ),
-                _navItem(
-                  index: 3,
-                  icon: Icons.person_rounded,
-                  label: 'Profil',
-                ),
+                _navItem(index: 3, icon: Icons.person_rounded, label: 'Profil'),
               ],
             ),
           ),
-
           Positioned(
             top: 0,
             child: GestureDetector(
@@ -81,7 +72,9 @@ class FamilyBottomNavBar extends StatelessWidget {
                 width: 72,
                 height: 72,
                 decoration: BoxDecoration(
-                  color: AppColors.lightBlue,
+                  color: isAddSelected
+                      ? AppColors.primaryBlue
+                      : AppColors.lightBlue,
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
@@ -90,14 +83,11 @@ class FamilyBottomNavBar extends StatelessWidget {
                       offset: const Offset(0, 5),
                     ),
                   ],
-                  border: Border.all(
-                    color: AppColors.background,
-                    width: 5,
-                  ),
+                  border: Border.all(color: AppColors.background, width: 5),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.add_rounded,
-                  color: AppColors.primaryBlue,
+                  color: isAddSelected ? Colors.white : AppColors.primaryBlue,
                   size: 40,
                 ),
               ),

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../core/theme/app_colors.dart';
+import '../../../data/services/api_service.dart';
 import 'patient_recommendation_detail_page.dart';
 
 class PatientHistoryPage extends StatefulWidget {
@@ -14,7 +17,13 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
   int healthFilter = 0;
   DateTimeRange? selectedRange;
 
-  final healthFilters = [
+  bool isLoading = true;
+  String? errorMessage;
+
+  List<Map<String, dynamic>> healthHistories = [];
+  List<Map<String, String>> recommendationHistories = [];
+
+  final healthFilters = const [
     'Semua',
     'Glukosa',
     'Fisiologis',
@@ -23,109 +32,194 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
     'Obat',
   ];
 
-  final List<Map<String, Object>> healthHistories = [
-    {
-      'type': 'Glukosa',
-      'title': 'Glukosa Postprandial',
-      'time': '7 Jun • 13:04',
-      'value': '187',
-      'unit': 'mg/dL',
-      'badge': 'Abnormal',
-      'icon': Icons.opacity,
-      'color': AppColors.red,
-    },
-    {
-      'type': 'Obat',
-      'title': 'Metformin 850 mg',
-      'time': '7 Jun • 07:00',
-      'value': '',
-      'unit': '',
-      'badge': 'Diminum',
-      'doctor': 'dr. Agus Setiawan, Sp.PD',
-      'prescriptionStatus': 'Resep berlaku',
-      'icon': Icons.medication_outlined,
-      'color': AppColors.primaryBlue,
-    },
-    {
-      'type': 'Obat',
-      'title': 'Glibenclamide 5 mg',
-      'time': '5 Jun • 20:00',
-      'value': '',
-      'unit': '',
-      'badge': 'Terlewat',
-      'doctor': 'dr. Sarah Puspita, Sp.PD',
-      'prescriptionStatus': 'Tidak berlaku',
-      'icon': Icons.medication_outlined,
-      'color': AppColors.red,
-    },
-    {
-      'type': 'Aktivitas',
-      'title': 'Aktivitas Fisik',
-      'time': '7 Jun • 06:30',
-      'value': '',
-      'unit': '',
-      'badge': 'Jalan kaki',
-      'icon': Icons.directions_run,
-      'color': AppColors.primaryBlue,
-    },
-    {
-      'type': 'Fisiologis',
-      'title': 'Tekanan Darah',
-      'time': '7 Jun • 06:15',
-      'value': '128/82',
-      'unit': 'mmHg',
-      'badge': 'Normal',
-      'icon': Icons.bar_chart_rounded,
-      'color': Colors.orange,
-    },
-    {
-      'type': 'Makan',
-      'title': 'Pola Makan',
-      'time': '7 Jun • 12:20',
-      'value': '60',
-      'unit': 'gram',
-      'badge': 'Sarapan',
-      'icon': Icons.restaurant_outlined,
-      'color': AppColors.primaryBlue,
-    },
-    {
-      'type': 'Glukosa',
-      'title': 'Glukosa Postprandial',
-      'time': '6 Jun • 12:55',
-      'value': '162',
-      'unit': 'mg/dL',
-      'badge': 'Normal',
-      'icon': Icons.opacity,
-      'color': Colors.orange,
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
 
-  final List<Map<String, String>> recommendationHistories = [
-    {
-      'doctor': 'dr. Agus Setiawan, Sp.PD',
-      'date': '7 Jun 2025 • 09:41',
-      'status': 'Tidak Stabil',
-      'description':
-          'Glukosa postprandial 187 mg/dL, melebihi batas normal. Penyesuaian dosis Metformin diperlukan...',
-      'initial': 'AS',
-    },
-    {
-      'doctor': 'dr. Sarah Puspita, Sp.PD',
-      'date': '1 Jun 2025 • 11:00',
-      'status': 'Stabil',
-      'description':
-          'Kondisi pasien stabil. Glukosa puasa dalam batas normal dan tekanan darah terkontrol baik.',
-      'initial': 'SP',
-    },
-  ];
+  Future<void> _loadHistory() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final patientId = prefs.getInt('patient_id');
+
+      if (patientId == null) {
+        throw Exception('Patient ID tidak ditemukan. Coba login ulang.');
+      }
+
+      final healthData = await ApiService.getPatientHealthHistory(patientId);
+      final recommendations = await ApiService.getPatientRecommendations(
+        patientId,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        healthHistories = _mapHealthHistories(healthData);
+        recommendationHistories = _mapRecommendationHistories(recommendations);
+        isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        errorMessage = e.toString().replaceAll('Exception: ', '');
+        isLoading = false;
+      });
+    }
+  }
+
+  List<Map<String, dynamic>> _mapHealthHistories(Map<String, dynamic> data) {
+    final List<Map<String, dynamic>> result = [];
+
+    for (final item in List<Map<String, dynamic>>.from(data['glucose'] ?? [])) {
+      result.add({
+        'type': 'Glukosa',
+        'title': 'Glukosa ${item['measurement_type'] ?? '-'}',
+        'time': _formatDateTime(item['measured_at']),
+        'date_raw': item['measured_at'],
+        'value': '${item['glucose_value'] ?? '-'}',
+        'unit': 'mg/dL',
+        'badge': item['validation_status'] ?? 'Valid',
+        'icon': Icons.opacity,
+        'color': AppColors.red,
+        'raw': item,
+      });
+    }
+
+    for (final item in List<Map<String, dynamic>>.from(
+      data['physiological'] ?? [],
+    )) {
+      result.add({
+        'type': 'Fisiologis',
+        'title': 'Data Fisiologis',
+        'time': _formatDateTime(item['measured_at']),
+        'date_raw': item['measured_at'],
+        'value': '${item['systolic'] ?? '-'}/${item['diastolic'] ?? '-'}',
+        'unit': 'mmHg',
+        'badge': item['validation_status'] ?? 'Valid',
+        'icon': Icons.bar_chart_rounded,
+        'color': Colors.orange,
+        'raw': item,
+      });
+    }
+
+    for (final item in List<Map<String, dynamic>>.from(
+      data['activity'] ?? [],
+    )) {
+      result.add({
+        'type': 'Aktivitas',
+        'title': 'Aktivitas Fisik',
+        'time': _formatDateTime(item['activity_date']),
+        'date_raw': item['activity_date'],
+        'value': '${item['duration_minutes'] ?? '-'}',
+        'unit': 'menit',
+        'badge': item['intensity'] ?? '-',
+        'icon': Icons.directions_run,
+        'color': AppColors.primaryBlue,
+        'raw': item,
+      });
+    }
+
+    for (final item in List<Map<String, dynamic>>.from(data['meal'] ?? [])) {
+      result.add({
+        'type': 'Makan',
+        'title': 'Pola Makan',
+        'time': _formatDateTime(item['meal_date']),
+        'date_raw': item['meal_date'],
+        'value': '${item['carbohydrate_estimate'] ?? '-'}',
+        'unit': 'gram',
+        'badge': item['validation_status'] ?? 'Valid',
+        'icon': Icons.restaurant_outlined,
+        'color': AppColors.primaryBlue,
+        'raw': item,
+      });
+    }
+
+    for (final item in List<Map<String, dynamic>>.from(
+      data['medication'] ?? [],
+    )) {
+      result.add({
+        'type': 'Obat',
+        'title': item['medication_name']?.toString() ?? 'Obat',
+        'time': _formatDateTime(item['log_date']),
+        'date_raw': item['log_date'],
+        'value': '',
+        'unit': '',
+        'badge': item['status']?.toString() ?? '-',
+        'doctor': item['doctor_name']?.toString() ?? '-',
+        'prescriptionStatus': 'Resep aktif',
+        'icon': Icons.medication_outlined,
+        'color': item['status'] == 'Terlewat'
+            ? AppColors.red
+            : AppColors.primaryBlue,
+        'raw': item,
+      });
+    }
+
+    result.sort((a, b) {
+      final dateA = DateTime.tryParse(a['date_raw']?.toString() ?? '');
+      final dateB = DateTime.tryParse(b['date_raw']?.toString() ?? '');
+
+      if (dateA == null || dateB == null) return 0;
+      return dateB.compareTo(dateA);
+    });
+
+    return result;
+  }
+
+  List<Map<String, String>> _mapRecommendationHistories(
+    List<Map<String, dynamic>> data,
+  ) {
+    return data.map((item) {
+      final doctorName = item['doctor_name']?.toString() ?? 'Dokter';
+      final initial = doctorName.isNotEmpty ? doctorName[0].toUpperCase() : 'D';
+
+      return {
+        'initial': initial,
+        'doctor': doctorName,
+        'date': _formatDateTime(item['created_at']),
+        'status': item['category']?.toString() ?? 'Rekomendasi',
+        'description': item['recommendation_text']?.toString() ?? '-',
+        'recommendation_id': item['recommendation_id']?.toString() ?? '',
+        'clinical_note_id': item['clinical_note_id']?.toString() ?? '',
+      };
+    }).toList();
+  }
+
+  String _formatDateTime(dynamic value) {
+    if (value == null) return '-';
+
+    final date = DateTime.tryParse(value.toString());
+    if (date == null) return value.toString();
+
+    return '${date.day}/${date.month}/${date.year} • ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
+  List<Map<String, dynamic>> get _filteredHealth {
+    return healthHistories.where((item) {
+      final matchType =
+          healthFilter == 0 || item['type'] == healthFilters[healthFilter];
+
+      final date = DateTime.tryParse(item['date_raw']?.toString() ?? '');
+
+      final matchDate =
+          selectedRange == null ||
+          date == null ||
+          (!date.isBefore(selectedRange!.start) &&
+              date.isBefore(selectedRange!.end.add(const Duration(days: 1))));
+
+      return matchType && matchDate;
+    }).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final filteredHealth = healthHistories.where((item) {
-      if (healthFilter == 0) return true;
-      return item['type'] == healthFilters[healthFilter];
-    }).toList();
-
     return Container(
       color: AppColors.primaryBlue,
       child: SafeArea(
@@ -136,10 +230,44 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
             Expanded(
               child: Container(
                 color: AppColors.background,
-                child: mainTab == 0
-                    ? _healthContent(filteredHealth)
+                child: isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : errorMessage != null
+                    ? _errorState()
+                    : mainTab == 0
+                    ? _healthContent(_filteredHealth)
                     : _recommendationContent(recommendationHistories),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _errorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, color: AppColors.red, size: 42),
+            const SizedBox(height: 12),
+            Text(
+              errorMessage ?? 'Gagal memuat riwayat',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.dark2, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _loadHistory,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryBlue,
+                foregroundColor: Colors.white,
+                elevation: 0,
+              ),
+              child: const Text('Coba lagi'),
             ),
           ],
         ),
@@ -215,46 +343,7 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
     );
   }
 
-  Widget _filterChips({
-    required List<String> filters,
-    required int selectedIndex,
-    required ValueChanged<int> onTap,
-  }) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
-      child: Row(
-        children: List.generate(filters.length, (index) {
-          final selected = selectedIndex == index;
-
-          return GestureDetector(
-            onTap: () => onTap(index),
-            child: Container(
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-              decoration: BoxDecoration(
-                color: selected ? AppColors.primaryBlue : AppColors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: selected ? AppColors.primaryBlue : AppColors.light1,
-                ),
-              ),
-              child: Text(
-                filters[index],
-                style: TextStyle(
-                  color: selected ? Colors.white : AppColors.primaryBlue,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          );
-        }),
-      ),
-    );
-  }
-
-  Widget _healthContent(List<Map<String, Object>> data) {
+  Widget _healthContent(List<Map<String, dynamic>> data) {
     return Column(
       children: [
         _filterChips(
@@ -262,55 +351,67 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
           selectedIndex: healthFilter,
           onTap: (index) => setState(() => healthFilter = index),
         ),
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+          child: Row(
             children: [
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      '7 JUN 2025',
-                      style: TextStyle(
-                        color: AppColors.dark2,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+              Expanded(
+                child: Text(
+                  selectedRange == null ? 'SEMUA RIWAYAT' : 'RIWAYAT TERPILIH',
+                  style: const TextStyle(
+                    color: AppColors.dark2,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
                   ),
-                  _dateRangeButton(),
-                ],
+                ),
               ),
-              const SizedBox(height: 14),
-              ...data.map(
-                (item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _HealthHistoryCard(
-                    type: item['type'] as String,
-                    title: item['title'] as String,
-                    time: item['time'] as String,
-                    value: item['value'] as String,
-                    unit: item['unit'] as String,
-                    badge: item['badge'] as String,
-                    doctor: item['doctor'] as String?,
-                    prescriptionStatus: item['prescriptionStatus'] as String?,
-                    icon: item['icon'] as IconData,
-                    color: item['color'] as Color,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => PatientHealthDetailPage(
-                            type: item['type'] as String,
-                          ),
+              _dateRangeButton(),
+            ],
+          ),
+        ),
+        Expanded(
+          child: data.isEmpty
+              ? _emptyState('Belum ada riwayat data kesehatan')
+              : RefreshIndicator(
+                  onRefresh: _loadHistory,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
+                    itemCount: data.length,
+                    itemBuilder: (context, index) {
+                      final item = data[index];
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _HealthHistoryCard(
+                          type: item['type'] as String,
+                          title: item['title'] as String,
+                          time: item['time'] as String,
+                          value: item['value'] as String,
+                          unit: item['unit'] as String,
+                          badge: item['badge'] as String,
+                          doctor: item['doctor'] as String?,
+                          prescriptionStatus:
+                              item['prescriptionStatus'] as String?,
+                          icon: item['icon'] as IconData,
+                          color: item['color'] as Color,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => PatientHealthDetailPage(
+                                  type: item['type'] as String,
+                                  item: Map<String, dynamic>.from(
+                                    item['raw'] as Map,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       );
                     },
                   ),
                 ),
-              ),
-            ],
-          ),
         ),
       ],
     );
@@ -361,33 +462,95 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
           ),
         ),
         Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 120),
-            children: data.map((item) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 14),
-                child: GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const PatientRecommendationDetailPage(),
-                      ),
-                    );
-                  },
-                  child: _RecommendationHistoryCard(
-                    initial: item['initial']!,
-                    doctor: item['doctor']!,
-                    date: item['date']!,
-                    status: item['status']!,
-                    description: item['description']!,
+          child: data.isEmpty
+              ? _emptyState('Belum ada riwayat rekomendasi')
+              : RefreshIndicator(
+                  onRefresh: _loadHistory,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 120),
+                    itemCount: data.length,
+                    itemBuilder: (context, index) {
+                      final item = data[index];
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    PatientRecommendationDetailPage(item: item),
+                              ),
+                            );
+                          },
+                          child: _RecommendationHistoryCard(
+                            initial: item['initial']!,
+                            doctor: item['doctor']!,
+                            date: item['date']!,
+                            status: item['status']!,
+                            description: item['description']!,
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
-              );
-            }).toList(),
-          ),
         ),
       ],
+    );
+  }
+
+  Widget _emptyState(String message) {
+    return Center(
+      child: Text(
+        message,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: AppColors.dark2,
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+
+  Widget _filterChips({
+    required List<String> filters,
+    required int selectedIndex,
+    required ValueChanged<int> onTap,
+  }) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
+      child: Row(
+        children: List.generate(filters.length, (index) {
+          final selected = selectedIndex == index;
+
+          return GestureDetector(
+            onTap: () => onTap(index),
+            child: Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+              decoration: BoxDecoration(
+                color: selected ? AppColors.primaryBlue : AppColors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: selected ? AppColors.primaryBlue : AppColors.light1,
+                ),
+              ),
+              child: Text(
+                filters[index],
+                style: TextStyle(
+                  color: selected ? Colors.white : AppColors.primaryBlue,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
     );
   }
 
@@ -401,6 +564,11 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
             selectedRange = picked;
           });
         }
+      },
+      onLongPress: () {
+        setState(() {
+          selectedRange = null;
+        });
       },
       child: Container(
         height: 38,
@@ -471,7 +639,6 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
                       ),
                     ),
                     const SizedBox(height: 12),
-
                     Row(
                       children: [
                         Expanded(
@@ -493,9 +660,7 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 10),
-
                     SizedBox(
                       height: 330,
                       child: Theme(
@@ -528,9 +693,7 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 8),
-
                     Row(
                       children: [
                         Expanded(
@@ -678,7 +841,7 @@ class _HealthHistoryCard extends StatelessWidget {
                       fontSize: 12,
                     ),
                   ),
-                  if (type == 'Obat' && doctor != null) ...[
+                  if (type == 'Obat' && doctor != null && doctor != '-') ...[
                     const SizedBox(height: 4),
                     Text(
                       'Resep dari $doctor',
@@ -725,26 +888,27 @@ class _HealthHistoryCard extends StatelessWidget {
                 ],
               )
             else
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.veryLightBlue,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.lightBlue),
-                ),
-                child: Text(
-                  badge,
-                  style: const TextStyle(
-                    color: AppColors.primaryBlue,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
+              _smallBadge(badge),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _smallBadge(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.veryLightBlue,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.lightBlue),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: AppColors.primaryBlue,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -860,7 +1024,7 @@ class _RecommendationHistoryCard extends StatelessWidget {
               SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Rekomendasi dikirim',
+                  'Lihat detail rekomendasi',
                   style: TextStyle(
                     color: AppColors.primaryBlue,
                     fontSize: 12,
@@ -927,12 +1091,17 @@ class _RecommendationHistoryCard extends StatelessWidget {
 
 class PatientHealthDetailPage extends StatelessWidget {
   final String type;
+  final Map<String, dynamic> item;
 
-  const PatientHealthDetailPage({super.key, required this.type});
+  const PatientHealthDetailPage({
+    super.key,
+    required this.type,
+    required this.item,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final data = _getDetailData(type);
+    final data = _getDetailData(type, item);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -950,26 +1119,7 @@ class PatientHealthDetailPage extends StatelessWidget {
                     const SizedBox(height: 14),
                     _noteSection(data),
                     const SizedBox(height: 18),
-
-                    if (type != 'Obat')
-                      SizedBox(
-                        width: double.infinity,
-                        height: 46,
-                        child: ElevatedButton(
-                          onPressed: () => _showDeleteSheet(context),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.red,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                          ),
-                          child: const Text('Hapus data ini'),
-                        ),
-                      )
-                    else
-                      _readonlyInfo(),
+                    _readonlyInfo(type),
                   ],
                 ),
               ),
@@ -980,102 +1130,116 @@ class PatientHealthDetailPage extends StatelessWidget {
     );
   }
 
-  Map<String, dynamic> _getDetailData(String type) {
-    if (type == 'Aktivitas') {
+  Map<String, dynamic> _getDetailData(String type, Map<String, dynamic> item) {
+    if (type == 'Glukosa') {
       return {
-        'title': 'Aktivitas Fisik',
-        'icon': Icons.directions_run,
-        'value': '45',
-        'unit': 'menit',
-        'date': '7 Juni 2025 • 08:20',
-        'status': 'Tinggi',
+        'icon': Icons.opacity,
+        'value': '${item['glucose_value'] ?? '-'}',
+        'unit': 'mg/dL',
+        'date': _formatDetailDate(item['measured_at']),
+        'status': item['validation_status'] ?? 'Valid',
         'sections': [
-          ['Jenis aktivitas', 'Jalan kaki'],
-          ['Durasi', '45 menit'],
-          ['Intensitas', 'Sedang'],
+          ['Tipe pengukuran', '${item['measurement_type'] ?? '-'}'],
+          ['Nilai', '${item['glucose_value'] ?? '-'} mg/dL'],
+          ['Status', '${item['validation_status'] ?? 'Valid'}'],
         ],
-        'note': 'Jalan pagi keliling kompleks, cuaca cerah',
-      };
-    }
-
-    if (type == 'Obat') {
-      return {
-        'title': 'Detail Obat',
-        'icon': Icons.medication_outlined,
-        'value': 'Metformin 850 mg',
-        'unit': 'Jadwal pagi',
-        'date': '7 Juni 2025 • 07:00',
-        'status': 'Diminum',
-        'sections': [
-          ['Nama Obat', 'Metformin'],
-          ['Dosis', '850 mg'],
-          ['Bentuk', 'Tablet'],
-          ['Jadwal', 'Pagi'],
-          ['Aturan Minum', 'Sesudah makan'],
-          ['Status Konsumsi', 'Diminum'],
-          ['Waktu Aktual Checklist', '07:00'],
-          ['Dokter', 'dr. Agus Setiawan, Sp.PD'],
-          ['Status Resep', 'Berlaku'],
-          ['Mulai Berlaku', '1 Juni 2025'],
-        ],
-        'note':
-            'Timestamp otomatis tercatat saat pasien melakukan checklist obat.',
-      };
-    }
-
-    if (type == 'Makan') {
-      return {
-        'title': 'Pola Makan',
-        'icon': Icons.restaurant_outlined,
-        'value': '60',
-        'unit': 'gram',
-        'date': '7 Juni 2025 • 12:20',
-        'status': '',
-        'sections': [
-          ['Tipe makan', 'Sarapan'],
-          ['Estimasi karbohidrat', '60 gram'],
-        ],
-        'note': 'Nasi putih 1 porsi, ayam goreng, sayur bayam, tempe goreng',
+        'note': item['note']?.toString() ?? '',
       };
     }
 
     if (type == 'Fisiologis') {
       return {
-        'title': 'Data Fisiologis',
         'icon': Icons.bar_chart_rounded,
-        'value': '128/82',
+        'value': '${item['systolic'] ?? '-'}/${item['diastolic'] ?? '-'}',
         'unit': 'mmHg',
-        'date': '7 Juni 2025 • 08:20',
-        'status': 'Normal',
+        'date': _formatDetailDate(item['measured_at']),
+        'status': item['validation_status'] ?? 'Valid',
         'sections': [
-          ['Sistolik', '128 mmHg'],
-          ['Diastolik', '82 mmHg'],
-          ['Batas normal', '90–140 / 60–90 mmHg'],
-          ['Status', 'Normal'],
-          ['Berat Badan', '78.5 kg'],
-          ['Tinggi Badan', '168 cm'],
-          ['BMI', '27.4 kg/m²'],
+          ['Sistolik', '${item['systolic'] ?? '-'} mmHg'],
+          ['Diastolik', '${item['diastolic'] ?? '-'} mmHg'],
+          ['Berat Badan', '${item['weight_kg'] ?? '-'} kg'],
+          ['BMI', '${item['bmi'] ?? '-'} kg/m²'],
+          ['Status', '${item['validation_status'] ?? 'Valid'}'],
         ],
-        'note': '',
+        'note': item['note']?.toString() ?? '',
+      };
+    }
+
+    if (type == 'Aktivitas') {
+      return {
+        'icon': Icons.directions_run,
+        'value': '${item['duration_minutes'] ?? '-'}',
+        'unit': 'menit',
+        'date': _formatDetailDate(item['activity_date']),
+        'status': item['intensity'] ?? '-',
+        'sections': [
+          ['Durasi', '${item['duration_minutes'] ?? '-'} menit'],
+          ['Intensitas', '${item['intensity'] ?? '-'}'],
+          ['Status', '${item['validation_status'] ?? 'Valid'}'],
+        ],
+        'note': item['note']?.toString() ?? '',
+      };
+    }
+
+    if (type == 'Makan') {
+      return {
+        'icon': Icons.restaurant_outlined,
+        'value': '${item['carbohydrate_estimate'] ?? '-'}',
+        'unit': 'gram',
+        'date': _formatDetailDate(item['meal_date']),
+        'status': item['validation_status'] ?? 'Valid',
+        'sections': [
+          [
+            'Estimasi karbohidrat',
+            '${item['carbohydrate_estimate'] ?? '-'} gram',
+          ],
+          ['Kalori', '${item['calories'] ?? '-'} kkal'],
+          ['Status', '${item['validation_status'] ?? 'Valid'}'],
+        ],
+        'note': item['food_description']?.toString() ?? '',
       };
     }
 
     return {
-      'title': 'Data Glukosa',
-      'icon': Icons.opacity,
-      'value': '187',
-      'unit': 'mg/dL',
-      'date': '7 Juni 2025 • 13:04',
-      'status': 'Abnormal',
+      'icon': Icons.medication_outlined,
+      'value': item['medication_name']?.toString() ?? 'Obat',
+      'unit': item['session']?.toString() ?? '',
+      'date': _formatDetailDate(item['log_date']),
+      'status': item['status']?.toString() ?? '-',
       'sections': [
-        ['Tipe pengukuran', 'Postprandial'],
-        ['Nilai', '187 mg/dL'],
-        ['Batas normal', '80–160 mg/dL'],
-        ['Status', 'Abnormal'],
-        ['Notif ke dokter', 'Terkirim'],
+        ['Nama Obat', '${item['medication_name'] ?? '-'}'],
+        ['Jadwal', '${item['session'] ?? '-'}'],
+        ['Dosis', '${item['dose_per_session'] ?? '-'}'],
+        ['Status Konsumsi', '${item['status'] ?? '-'}'],
+        ['Waktu Checklist', _formatDetailDate(item['checked_at'])],
+        ['Status Validasi', '${item['validation_status'] ?? 'Valid'}'],
       ],
-      'note': 'Setelah makan nasi padang',
+      'note': item['note']?.toString() ?? '',
     };
+  }
+
+  String _formatDetailDate(dynamic value) {
+    if (value == null) return '-';
+
+    final date = DateTime.tryParse(value.toString());
+    if (date == null) return value.toString();
+
+    const months = [
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember',
+    ];
+
+    return '${date.day} ${months[date.month - 1]} ${date.year} • ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 
   Widget _header(BuildContext context, Map<String, dynamic> data) {
@@ -1112,11 +1276,15 @@ class PatientHealthDetailPage extends StatelessWidget {
           CircleAvatar(
             radius: 30,
             backgroundColor: AppColors.lightBlue,
-            child: Icon(data['icon'], color: AppColors.primaryBlue, size: 30),
+            child: Icon(
+              data['icon'] as IconData,
+              color: AppColors.primaryBlue,
+              size: 30,
+            ),
           ),
           const SizedBox(height: 16),
           Text(
-            data['value'],
+            data['value'].toString(),
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: Colors.white,
@@ -1126,15 +1294,15 @@ class PatientHealthDetailPage extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            data['unit'],
+            data['unit'].toString(),
             style: const TextStyle(color: Colors.white, fontSize: 13),
           ),
           const SizedBox(height: 6),
           Text(
-            data['date'],
+            data['date'].toString(),
             style: const TextStyle(color: Colors.white, fontSize: 11),
           ),
-          if ((data['status'] as String).isNotEmpty) ...[
+          if (data['status'].toString().isNotEmpty) ...[
             const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -1143,7 +1311,7 @@ class PatientHealthDetailPage extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                data['status'],
+                data['status'].toString(),
                 style: TextStyle(
                   color: isBad ? AppColors.red : AppColors.primaryBlue,
                   fontSize: 11,
@@ -1252,7 +1420,11 @@ class PatientHealthDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _readonlyInfo() {
+  Widget _readonlyInfo(String type) {
+    final message = type == 'Obat'
+        ? 'Data obat berasal dari checklist kepatuhan pasien. Riwayat ini hanya dapat dilihat dan tidak dapat diubah dari halaman ini.'
+        : 'Riwayat ini hanya dapat dilihat dari halaman detail. Penghapusan data belum diaktifkan agar data backend tetap aman.';
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(13),
@@ -1260,14 +1432,18 @@ class PatientHealthDetailPage extends StatelessWidget {
         color: AppColors.veryLightBlue,
         borderRadius: BorderRadius.circular(10),
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Icon(Icons.info_outline, color: AppColors.primaryBlue, size: 18),
-          SizedBox(width: 10),
+          const Icon(
+            Icons.info_outline,
+            color: AppColors.primaryBlue,
+            size: 18,
+          ),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Data obat berasal dari checklist kepatuhan pasien. Riwayat ini hanya dapat dilihat dan tidak dapat diubah dari halaman ini.',
-              style: TextStyle(
+              message,
+              style: const TextStyle(
                 color: AppColors.primaryBlue,
                 fontSize: 12,
                 height: 1.35,
@@ -1276,127 +1452,6 @@ class PatientHealthDetailPage extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-
-  void _showDeleteSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircleAvatar(
-                radius: 36,
-                backgroundColor: AppColors.lightRed,
-                child: Icon(
-                  Icons.delete_outline,
-                  color: AppColors.red,
-                  size: 36,
-                ),
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'Hapus data ini?',
-                style: TextStyle(
-                  color: AppColors.primaryBlue,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Data yang dihapus tidak dapat dikembalikan.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.dark2, fontSize: 13),
-              ),
-              const SizedBox(height: 22),
-              SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(sheetContext);
-                    _showDeletedSuccess(context);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.red,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                  ),
-                  child: const Text('Hapus'),
-                ),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(sheetContext),
-                child: const Text(
-                  'Batal',
-                  style: TextStyle(color: AppColors.primaryBlue),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _showDeletedSuccess(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircleAvatar(
-                radius: 36,
-                backgroundColor: Color(0xFFEAFBF3),
-                child: Icon(Icons.check, color: Color(0xFF10C878), size: 36),
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'Data berhasil dihapus',
-                style: TextStyle(
-                  color: AppColors.primaryBlue,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 22),
-              SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(sheetContext);
-                    Navigator.pop(context);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryBlue,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                  ),
-                  child: const Text('Kembali ke riwayat'),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 

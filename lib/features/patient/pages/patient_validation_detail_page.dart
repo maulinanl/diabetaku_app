@@ -1,25 +1,109 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
 
-class PatientValidationDetailPage extends StatelessWidget {
-  final String name;
-  final String relation;
-  final String type;
-  final String value;
-  final String time;
-  final String note;
-  final IconData icon;
+import '../../../core/theme/app_colors.dart';
+import '../../../data/services/api_service.dart';
+
+class PatientValidationDetailPage extends StatefulWidget {
+  final Map<String, dynamic> item;
 
   const PatientValidationDetailPage({
     super.key,
-    required this.name,
-    required this.relation,
-    required this.type,
-    required this.value,
-    required this.time,
-    required this.note,
-    required this.icon,
+    required this.item,
   });
+
+  @override
+  State<PatientValidationDetailPage> createState() =>
+      _PatientValidationDetailPageState();
+}
+
+class _PatientValidationDetailPageState
+    extends State<PatientValidationDetailPage> {
+  bool isProcessing = false;
+
+  String get recordType => widget.item['record_type']?.toString() ?? '';
+
+  int get recordId => int.parse(widget.item['record_id'].toString());
+
+  String get name =>
+      widget.item['input_by']?.toString() ??
+      widget.item['inputBy']?.toString() ??
+      '-';
+
+  String get relation => widget.item['relation']?.toString() ?? 'Keluarga';
+
+  String get type => widget.item['title']?.toString() ?? '-';
+
+  String get value {
+    final value = widget.item['value']?.toString() ?? '-';
+    final unit = widget.item['unit']?.toString() ?? '';
+
+    return unit.isEmpty ? value : '$value $unit';
+  }
+
+  String get time => _formatDate(widget.item['date']);
+
+  String get note => widget.item['note']?.toString() ?? 'Tidak ada catatan.';
+
+  IconData get icon {
+    switch (recordType) {
+      case 'glucose':
+        return Icons.opacity;
+      case 'physiological':
+        return Icons.favorite_border;
+      case 'activity':
+        return Icons.directions_run;
+      case 'meal':
+        return Icons.restaurant_outlined;
+      default:
+        return Icons.assignment_outlined;
+    }
+  }
+
+  String _formatDate(dynamic value) {
+    if (value == null) return '-';
+
+    final date = DateTime.tryParse(value.toString());
+    if (date == null) return value.toString();
+
+    return '${date.day}/${date.month}/${date.year} • ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _respond(bool approve) async {
+    if (isProcessing) return;
+
+    setState(() {
+      isProcessing = true;
+    });
+
+    try {
+      await ApiService.respondPatientValidation(
+        recordType: recordType,
+        recordId: recordId,
+        status: approve ? 'Valid' : 'Ditolak',
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        isProcessing = false;
+      });
+
+      _showActionSheet(context, approve, success: true);
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        isProcessing = false;
+      });
+
+      _showActionSheet(
+        context,
+        approve,
+        success: false,
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,14 +123,12 @@ class PatientValidationDetailPage extends StatelessWidget {
                     const SizedBox(height: 14),
                     _noteSection(),
                     const SizedBox(height: 20),
-
                     Row(
                       children: [
                         Expanded(
                           child: OutlinedButton(
-                            onPressed: () {
-                              _showActionSheet(context, false);
-                            },
+                            onPressed:
+                                isProcessing ? null : () => _respond(false),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.red,
                               side: const BorderSide(color: AppColors.red),
@@ -55,21 +137,19 @@ class PatientValidationDetailPage extends StatelessWidget {
                             child: const Text('Tolak'),
                           ),
                         ),
-
                         const SizedBox(width: 12),
-
                         Expanded(
                           child: ElevatedButton(
-                            onPressed: () {
-                              _showActionSheet(context, true);
-                            },
+                            onPressed:
+                                isProcessing ? null : () => _respond(true),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primaryBlue,
                               foregroundColor: Colors.white,
+                              disabledBackgroundColor: AppColors.light1,
                               minimumSize: const Size.fromHeight(46),
                               elevation: 0,
                             ),
-                            child: const Text('Setujui'),
+                            child: Text(isProcessing ? 'Memproses...' : 'Setujui'),
                           ),
                         ),
                       ],
@@ -96,7 +176,7 @@ class PatientValidationDetailPage extends StatelessWidget {
           Row(
             children: [
               IconButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.pop(context, false),
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
               ),
               const Expanded(
@@ -112,13 +192,15 @@ class PatientValidationDetailPage extends StatelessWidget {
               const SizedBox(width: 48),
             ],
           ),
-
           const SizedBox(height: 12),
-
+          CircleAvatar(
+            radius: 26,
+            backgroundColor: AppColors.lightBlue,
+            child: Icon(icon, color: AppColors.primaryBlue, size: 26),
+          ),
+          const SizedBox(height: 12),
           Text(type, style: const TextStyle(color: Colors.white, fontSize: 14)),
-
           const SizedBox(height: 10),
-
           Text(
             value,
             style: const TextStyle(
@@ -127,13 +209,9 @@ class PatientValidationDetailPage extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
-
           const SizedBox(height: 6),
-
           Text(time, style: const TextStyle(color: Colors.white, fontSize: 11)),
-
           const SizedBox(height: 10),
-
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
             decoration: BoxDecoration(
@@ -169,9 +247,7 @@ class PatientValidationDetailPage extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-
           const SizedBox(height: 14),
-
           _row('Jenis Data', type),
           _row('Nilai', value),
           _row('Diinput Oleh', name),
@@ -197,9 +273,7 @@ class PatientValidationDetailPage extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-
           const SizedBox(height: 10),
-
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
@@ -218,6 +292,7 @@ class PatientValidationDetailPage extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             child: Text(
@@ -225,12 +300,16 @@ class PatientValidationDetailPage extends StatelessWidget {
               style: const TextStyle(color: AppColors.dark2, fontSize: 12),
             ),
           ),
-          Text(
-            value,
-            style: const TextStyle(
-              color: AppColors.primaryBlue,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                color: AppColors.primaryBlue,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -238,11 +317,26 @@ class PatientValidationDetailPage extends StatelessWidget {
     );
   }
 
-  void _showActionSheet(BuildContext context, bool approve) {
+  void _showActionSheet(
+    BuildContext context,
+    bool approve, {
+    required bool success,
+    String? errorMessage,
+  }) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) {
+      builder: (sheetContext) {
+        final title = success
+            ? (approve ? 'Data berhasil divalidasi' : 'Data ditolak')
+            : 'Gagal memproses';
+
+        final message = success
+            ? (approve
+                ? 'Data telah masuk ke riwayat kesehatan pasien.'
+                : 'Data tidak akan dimasukkan ke riwayat kesehatan pasien.')
+            : (errorMessage ?? 'Terjadi kesalahan saat memproses data.');
+
         return Container(
           padding: const EdgeInsets.all(24),
           decoration: const BoxDecoration(
@@ -252,34 +346,45 @@ class PatientValidationDetailPage extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              CircleAvatar(
+                radius: 34,
+                backgroundColor:
+                    success && approve ? const Color(0xFFEAFBF3) : AppColors.lightRed,
+                child: Icon(
+                  success
+                      ? (approve ? Icons.check : Icons.close)
+                      : Icons.error_outline,
+                  color:
+                      success && approve ? const Color(0xFF10C878) : AppColors.red,
+                  size: 34,
+                ),
+              ),
+              const SizedBox(height: 16),
               Text(
-                approve ? 'Data berhasil divalidasi' : 'Data ditolak',
+                title,
                 style: const TextStyle(
                   color: AppColors.primaryBlue,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-
               const SizedBox(height: 10),
-
               Text(
-                approve
-                    ? 'Data telah masuk ke riwayat kesehatan pasien.'
-                    : 'Data tidak akan dimasukkan ke riwayat kesehatan pasien.',
+                message,
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: AppColors.dark2),
               ),
-
               const SizedBox(height: 20),
-
               SizedBox(
                 width: double.infinity,
                 height: 46,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.pop(context);
-                    Navigator.pop(context);
+                    Navigator.pop(sheetContext);
+
+                    if (success) {
+                      Navigator.pop(context, true);
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryBlue,

@@ -2,25 +2,35 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 
 class PatientRecommendationDetailPage extends StatelessWidget {
-  const PatientRecommendationDetailPage({super.key});
+  final Map<String, String> item;
+
+  const PatientRecommendationDetailPage({
+    super.key,
+    required this.item,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final doctor = item['doctor'] ?? 'Dokter';
+    final date = item['date'] ?? '-';
+    final category = item['status'] ?? 'Rekomendasi';
+    final description = item['description'] ?? '-';
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         top: false,
         child: Column(
           children: [
-            _header(context),
+            _header(context, doctor, date, category),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
                 child: Column(
                   children: [
-                    _infoCard(),
+                    _infoCard(doctor, date, category),
                     const SizedBox(height: 14),
-                    _recommendationCard(),
+                    _recommendationCard(category, description),
                   ],
                 ),
               ),
@@ -31,7 +41,12 @@ class PatientRecommendationDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _header(BuildContext context) {
+  Widget _header(
+    BuildContext context,
+    String doctor,
+    String date,
+    String category,
+  ) {
     final topPad = MediaQuery.of(context).padding.top;
 
     return Container(
@@ -90,25 +105,28 @@ class PatientRecommendationDetailPage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'dr. Agus Setiawan, Sp.PD',
-                        style: TextStyle(
+                      Text(
+                        doctor,
+                        style: const TextStyle(
                           color: AppColors.dark1,
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                       const SizedBox(height: 4),
-                      const Text(
-                        '7 Jun 2025 • 09:41',
-                        style: TextStyle(color: AppColors.dark2, fontSize: 11),
+                      Text(
+                        date,
+                        style: const TextStyle(
+                          color: AppColors.dark2,
+                          fontSize: 11,
+                        ),
                       ),
                       const SizedBox(height: 7),
                       _smallBadge(
-                        text: 'Rekomendasi',
+                        text: category,
                         bg: AppColors.veryLightBlue,
                         color: AppColors.primaryBlue,
-                        icon: Icons.assignment_outlined,
+                        icon: _categoryIcon(category),
                       ),
                     ],
                   ),
@@ -121,7 +139,7 @@ class PatientRecommendationDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _infoCard() {
+  Widget _infoCard(String doctor, String date, String category) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -144,15 +162,15 @@ class PatientRecommendationDetailPage extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          _infoRow('Dokter', 'dr. Agus Setiawan, Sp.PD'),
-          _infoRow('Tanggal', '7 Jun 2025 • 09:41'),
-          _infoRow('Status Pasien', 'Abnormal'),
+          _infoRow('Dokter', doctor),
+          _infoRow('Tanggal', date),
+          _infoRow('Kategori', category),
         ],
       ),
     );
   }
 
-  Widget _recommendationCard() {
+  Widget _recommendationCard(String category, String description) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -175,65 +193,52 @@ class PatientRecommendationDetailPage extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          _recommendationItem(
-            icon: Icons.medication_outlined,
-            label: 'Obat',
-            text:
-                'Tingkatkan dosis Metformin dari 500mg menjadi 850mg, dikonsumsi 2× sehari setelah makan. Monitor efek samping GI selama 2 minggu pertama.',
-          ),
-          const SizedBox(height: 12),
-          _recommendationItem(
-            icon: Icons.restaurant_outlined,
-            label: 'Pola Makan',
-            text:
-                'Kurangi asupan karbohidrat sederhana. Pilih karbohidrat kompleks seperti nasi merah atau oatmeal. Batasi porsi nasi putih maksimal ½ centong per makan.',
-          ),
-          const SizedBox(height: 12),
-          _recommendationItem(
-            icon: Icons.directions_run,
-            label: 'Gaya Hidup',
-            text:
-                'Lakukan olahraga aerobik ringan-sedang minimal 30 menit, 3× seminggu. Contoh: jalan cepat, bersepeda, atau berenang.',
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.veryLightBlue.withValues(alpha: 0.55),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.light1),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _smallBadge(
+                  text: category,
+                  bg: AppColors.lightBlue,
+                  color: AppColors.primaryBlue,
+                  icon: _categoryIcon(category),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  description,
+                  style: const TextStyle(
+                    color: AppColors.dark1,
+                    fontSize: 13,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _recommendationItem({
-    required IconData icon,
-    required String label,
-    required String text,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.veryLightBlue.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.light1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _smallBadge(
-            text: label,
-            bg: AppColors.lightBlue,
-            color: AppColors.primaryBlue,
-            icon: icon,
-          ),
-          const SizedBox(height: 10),
-          Text(
-            text,
-            style: const TextStyle(
-              color: AppColors.dark1,
-              fontSize: 13,
-              height: 1.35,
-            ),
-          ),
-        ],
-      ),
-    );
+  IconData _categoryIcon(String category) {
+    switch (category) {
+      case 'Obat':
+        return Icons.medication_outlined;
+      case 'Pola Makan':
+        return Icons.restaurant_outlined;
+      case 'Aktivitas Fisik':
+      case 'Gaya Hidup':
+        return Icons.directions_run;
+      default:
+        return Icons.assignment_outlined;
+    }
   }
 
   Widget _infoRow(String label, String value) {

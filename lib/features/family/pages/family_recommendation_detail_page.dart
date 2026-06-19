@@ -2,7 +2,39 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 
 class FamilyRecommendationDetailPage extends StatelessWidget {
-  const FamilyRecommendationDetailPage({super.key});
+  final Map<String, dynamic> item;
+
+  const FamilyRecommendationDetailPage({
+    super.key,
+    required this.item,
+  });
+
+  String get doctorName =>
+      item['doctor_name']?.toString() ??
+      item['doctor']?.toString() ??
+      'Dokter';
+
+  String get date =>
+      item['created_at']?.toString() ??
+      item['date']?.toString() ??
+      '-';
+
+  String get category =>
+      item['category']?.toString() ??
+      item['status']?.toString() ??
+      'Rekomendasi';
+
+  String get recommendationText =>
+      item['recommendation_text']?.toString() ??
+      item['description']?.toString() ??
+      '-';
+
+  String get initial {
+    final parts = doctorName.trim().split(' ').where((e) => e.isNotEmpty).toList();
+    if (parts.isEmpty) return 'DR';
+    if (parts.length == 1) return parts.first[0].toUpperCase();
+    return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,6 +84,7 @@ class FamilyRecommendationDetailPage extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -66,34 +99,35 @@ class FamilyRecommendationDetailPage extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: _cardDecoration(),
-      child: const Row(
+      child: Row(
         children: [
           CircleAvatar(
             radius: 24,
             backgroundColor: AppColors.lightBlue,
             child: Text(
-              'AS',
-              style: TextStyle(
+              initial,
+              style: const TextStyle(
                 color: AppColors.primaryBlue,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ),
-          SizedBox(width: 12),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'dr. Agus Setiawan, Sp.PD',
-                  style: TextStyle(
+                  doctorName,
+                  style: const TextStyle(
+                    color: AppColors.dark1,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
-                  '7 Juni 2025 • 09:41',
-                  style: TextStyle(
+                  date,
+                  style: const TextStyle(
                     color: AppColors.dark2,
                     fontSize: 12,
                   ),
@@ -111,19 +145,24 @@ class FamilyRecommendationDetailPage extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: _cardDecoration(),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Rekomendasi',
-            style: TextStyle(
+            category,
+            style: const TextStyle(
               color: AppColors.primaryBlue,
               fontWeight: FontWeight.w700,
             ),
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           Text(
-            'Kurangi konsumsi makanan tinggi gula sederhana dan lakukan aktivitas fisik ringan minimal 30 menit setiap hari. Pastikan pasien mengonsumsi obat sesuai jadwal yang telah diberikan.',
+            recommendationText,
+            style: const TextStyle(
+              color: AppColors.dark1,
+              fontSize: 13,
+              height: 1.45,
+            ),
           ),
         ],
       ),
@@ -131,50 +170,43 @@ class FamilyRecommendationDetailPage extends StatelessWidget {
   }
 
   Widget _familyTaskCard() {
+    final tasks = [
+      'Pantau konsumsi obat pasien',
+      'Pantau pola makan harian',
+      'Pastikan aktivitas fisik rutin',
+    ];
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: _cardDecoration(),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          const Text(
             'Tugas Pendamping',
             style: TextStyle(
               color: AppColors.primaryBlue,
               fontWeight: FontWeight.w700,
             ),
           ),
-          SizedBox(height: 12),
-
-          ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(
-              Icons.check_circle_outline,
-              color: AppColors.primaryBlue,
+          const SizedBox(height: 12),
+          ...tasks.map(
+            (task) => ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(
+                Icons.check_circle_outline,
+                color: AppColors.primaryBlue,
+              ),
+              title: Text(
+                task,
+                style: const TextStyle(
+                  color: AppColors.dark1,
+                  fontSize: 13,
+                ),
+              ),
             ),
-            title: Text('Pantau konsumsi obat pasien'),
-          ),
-
-          ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(
-              Icons.check_circle_outline,
-              color: AppColors.primaryBlue,
-            ),
-            title: Text('Pantau pola makan harian'),
-          ),
-
-          ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(
-              Icons.check_circle_outline,
-              color: AppColors.primaryBlue,
-            ),
-            title: Text('Pastikan aktivitas fisik rutin'),
           ),
         ],
       ),

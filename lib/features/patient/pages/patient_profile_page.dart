@@ -1,13 +1,120 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/services/api_service.dart';
 import '../../auth/pages/login_page.dart';
+import '../../auth/pages/change_password_page.dart';
 import 'patient_edit_profile_page.dart';
 
-class PatientProfilePage extends StatelessWidget {
+class PatientProfilePage extends StatefulWidget {
   const PatientProfilePage({super.key});
 
   @override
+  State<PatientProfilePage> createState() => _PatientProfilePageState();
+}
+
+class _PatientProfilePageState extends State<PatientProfilePage> {
+  Map<String, dynamic>? profile;
+  bool isLoading = true;
+  String? errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final patientId = prefs.getInt('patient_id');
+
+      if (patientId == null) {
+        throw Exception('Patient ID tidak ditemukan. Coba login ulang.');
+      }
+
+      final data = await ApiService.getPatientProfile(patientId);
+
+      if (!mounted) return;
+
+      setState(() {
+        profile = data;
+        isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        errorMessage = e.toString().replaceFirst('Exception: ', '');
+        isLoading = false;
+      });
+    }
+  }
+
+  String _getInitials(String name) {
+    final words = name.trim().split(' ').where((e) => e.isNotEmpty).toList();
+
+    if (words.length >= 2) {
+      return '${words[0][0]}${words[1][0]}'.toUpperCase();
+    }
+
+    if (words.length == 1) return words.first[0].toUpperCase();
+
+    return '-';
+  }
+
+  int _calculateAge(String? birthDate) {
+    if (birthDate == null) return 0;
+
+    final date = DateTime.tryParse(birthDate);
+    if (date == null) return 0;
+
+    final now = DateTime.now();
+    int age = now.year - date.year;
+
+    if (now.month < date.month ||
+        (now.month == date.month && now.day < date.day)) {
+      age--;
+    }
+
+    return age;
+  }
+
+  String _formatDmType(String value) {
+    if (value.toLowerCase().contains('dm')) return value;
+    return 'DM $value';
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return Container(
+        color: AppColors.background,
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (errorMessage != null) {
+      return Container(
+        color: AppColors.background,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              errorMessage!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.dark1),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Container(
       color: AppColors.primaryBlue,
       child: SafeArea(
@@ -18,23 +125,28 @@ class PatientProfilePage extends StatelessWidget {
             Expanded(
               child: Container(
                 color: AppColors.background,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 22, 20, 120),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(child: _statCard('3', 'Resep Aktif')),
-                          Expanded(child: _statCard('2', 'Dokter Aktif')),
-                        ],
-                      ),
-                      const SizedBox(height: 18),
-                      _dataSection(context),
-                      const SizedBox(height: 18),
-                      _menuSection(),
-                      const SizedBox(height: 18),
-                      _logoutTile(context),
-                    ],
+                child: RefreshIndicator(
+                  onRefresh: _loadProfile,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(20, 22, 20, 120),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(child: _statCard('0', 'Resep Aktif')),
+                            const SizedBox(width: 12),
+                            Expanded(child: _statCard('0', 'Dokter Aktif')),
+                          ],
+                        ),
+                        const SizedBox(height: 18),
+                        _dataSection(context),
+                        const SizedBox(height: 18),
+                        _menuSection(),
+                        const SizedBox(height: 18),
+                        _logoutTile(context),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -47,6 +159,11 @@ class PatientProfilePage extends StatelessWidget {
 
   Widget _header(BuildContext context) {
     final topPad = MediaQuery.of(context).padding.top;
+    final name = profile?['full_name']?.toString() ?? '-';
+    final gender = profile?['gender']?.toString() ?? '-';
+    final age = _calculateAge(profile?['date_of_birth']?.toString());
+    final dmType = _formatDmType(profile?['diabetes_type']?.toString() ?? '-');
+    final initials = _getInitials(name);
 
     return Container(
       width: double.infinity,
@@ -60,12 +177,12 @@ class PatientProfilePage extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const CircleAvatar(
+          CircleAvatar(
             radius: 44,
             backgroundColor: AppColors.lightBlue,
             child: Text(
-              'AS',
-              style: TextStyle(
+              initials,
+              style: const TextStyle(
                 color: AppColors.primaryBlue,
                 fontSize: 30,
                 fontWeight: FontWeight.bold,
@@ -73,23 +190,23 @@ class PatientProfilePage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Angelica Sabi Gita',
+          Text(
+            name,
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 19,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
-            '32 Tahun • Perempuan',
+          Text(
+            '$age Tahun • $gender',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white, fontSize: 12),
+            style: const TextStyle(color: Colors.white, fontSize: 12),
           ),
           const SizedBox(height: 12),
-          _dmBadge('DM Tipe 2'),
+          _dmBadge(dmType),
         ],
       ),
     );
@@ -103,18 +220,13 @@ class PatientProfilePage extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            text,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -127,7 +239,6 @@ class PatientProfilePage extends StatelessWidget {
         children: [
           Text(
             value,
-            textAlign: TextAlign.center,
             style: const TextStyle(
               color: AppColors.primaryBlue,
               fontSize: 22,
@@ -168,13 +279,19 @@ class PatientProfilePage extends StatelessWidget {
                 ),
               ),
               OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.push(
+                onPressed: () async {
+                  if (profile == null) return;
+
+                  final updated = await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const PatientEditProfilePage(),
+                      builder: (_) => PatientEditProfilePage(profile: profile!),
                     ),
                   );
+
+                  if (updated == true) {
+                    _loadProfile();
+                  }
                 },
                 icon: const Icon(Icons.edit, size: 16),
                 label: const Text('Ubah'),
@@ -197,32 +314,34 @@ class PatientProfilePage extends StatelessWidget {
           _profileItem(
             Icons.person_outline,
             'Nama Lengkap',
-            'Angelica Sabi Gita',
+            profile?['full_name']?.toString() ?? '-',
           ),
           _profileItem(
             Icons.email_outlined,
             'Email',
-            'angelicaSabiGit@gmail.com',
+            profile?['email']?.toString() ?? '-',
             badge: 'Terverifikasi',
           ),
-          _profileItem(Icons.phone_outlined, 'Nomor Telepon', '081234567890'),
+          _profileItem(
+            Icons.phone_outlined,
+            'Nomor Telepon',
+            profile?['phone_number']?.toString() ?? '-',
+          ),
           _profileItem(
             Icons.calendar_today_outlined,
             'Tanggal Lahir',
-            '12 Mei 1994',
+            profile?['date_of_birth']?.toString() ?? '-',
           ),
           _profileItem(
-            Icons.location_on_outlined,
-            'Alamat',
-            'Jl. Kertanegara No. 12 Majapahit',
+            Icons.person_outline,
+            'Jenis Kelamin',
+            profile?['gender']?.toString() ?? '-',
           ),
-
           const Divider(height: 30),
-
           const Row(
             children: [
               Icon(
-                Icons.person_outline,
+                Icons.medical_services_outlined,
                 color: AppColors.primaryBlue,
                 size: 16,
               ),
@@ -239,15 +358,26 @@ class PatientProfilePage extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          _profileItem(Icons.opacity, 'Tipe DM', 'DM Tipe 2'),
+          _profileItem(
+            Icons.opacity,
+            'Tipe DM',
+            _formatDmType(profile?['diabetes_type']?.toString() ?? '-'),
+          ),
           _profileItem(
             Icons.calendar_today_outlined,
             'Tanggal Diagnosis',
-            '15 Maret 2018',
-            badge: 'Valid',
+            profile?['diagnosis_date']?.toString() ?? '-',
           ),
-          _profileItem(Icons.open_in_full, 'Tinggi Badan', '168 cm'),
-          _profileItem(Icons.person_outline, 'Jenis Kelamin', 'Laki - Laki'),
+          _profileItem(
+            Icons.open_in_full,
+            'Tinggi Badan',
+            '${profile?['height_cm'] ?? '-'} cm',
+          ),
+          _profileItem(
+            Icons.bloodtype_outlined,
+            'Golongan Darah',
+            '${profile?['blood_type'] ?? '-'} ${profile?['rhesus_type'] ?? ''}',
+          ),
         ],
       ),
     );
@@ -338,14 +468,30 @@ class PatientProfilePage extends StatelessWidget {
             Icons.lock_outline,
             'Ubah kata sandi',
             'Perbarui keamanan akun',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ChangePasswordPage()),
+              );
+            },
           ),
-          _menuTile(Icons.info_outline, 'Tentang aplikasi', 'Versi 1.0.0'),
+          _menuTile(
+            Icons.info_outline,
+            'Tentang aplikasi',
+            'Versi 1.0.0',
+            onTap: () {},
+          ),
         ],
       ),
     );
   }
 
-  Widget _menuTile(IconData icon, String title, String subtitle) {
+  Widget _menuTile(
+    IconData icon,
+    String title,
+    String subtitle, {
+    required VoidCallback onTap,
+  }) {
     return ListTile(
       leading: Container(
         width: 38,
@@ -362,7 +508,7 @@ class PatientProfilePage extends StatelessWidget {
         style: const TextStyle(color: AppColors.dark3, fontSize: 11),
       ),
       trailing: const Icon(Icons.chevron_right, color: AppColors.dark3),
-      onTap: () {},
+      onTap: onTap,
     );
   }
 
@@ -454,8 +600,13 @@ class PatientProfilePage extends StatelessWidget {
                 ),
               ),
               TextButton(
-                onPressed: () {
+                onPressed: () async {
                   Navigator.pop(sheetContext);
+
+                  await ApiService.logout();
+
+                  if (!context.mounted) return;
+
                   Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (_) => const LoginPage()),
                     (route) => false,

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../core/theme/app_colors.dart';
+import '../../../data/services/api_service.dart';
 
 class PatientDataValidationPage extends StatefulWidget {
   const PatientDataValidationPage({super.key});
@@ -10,57 +13,134 @@ class PatientDataValidationPage extends StatefulWidget {
 }
 
 class _PatientDataValidationPageState extends State<PatientDataValidationPage> {
-  final List<Map<String, String>> pendingData = [
-    {
-      'title': 'Glukosa Postprandial',
-      'date': '7 Jun, 08:30',
-      'value': '165',
-      'unit': 'mg/dL',
-      'inputBy': 'Kartika Putri Citra',
-      'relation': 'Istri',
-    },
-    {
-      'title': 'Tekanan Darah',
-      'date': '7 Jun, 08:25',
-      'value': '130/85',
-      'unit': 'mmHg',
-      'inputBy': 'Kartika Putri Citra',
-      'relation': 'Istri',
-    },
-  ];
+  bool isLoading = true;
+  String? errorMessage;
+  bool isProcessing = false;
 
-  void _acceptData(int index) {
-    final item = pendingData[index];
+  List<Map<String, dynamic>> pendingData = [];
 
-    setState(() {
-      pendingData.removeAt(index);
-    });
-
-    _showResultSheet(
-      title: 'Data diterima',
-      message:
-          '${item['title']} berhasil diterima dan akan masuk ke riwayat kesehatanmu.',
-      icon: Icons.check,
-      color: const Color(0xFF10C878),
-      bg: const Color(0xFFEAFBF3),
-    );
+  @override
+  void initState() {
+    super.initState();
+    _loadPendingData();
   }
 
-  void _rejectData(int index) {
+  Future<void> _loadPendingData() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final patientId = prefs.getInt('patient_id');
+
+      if (patientId == null) {
+        throw Exception('Patient ID tidak ditemukan. Coba login ulang.');
+      }
+
+      final data = await ApiService.getPatientPendingValidations(patientId);
+
+      if (!mounted) return;
+
+      setState(() {
+        pendingData = data;
+        isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        errorMessage = e.toString().replaceAll('Exception: ', '');
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _acceptData(int index) async {
+    await _respondData(index: index, status: 'Valid');
+  }
+
+  Future<void> _rejectData(int index) async {
+    await _respondData(index: index, status: 'Ditolak');
+  }
+
+  Future<void> _respondData({
+    required int index,
+    required String status,
+  }) async {
+    if (isProcessing) return;
+
     final item = pendingData[index];
 
     setState(() {
-      pendingData.removeAt(index);
+      isProcessing = true;
     });
 
-    _showResultSheet(
-      title: 'Data ditolak',
-      message:
-          '${item['title']} tidak disimpan ke riwayat kesehatanmu.',
-      icon: Icons.close,
-      color: AppColors.red,
-      bg: AppColors.lightRed,
-    );
+    try {
+      await ApiService.respondPatientValidation(
+        recordType: item['record_type'].toString(),
+        recordId: int.parse(item['record_id'].toString()),
+        status: status,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        pendingData.removeAt(index);
+        isProcessing = false;
+      });
+
+      final isAccepted = status == 'Valid';
+
+      _showResultSheet(
+        title: isAccepted ? 'Data diterima' : 'Data ditolak',
+        message: isAccepted
+            ? '${item['title']} berhasil diterima dan akan masuk ke riwayat kesehatanmu.'
+            : '${item['title']} tidak disimpan ke riwayat kesehatanmu.',
+        icon: isAccepted ? Icons.check : Icons.close,
+        color: isAccepted ? const Color(0xFF10C878) : AppColors.red,
+        bg: isAccepted ? const Color(0xFFEAFBF3) : AppColors.lightRed,
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        isProcessing = false;
+      });
+
+      _showResultSheet(
+        title: 'Gagal memproses',
+        message: e.toString().replaceAll('Exception: ', ''),
+        icon: Icons.error_outline,
+        color: AppColors.red,
+        bg: AppColors.lightRed,
+      );
+    }
+  }
+
+  String _formatDate(dynamic value) {
+    if (value == null) return '-';
+
+    final date = DateTime.tryParse(value.toString());
+    if (date == null) return value.toString();
+
+    return '${date.day}/${date.month}/${date.year} • ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
+  IconData _iconByType(String type) {
+    switch (type) {
+      case 'glucose':
+        return Icons.opacity;
+      case 'physiological':
+        return Icons.favorite_border;
+      case 'activity':
+        return Icons.directions_run;
+      case 'meal':
+        return Icons.restaurant_outlined;
+      default:
+        return Icons.assignment_outlined;
+    }
   }
 
   void _showResultSheet({
@@ -149,39 +229,97 @@ class _PatientDataValidationPageState extends State<PatientDataValidationPage> {
         child: Column(
           children: [
             _header(context),
-            Expanded(
-              child: pendingData.isEmpty
-                  ? _emptyState()
-                  : ListView(
-                      padding: const EdgeInsets.fromLTRB(20, 22, 20, 28),
-                      children: [
-                        _infoBox(),
-                        const SizedBox(height: 22),
-                        ...List.generate(
-                          pendingData.length,
-                          (index) {
-                            final item = pendingData[index];
-
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 18),
-                              child: _ValidationCard(
-                                title: item['title']!,
-                                date: item['date']!,
-                                value: item['value']!,
-                                unit: item['unit']!,
-                                inputBy: item['inputBy']!,
-                                relation: item['relation']!,
-                                onAccept: () => _acceptData(index),
-                                onReject: () => _rejectData(index),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-            ),
+            Expanded(child: _body()),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _body() {
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.error_outline,
+                color: AppColors.red,
+                size: 42,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                errorMessage!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppColors.dark2,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _loadPendingData,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryBlue,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                ),
+                child: const Text('Coba lagi'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (pendingData.isEmpty) {
+      return _emptyState();
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadPendingData,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 22, 20, 28),
+        children: [
+          _infoBox(),
+          const SizedBox(height: 22),
+          ...List.generate(pendingData.length, (index) {
+            final item = pendingData[index];
+
+            final type = item['record_type']?.toString() ?? '';
+            final title = item['title']?.toString() ?? '-';
+            final date = _formatDate(item['date']);
+            final value = item['value']?.toString() ?? '-';
+            final unit = item['unit']?.toString() ?? '';
+            final inputBy =
+                item['input_by']?.toString() ??
+                item['inputBy']?.toString() ??
+                '-';
+            final relation = item['relation']?.toString() ?? 'Keluarga';
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 18),
+              child: _ValidationCard(
+                title: title,
+                date: date,
+                value: value,
+                unit: unit,
+                inputBy: inputBy,
+                relation: relation,
+                icon: _iconByType(type),
+                isProcessing: isProcessing,
+                onAccept: () => _acceptData(index),
+                onReject: () => _rejectData(index),
+              ),
+            );
+          }),
+        ],
       ),
     );
   }
@@ -228,11 +366,7 @@ class _PatientDataValidationPageState extends State<PatientDataValidationPage> {
       child: const Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.info_outline,
-            color: AppColors.primaryBlue,
-            size: 22,
-          ),
+          Icon(Icons.info_outline, color: AppColors.primaryBlue, size: 22),
           SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -298,6 +432,8 @@ class _ValidationCard extends StatelessWidget {
   final String unit;
   final String inputBy;
   final String relation;
+  final IconData icon;
+  final bool isProcessing;
   final VoidCallback onAccept;
   final VoidCallback onReject;
 
@@ -308,6 +444,8 @@ class _ValidationCard extends StatelessWidget {
     required this.unit,
     required this.inputBy,
     required this.relation,
+    required this.icon,
+    required this.isProcessing,
     required this.onAccept,
     required this.onReject,
   });
@@ -339,11 +477,7 @@ class _ValidationCard extends StatelessWidget {
                   color: AppColors.veryLightBlue,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(
-                  Icons.opacity,
-                  color: AppColors.primaryBlue,
-                  size: 22,
-                ),
+                child: Icon(icon, color: AppColors.primaryBlue, size: 22),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -379,7 +513,7 @@ class _ValidationCard extends StatelessWidget {
                   ),
                   children: [
                     TextSpan(
-                      text: ' $unit',
+                      text: unit.isEmpty ? '' : ' $unit',
                       style: const TextStyle(
                         color: AppColors.primaryBlue,
                         fontSize: 11,
@@ -402,11 +536,7 @@ class _ValidationCard extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const Icon(
-                  Icons.person,
-                  color: AppColors.primaryBlue,
-                  size: 16,
-                ),
+                const Icon(Icons.person, color: AppColors.primaryBlue, size: 16),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -427,12 +557,13 @@ class _ValidationCard extends StatelessWidget {
                 child: SizedBox(
                   height: 44,
                   child: ElevatedButton.icon(
-                    onPressed: onAccept,
+                    onPressed: isProcessing ? null : onAccept,
                     icon: const Icon(Icons.check, size: 18),
                     label: const Text('Terima'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primaryBlue,
                       foregroundColor: Colors.white,
+                      disabledBackgroundColor: AppColors.light1,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
@@ -446,12 +577,13 @@ class _ValidationCard extends StatelessWidget {
                 child: SizedBox(
                   height: 44,
                   child: ElevatedButton.icon(
-                    onPressed: onReject,
+                    onPressed: isProcessing ? null : onReject,
                     icon: const Icon(Icons.close, size: 18),
                     label: const Text('Tolak'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.red,
                       foregroundColor: Colors.white,
+                      disabledBackgroundColor: AppColors.light1,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),

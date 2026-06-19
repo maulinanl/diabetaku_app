@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
 import '../../../core/theme/app_colors.dart';
+import '../../../data/services/api_service.dart';
 
 class FamilyPhysiologicalFormPage extends StatefulWidget {
+  final int patientId;
   final String patientInitial;
   final String patientName;
   final String patientInfo;
 
   const FamilyPhysiologicalFormPage({
     super.key,
+    required this.patientId,
     required this.patientInitial,
     required this.patientName,
     required this.patientInfo,
@@ -20,18 +25,114 @@ class FamilyPhysiologicalFormPage extends StatefulWidget {
 
 class _FamilyPhysiologicalFormPageState
     extends State<FamilyPhysiologicalFormPage> {
-  final systolicController = TextEditingController();
-  final diastolicController = TextEditingController();
-  final weightController = TextEditingController();
-  final heightController = TextEditingController();
+  final systolicCtr = TextEditingController();
+  final diastolicCtr = TextEditingController();
+  final weightCtr = TextEditingController();
+  final heightCtr = TextEditingController();
+
+  DateTime selectedDate = DateTime.now();
+  TimeOfDay selectedTime = TimeOfDay.now();
+
+  bool isSaving = false;
+
+  bool get isValid {
+    return systolicCtr.text.trim().isNotEmpty ||
+        diastolicCtr.text.trim().isNotEmpty ||
+        weightCtr.text.trim().isNotEmpty;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    for (final c in [systolicCtr, diastolicCtr, weightCtr, heightCtr]) {
+      c.addListener(() => setState(() {}));
+    }
+  }
 
   @override
   void dispose() {
-    systolicController.dispose();
-    diastolicController.dispose();
-    weightController.dispose();
-    heightController.dispose();
+    systolicCtr.dispose();
+    diastolicCtr.dispose();
+    weightCtr.dispose();
+    heightCtr.dispose();
     super.dispose();
+  }
+
+  DateTime get measuredAt {
+    return DateTime(
+      selectedDate.year,
+      selectedDate.month,
+      selectedDate.day,
+      selectedTime.hour,
+      selectedTime.minute,
+    );
+  }
+
+  double? get bmi {
+    final weight = double.tryParse(weightCtr.text.trim());
+    final heightCm = double.tryParse(heightCtr.text.trim());
+
+    if (weight == null || heightCm == null || heightCm <= 0) return null;
+
+    final heightM = heightCm / 100;
+    return double.parse((weight / (heightM * heightM)).toStringAsFixed(1));
+  }
+
+  Future<void> _save() async {
+    FocusScope.of(context).unfocus();
+
+    setState(() => isSaving = true);
+
+    try {
+      await ApiService.storeFamilyPhysiological(
+        patientId: widget.patientId,
+        systolic: int.tryParse(systolicCtr.text.trim()),
+        diastolic: int.tryParse(diastolicCtr.text.trim()),
+        weightKg: double.tryParse(weightCtr.text.trim()),
+        bmi: bmi,
+        measuredAt: measuredAt,
+      );
+
+      if (!mounted) return;
+      _showSuccessSheet();
+    } catch (e) {
+      if (!mounted) return;
+      _showSnackBar(e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => isSaving = false);
+    }
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+    );
+
+    if (picked != null) {
+      setState(() => selectedDate = picked);
+    }
+  }
+
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: selectedTime,
+    );
+
+    if (picked != null) {
+      setState(() => selectedTime = picked);
+    }
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  }
+
+  String _formatTime(TimeOfDay time) {
+    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -51,62 +152,106 @@ class _FamilyPhysiologicalFormPageState
           children: [
             _patientCard(),
             const SizedBox(height: 18),
-            const Text(
-              'Data Fisiologis',
-              style: TextStyle(
-                color: AppColors.primaryBlue,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            _sectionTitle('Data Fisiologis'),
             const SizedBox(height: 14),
             _label('Tanggal dan waktu*'),
             Row(
               children: [
-                Expanded(child: _input(hint: '07/06/2025')),
+                Expanded(
+                  child: _pickerBox(
+                    text: _formatDate(selectedDate),
+                    onTap: isSaving ? null : _pickDate,
+                  ),
+                ),
                 const SizedBox(width: 10),
-                Expanded(child: _input(hint: '08:30')),
+                Expanded(
+                  child: _pickerBox(
+                    text: _formatTime(selectedTime),
+                    onTap: isSaving ? null : _pickTime,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 14),
-            _label('Tekanan Darah*'),
+            _label('Tekanan Darah'),
             Row(
               children: [
                 Expanded(
                   child: _input(
+                    controller: systolicCtr,
                     hint: 'Sistolik',
-                    controller: systolicController,
                     keyboardType: TextInputType.number,
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: _input(
+                    controller: diastolicCtr,
                     hint: 'Diastolik',
-                    controller: diastolicController,
                     keyboardType: TextInputType.number,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 14),
-            _label('Berat Badan (kg)*'),
+            _label('Berat Badan (kg)'),
             _input(
+              controller: weightCtr,
               hint: 'Masukkan berat badan',
-              controller: weightController,
               keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 14),
             _label('Tinggi Badan (cm)'),
             _input(
-              hint: 'Masukkan tinggi badan',
-              controller: heightController,
+              controller: heightCtr,
+              hint: 'Masukkan tinggi badan untuk hitung BMI',
               keyboardType: TextInputType.number,
             ),
+            if (bmi != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                'BMI: $bmi',
+                style: const TextStyle(
+                  color: AppColors.primaryBlue,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
-            _saveButton(context),
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: ElevatedButton(
+                onPressed: isValid && !isSaving ? _save : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryBlue,
+                  disabledBackgroundColor: const Color(0xFFAFCBEA),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                ),
+                child: isSaving
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text('Simpan'),
+              ),
+            ),
             const SizedBox(height: 12),
-            _cancelButton(context),
+            Center(
+              child: TextButton(
+                onPressed: isSaving ? null : () => Navigator.pop(context),
+                child: const Text(
+                  'Batal',
+                  style: TextStyle(color: AppColors.primaryBlue),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -160,6 +305,17 @@ class _FamilyPhysiologicalFormPageState
     );
   }
 
+  Widget _sectionTitle(String text) {
+    return Text(
+      text,
+      style: const TextStyle(
+        color: AppColors.primaryBlue,
+        fontSize: 15,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+  }
+
   Widget _label(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 7),
@@ -174,14 +330,36 @@ class _FamilyPhysiologicalFormPageState
     );
   }
 
+  Widget _pickerBox({required String text, required VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        alignment: Alignment.centerLeft,
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: AppColors.light1),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(color: AppColors.dark1, fontSize: 12),
+        ),
+      ),
+    );
+  }
+
   Widget _input({
+    required TextEditingController controller,
     required String hint,
-    TextEditingController? controller,
     TextInputType? keyboardType,
   }) {
     return TextField(
       controller: controller,
+      enabled: !isSaving,
       keyboardType: keyboardType,
+      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(color: AppColors.dark3, fontSize: 12),
@@ -203,92 +381,71 @@ class _FamilyPhysiologicalFormPageState
     );
   }
 
-  Widget _saveButton(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 46,
-      child: ElevatedButton(
-        onPressed: () => _showSuccessSheet(context),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primaryBlue,
-          foregroundColor: Colors.white,
-          elevation: 0,
-        ),
-        child: const Text('Simpan'),
-      ),
-    );
-  }
-
-  Widget _cancelButton(BuildContext context) {
-    return Center(
-      child: TextButton(
-        onPressed: () => Navigator.pop(context),
-        child: const Text(
-          'Batal',
-          style: TextStyle(color: AppColors.primaryBlue),
-        ),
-      ),
-    );
-  }
-
-  void _showSuccessSheet(BuildContext context) {
+  void _showSuccessSheet() {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
-        return _successSheet(sheetContext, context);
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircleAvatar(
+                radius: 36,
+                backgroundColor: Color(0xFFEAFBF3),
+                child: Icon(Icons.check, color: Color(0xFF10C878), size: 36),
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'Data berhasil disimpan',
+                style: TextStyle(
+                  color: AppColors.primaryBlue,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Data menunggu konfirmasi pasien sebelum masuk ke riwayat kesehatan.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.dark2, fontSize: 13),
+              ),
+              const SizedBox(height: 22),
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    Navigator.pop(context, true);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryBlue,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                  ),
+                  child: const Text('Kembali'),
+                ),
+              ),
+            ],
+          ),
+        );
       },
     );
   }
 
-  Widget _successSheet(BuildContext sheetContext, BuildContext pageContext) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const CircleAvatar(
-            radius: 36,
-            backgroundColor: Color(0xFFEAFBF3),
-            child: Icon(Icons.check, color: Color(0xFF10C878), size: 36),
-          ),
-          const SizedBox(height: 18),
-          const Text(
-            'Data berhasil disimpan',
-            style: TextStyle(
-              color: AppColors.primaryBlue,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Data menunggu konfirmasi pasien sebelum masuk ke riwayat kesehatan.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.dark2, fontSize: 13),
-          ),
-          const SizedBox(height: 22),
-          SizedBox(
-            width: double.infinity,
-            height: 46,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.pop(sheetContext);
-                Navigator.pop(pageContext);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryBlue,
-                foregroundColor: Colors.white,
-                elevation: 0,
-              ),
-              child: const Text('Kembali'),
-            ),
-          ),
-        ],
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: AppColors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        content: Text(message),
       ),
     );
   }

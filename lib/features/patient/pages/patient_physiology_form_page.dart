@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../core/theme/app_colors.dart';
+import '../../../data/services/api_service.dart';
 
 class PatientPhysiologyFormPage extends StatefulWidget {
   const PatientPhysiologyFormPage({super.key});
@@ -14,14 +18,17 @@ class _PatientPhysiologyFormPageState extends State<PatientPhysiologyFormPage> {
   final diastolicCtr = TextEditingController();
   final weightCtr = TextEditingController();
 
-  DateTime selectedDate = DateTime(2025, 6, 7);
-  TimeOfDay selectedTime = const TimeOfDay(hour: 7, minute: 26);
+  DateTime selectedDate = DateTime.now();
+  TimeOfDay selectedTime = TimeOfDay.now();
 
-  bool get isValid => weightCtr.text.trim().isNotEmpty;
+  bool isSaving = false;
+
+  bool get isValid => double.tryParse(weightCtr.text.trim()) != null;
 
   double get estimatedBmi {
     final weight = double.tryParse(weightCtr.text.trim()) ?? 0;
     const heightMeter = 1.68;
+
     if (weight <= 0) return 0;
     return weight / (heightMeter * heightMeter);
   }
@@ -50,12 +57,69 @@ class _PatientPhysiologyFormPageState extends State<PatientPhysiologyFormPage> {
     return '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
   }
 
+  Future<void> _save() async {
+    FocusScope.of(context).unfocus();
+    setState(() => isSaving = true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final patientId = prefs.getInt('patient_id');
+
+      if (patientId == null) {
+        throw Exception('Patient ID tidak ditemukan');
+      }
+
+      final measuredAt = DateTime(
+        selectedDate.year,
+        selectedDate.month,
+        selectedDate.day,
+        selectedTime.hour,
+        selectedTime.minute,
+      );
+
+      await ApiService.storePhysiological(
+        patientId: patientId,
+        systolic: systolicCtr.text.trim().isEmpty
+            ? null
+            : int.parse(systolicCtr.text.trim()),
+        diastolic: diastolicCtr.text.trim().isEmpty
+            ? null
+            : int.parse(diastolicCtr.text.trim()),
+        weightKg: double.parse(weightCtr.text.trim()),
+        bmi: estimatedBmi == 0 ? null : estimatedBmi,
+        measuredAt: measuredAt,
+      );
+
+      if (!mounted) return;
+      _showSuccessSheet();
+    } catch (e) {
+      if (!mounted) return;
+      _showStyledSnackBar(
+        message: e.toString().replaceFirst('Exception: ', ''),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => isSaving = false);
+      }
+    }
+  }
+
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
       initialDate: selectedDate,
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primaryBlue,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
 
     if (picked != null) {
@@ -67,6 +131,16 @@ class _PatientPhysiologyFormPageState extends State<PatientPhysiologyFormPage> {
     final picked = await showTimePicker(
       context: context,
       initialTime: selectedTime,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primaryBlue,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
 
     if (picked != null) {
@@ -74,11 +148,11 @@ class _PatientPhysiologyFormPageState extends State<PatientPhysiologyFormPage> {
     }
   }
 
-  void _save() {
+  void _showSuccessSheet() {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) {
+      builder: (sheetContext) {
         return Container(
           padding: const EdgeInsets.all(24),
           decoration: const BoxDecoration(
@@ -88,6 +162,15 @@ class _PatientPhysiologyFormPageState extends State<PatientPhysiologyFormPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              Container(
+                width: 44,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.light1,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              const SizedBox(height: 24),
               const CircleAvatar(
                 radius: 36,
                 backgroundColor: Color(0xFFEAFBF3),
@@ -114,8 +197,8 @@ class _PatientPhysiologyFormPageState extends State<PatientPhysiologyFormPage> {
                 height: 46,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.pop(context);
-                    Navigator.pop(context);
+                    Navigator.pop(sheetContext);
+                    Navigator.pop(context, true);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryBlue,
@@ -130,9 +213,8 @@ class _PatientPhysiologyFormPageState extends State<PatientPhysiologyFormPage> {
               ),
               TextButton(
                 onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.pop(context);
-                  Navigator.pop(context);
+                  Navigator.pop(sheetContext);
+                  Navigator.pop(context, true);
                 },
                 child: const Text(
                   'Kembali ke beranda',
@@ -143,6 +225,25 @@ class _PatientPhysiologyFormPageState extends State<PatientPhysiologyFormPage> {
           ),
         );
       },
+    );
+  }
+
+  void _showStyledSnackBar({required String message}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: AppColors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        content: Row(
+          children: [
+            const Icon(Icons.info_outline, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(message, style: const TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -194,6 +295,9 @@ class _PatientPhysiologyFormPageState extends State<PatientPhysiologyFormPage> {
                             controller: systolicCtr,
                             hint: 'Sistolik',
                             keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -202,6 +306,9 @@ class _PatientPhysiologyFormPageState extends State<PatientPhysiologyFormPage> {
                             controller: diastolicCtr,
                             hint: 'Diastolik',
                             keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
                           ),
                         ),
                       ],
@@ -212,6 +319,11 @@ class _PatientPhysiologyFormPageState extends State<PatientPhysiologyFormPage> {
                       controller: weightCtr,
                       hint: 'Masukkan berat badan',
                       keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'^\d*\.?\d*'),
+                        ),
+                      ],
                     ),
 
                     const SizedBox(height: 16),
@@ -257,25 +369,35 @@ class _PatientPhysiologyFormPageState extends State<PatientPhysiologyFormPage> {
                       width: double.infinity,
                       height: 48,
                       child: ElevatedButton(
-                        onPressed: isValid ? _save : null,
+                        onPressed: isValid && !isSaving ? _save : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryBlue,
                           disabledBackgroundColor: const Color(0xFFAFCBEA),
+                          disabledForegroundColor: AppColors.white,
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(6),
                           ),
                         ),
-                        child: const Text(
-                          'Simpan',
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
+                        child: isSaving
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
+                                'Simpan',
+                                style: TextStyle(fontWeight: FontWeight.w600),
+                              ),
                       ),
                     ),
 
                     TextButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: isSaving ? null : () => Navigator.pop(context),
                       child: const Center(
                         child: Text(
                           'Batal',
@@ -303,12 +425,12 @@ class _PatientPhysiologyFormPageState extends State<PatientPhysiologyFormPage> {
       child: Row(
         children: [
           IconButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: isSaving ? null : () => Navigator.pop(context),
             icon: const Icon(Icons.arrow_back, color: Colors.white),
           ),
           const Expanded(
             child: Text(
-              'Tambah Data',
+              'Tambah Data Fisiologis',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
@@ -357,7 +479,7 @@ class _PatientPhysiologyFormPageState extends State<PatientPhysiologyFormPage> {
     required VoidCallback onTap,
   }) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: isSaving ? null : onTap,
       child: Container(
         height: 48,
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -385,29 +507,37 @@ class _PatientPhysiologyFormPageState extends State<PatientPhysiologyFormPage> {
     required TextEditingController controller,
     required String hint,
     TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.dark4, fontSize: 13),
-        filled: true,
-        fillColor: AppColors.white,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 15,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: const BorderSide(color: AppColors.light1),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: const BorderSide(
-            color: AppColors.primaryBlue,
-            width: 1.4,
-          ),
+      inputFormatters: inputFormatters,
+      enabled: !isSaving,
+      decoration: _inputDecoration(hint: hint),
+    );
+  }
+
+  InputDecoration _inputDecoration({String? hint}) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: AppColors.dark4, fontSize: 13),
+      filled: true,
+      fillColor: AppColors.white,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(6),
+        borderSide: const BorderSide(color: AppColors.light1),
+      ),
+      disabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(6),
+        borderSide: const BorderSide(color: AppColors.light1),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(6),
+        borderSide: const BorderSide(
+          color: AppColors.primaryBlue,
+          width: 1.4,
         ),
       ),
     );

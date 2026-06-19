@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 
 class FamilyHistoryDetailPage extends StatelessWidget {
-  final String type;
+  final Map<String, dynamic> history;
 
-  const FamilyHistoryDetailPage({
-    super.key,
-    required this.type,
-  });
+  const FamilyHistoryDetailPage({super.key, required this.history});
 
   @override
   Widget build(BuildContext context) {
-    final data = _getDetailData(type);
+    final type = history['type']?.toString() ?? '-';
+    final title = history['title']?.toString() ?? '-';
+    final value = history['value']?.toString() ?? '-';
+    final unit = history['unit']?.toString() ?? '';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -19,7 +19,8 @@ class FamilyHistoryDetailPage extends StatelessWidget {
         top: false,
         child: Column(
           children: [
-            _header(context, data),
+            _header(context, title: title, value: value, unit: unit),
+
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(20),
@@ -41,35 +42,14 @@ class FamilyHistoryDetailPage extends StatelessWidget {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 16),
 
-                      ...(data['details'] as List<List<String>>).map(
-                        (e) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  e[0],
-                                  style: const TextStyle(
-                                    color: AppColors.dark2,
-                                  ),
-                                ),
-                              ),
-                              Text(
-                                e[1],
-                                style: const TextStyle(
-                                  color: AppColors.primaryBlue,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                      const SizedBox(height: 20),
 
-                      if ((data['note'] as String).isNotEmpty) ...[
-                        const SizedBox(height: 20),
+                      ..._buildDetail(type),
+
+                      if ((history['note'] ?? '').toString().isNotEmpty) ...[
+                        const SizedBox(height: 24),
+
                         const Text(
                           'Catatan',
                           style: TextStyle(
@@ -77,8 +57,13 @@ class FamilyHistoryDetailPage extends StatelessWidget {
                             fontWeight: FontWeight.w700,
                           ),
                         ),
+
                         const SizedBox(height: 10),
-                        Text(data['note']),
+
+                        Text(
+                          history['note'].toString(),
+                          style: const TextStyle(color: AppColors.dark1),
+                        ),
                       ],
                     ],
                   ),
@@ -91,7 +76,12 @@ class FamilyHistoryDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _header(BuildContext context, Map<String, dynamic> data) {
+  Widget _header(
+    BuildContext context, {
+    required String title,
+    required String value,
+    required String unit,
+  }) {
     final topPad = MediaQuery.of(context).padding.top;
 
     return Container(
@@ -106,6 +96,7 @@ class FamilyHistoryDetailPage extends StatelessWidget {
                 onPressed: () => Navigator.pop(context),
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
               ),
+
               const Expanded(
                 child: Text(
                   'Detail Riwayat',
@@ -116,101 +107,103 @@ class FamilyHistoryDetailPage extends StatelessWidget {
                   ),
                 ),
               ),
+
               const SizedBox(width: 48),
             ],
           ),
+
           const SizedBox(height: 12),
+
           Text(
-            data['title'],
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-            ),
+            title,
+            style: const TextStyle(color: Colors.white, fontSize: 14),
           ),
+
           const SizedBox(height: 10),
+
           Text(
-            data['value'],
+            value,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 28,
+              fontSize: 30,
               fontWeight: FontWeight.bold,
             ),
           ),
-          Text(
-            data['unit'],
-            style: const TextStyle(
-              color: Colors.white,
-            ),
-          ),
+
+          if (unit.isNotEmpty)
+            Text(unit, style: const TextStyle(color: Colors.white)),
         ],
       ),
     );
   }
 
-  Map<String, dynamic> _getDetailData(String type) {
+  List<Widget> _buildDetail(String type) {
     switch (type) {
       case 'Glukosa':
-        return {
-          'title': 'Glukosa Puasa',
-          'value': '142',
-          'unit': 'mg/dL',
-          'details': [
-            ['Jenis', 'Puasa'],
-            ['Nilai', '142 mg/dL'],
-            ['Status', 'Disetujui'],
-          ],
-          'note': 'Data telah diverifikasi pasien',
-        };
+        return [
+          _detailRow('Jenis', history['glucose_type']?.toString() ?? '-'),
+          _detailRow('Nilai', '${history['value']} mg/dL'),
+          _detailRow('Tanggal', history['recorded_at']?.toString() ?? '-'),
+          _detailRow('Status', history['status']?.toString() ?? '-'),
+        ];
 
       case 'Fisiologis':
-        return {
-          'title': 'Tekanan Darah',
-          'value': '135/88',
-          'unit': 'mmHg',
-          'details': [
-            ['Sistolik', '135'],
-            ['Diastolik', '88'],
-            ['Berat Badan', '78 kg'],
-          ],
-          'note': '',
-        };
+        return [
+          _detailRow(
+            'Tekanan Darah',
+            '${history['systolic'] ?? '-'} / ${history['diastolic'] ?? '-'}',
+          ),
+          _detailRow('Berat Badan', '${history['weight_kg'] ?? '-'} kg'),
+          _detailRow('BMI', history['bmi']?.toString() ?? '-'),
+          _detailRow('Tanggal', history['recorded_at']?.toString() ?? '-'),
+        ];
 
       case 'Aktivitas':
-        return {
-          'title': 'Aktivitas Fisik',
-          'value': '45',
-          'unit': 'Menit',
-          'details': [
-            ['Aktivitas', 'Jalan Kaki'],
-            ['Durasi', '45 menit'],
-          ],
-          'note': 'Dilakukan pagi hari',
-        };
+        return [
+          _detailRow('Aktivitas', history['activity_name']?.toString() ?? '-'),
+          _detailRow('Durasi', '${history['duration_minutes'] ?? '-'} menit'),
+          _detailRow('Intensitas', history['intensity']?.toString() ?? '-'),
+          _detailRow('Tanggal', history['recorded_at']?.toString() ?? '-'),
+        ];
 
       case 'Makan':
-        return {
-          'title': 'Pola Makan',
-          'value': 'Sarapan',
-          'unit': '',
-          'details': [
-            ['Menu', 'Nasi, Telur, Sayur'],
-            ['Kalori', '450 kkal'],
-          ],
-          'note': '',
-        };
+        return [
+          _detailRow('Jenis Makan', history['meal_type']?.toString() ?? '-'),
+          _detailRow('Kalori', '${history['calories'] ?? '-'} kkal'),
+          _detailRow('Karbohidrat', '${history['carbs'] ?? '-'} gr'),
+          _detailRow('Tanggal', history['recorded_at']?.toString() ?? '-'),
+        ];
+
+      case 'Obat':
+        return [
+          _detailRow('Obat', history['medication_name']?.toString() ?? '-'),
+          _detailRow('Dosis', history['dosage']?.toString() ?? '-'),
+          _detailRow('Status', history['status']?.toString() ?? '-'),
+          _detailRow('Tanggal', history['recorded_at']?.toString() ?? '-'),
+        ];
 
       default:
-        return {
-          'title': 'Kepatuhan Obat',
-          'value': 'Diminum',
-          'unit': '',
-          'details': [
-            ['Obat', 'Metformin'],
-            ['Dosis', '850 mg'],
-            ['Status', 'Diminum'],
-          ],
-          'note': '',
-        };
+        return [_detailRow('Informasi', '-')];
     }
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(label, style: const TextStyle(color: AppColors.dark2)),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppColors.primaryBlue,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

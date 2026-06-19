@@ -8,6 +8,8 @@ import 'patient_history_page.dart';
 import 'patient_profile_page.dart';
 import 'patient_recommendation_detail_page.dart';
 import 'patient_validation_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../data/services/api_service.dart';
 
 class PatientMainPage extends StatefulWidget {
   const PatientMainPage({super.key});
@@ -23,7 +25,7 @@ class _PatientMainPageState extends State<PatientMainPage> {
   final pages = const [
     PatientHomePage(),
     PatientConnectionPage(),
-    PatientAddDataPage(),
+    SizedBox(),
     PatientHistoryPage(),
     PatientProfilePage(),
   ];
@@ -60,19 +62,72 @@ class PatientHomePage extends StatefulWidget {
 }
 
 class _PatientHomePageState extends State<PatientHomePage> {
-  bool hasUnreadNotification = true;
   bool hasPendingValidation = true;
   int pendingValidationCount = 2;
+  String patientName = '-';
+  int? patientId;
+  bool isLoading = true;
+  Map<String, dynamic>? profileData;
+  Map<String, dynamic>? dashboardData;
+  Map<String, dynamic>? homeSummary;
+  Map<String, dynamic>? latestRecommendation;
+  List<Map<String, dynamic>> notifications = [];
 
-  final dailyChecks = [
-    ['Glukosa', Icons.opacity, true],
-    ['Resep Obat', Icons.medication_outlined, true],
-    ['Aktivitas', Icons.directions_run, false],
-    ['Makan', Icons.restaurant_outlined, false],
-  ];
+  Map<String, dynamic> get glucose =>
+      dashboardData?['glucose'] as Map<String, dynamic>? ?? {};
 
-  DateTime currentMonth = DateTime(2025, 6);
-  DateTime selectedDate = DateTime(2025, 6, 7);
+  Map<String, dynamic> get bloodPressure =>
+      dashboardData?['blood_pressure'] as Map<String, dynamic>? ?? {};
+
+  Map<String, dynamic> get weight =>
+      dashboardData?['weight'] as Map<String, dynamic>? ?? {};
+
+  bool get hasUnreadNotification {
+    return notifications.any((n) {
+      final isRead = n['is_read'];
+      return isRead == false || isRead == 0 || isRead?.toString() == '0';
+    });
+  }
+
+  String get greeting {
+    final hour = DateTime.now().hour;
+
+    if (hour < 12) {
+      return 'Selamat Pagi';
+    } else if (hour < 15) {
+      return 'Selamat Siang';
+    } else if (hour < 18) {
+      return 'Selamat Sore';
+    }
+
+    return 'Selamat Malam';
+  }
+
+  Color getGlucoseColor() {
+    final status = glucose['status']?.toString().toLowerCase();
+
+    if (status == 'normal') {
+      return const Color(0xFF10C878);
+    }
+
+    return AppColors.red;
+  }
+
+  List<List<Object>> get dailyChecks {
+    final items =
+        homeSummary?['daily_checklist']?['items'] as Map<String, dynamic>? ??
+        {};
+
+    return [
+      ['Glukosa', Icons.opacity, items['glucose'] == true],
+      ['Resep Obat', Icons.medication_outlined, items['medication'] == true],
+      ['Aktivitas', Icons.directions_run, items['activity'] == true],
+      ['Makan', Icons.restaurant_outlined, items['meal'] == true],
+    ];
+  }
+
+  DateTime currentMonth = DateTime(DateTime.now().year, DateTime.now().month);
+  DateTime selectedDate = DateTime.now();
 
   final Map<String, String> consistencyStatus = {
     '2025-06-01': 'lengkap',
@@ -111,7 +166,90 @@ class _PatientHomePageState extends State<PatientHomePage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      final storedPatientId = prefs.getInt('patient_id');
+      final storedUserId = prefs.getInt('user_id');
+      final storedName =
+          prefs.getString('full_name') ??
+          prefs.getString('name') ??
+          prefs.getString('user_name') ??
+          '-';
+
+      if (mounted) {
+        setState(() {
+          patientName = storedName;
+        });
+      }
+
+      Map<String, dynamic>? loadedProfile;
+      List<Map<String, dynamic>> loadedNotifications = [];
+      Map<String, dynamic>? loadedDashboard;
+      Map<String, dynamic>? loadedHomeSummary;
+
+      if (storedPatientId != null) {
+        loadedProfile = await ApiService.getPatientProfile(storedPatientId);
+
+        loadedDashboard = await ApiService.getPatientDashboard(storedPatientId);
+
+        loadedHomeSummary = await ApiService.getPatientHomeSummary(
+          storedPatientId,
+        );
+      }
+
+      if (storedUserId != null) {
+        loadedNotifications = await ApiService.getNotifications(storedUserId);
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        patientId = storedPatientId;
+        patientName =
+            loadedProfile?['full_name']?.toString() ??
+            loadedProfile?['data']?['full_name']?.toString() ??
+            loadedProfile?['profile']?['full_name']?.toString() ??
+            loadedProfile?['user']?['full_name']?.toString() ??
+            loadedProfile?['patient']?['full_name']?.toString() ??
+            storedName;
+
+        profileData = loadedProfile;
+        dashboardData = loadedDashboard;
+
+        notifications = loadedNotifications;
+
+        isLoading = false;
+
+        homeSummary = loadedHomeSummary;
+        latestRecommendation = loadedHomeSummary?['latest_recommendation'];
+        hasPendingValidation =
+            loadedHomeSummary?['has_pending_validation'] == true;
+        pendingValidationCount =
+            loadedHomeSummary?['pending_validation_count'] ?? 0;
+      });
+    } catch (e) {
+      debugPrint(e.toString());
+
+      if (!mounted) return;
+
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
     return Container(
       color: AppColors.primaryBlue,
       child: SafeArea(
@@ -166,9 +304,9 @@ class _PatientHomePageState extends State<PatientHomePage> {
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Selamat Pagi\nAngelica Sabi Gita',
+                  '$greeting\n$patientName',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 18,
@@ -179,16 +317,14 @@ class _PatientHomePageState extends State<PatientHomePage> {
               ),
               GestureDetector(
                 onTap: () {
-                  setState(() {
-                    hasUnreadNotification = false;
-                  });
-
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (_) => const PatientNotificationPage(),
                     ),
-                  );
+                  ).then((_) {
+                    _loadData();
+                  });
                 },
                 child: Stack(
                   clipBehavior: Clip.none,
@@ -226,23 +362,23 @@ class _PatientHomePageState extends State<PatientHomePage> {
           ),
           const SizedBox(height: 18),
           Row(
-            children: const [
+            children: [
               Expanded(
                 child: _HealthSummaryCard(
                   title: 'Glukosa',
-                  value: '187',
+                  value: glucose['value']?.toString() ?? '-',
                   unit: 'mg/dL',
-                  status: 'Tinggi',
-                  color: AppColors.red,
+                  status: glucose['status']?.toString() ?? '-',
+                  color: getGlucoseColor(),
                 ),
               ),
               SizedBox(width: 8),
               Expanded(
                 child: _HealthSummaryCard(
                   title: 'Tekanan Darah',
-                  value: '128/82',
+                  value: bloodPressure['value']?.toString() ?? '-',
                   unit: 'mmHg',
-                  status: 'Normal',
+                  status: bloodPressure['status']?.toString() ?? '-',
                   color: Color(0xFF10C878),
                 ),
               ),
@@ -250,9 +386,9 @@ class _PatientHomePageState extends State<PatientHomePage> {
               Expanded(
                 child: _HealthSummaryCard(
                   title: 'Berat Badan',
-                  value: '78.5',
+                  value: weight['value']?.toString() ?? '-',
                   unit: 'kg',
-                  status: 'Overweight',
+                  status: weight['status']?.toString() ?? '-',
                   color: Color(0xFFFFC542),
                 ),
               ),
@@ -264,13 +400,48 @@ class _PatientHomePageState extends State<PatientHomePage> {
   }
 
   Widget _doctorNoteCard() {
+    if (latestRecommendation == null) {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: _cardDecoration(),
+        child: const Row(
+          children: [
+            Icon(Icons.description_outlined, color: AppColors.primaryBlue),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Belum ada rekomendasi dari dokter',
+                style: TextStyle(color: AppColors.dark2, fontSize: 13),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final doctorName = latestRecommendation?['doctor_name']?.toString() ?? '-';
+
     return InkWell(
       borderRadius: BorderRadius.circular(12),
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => const PatientRecommendationDetailPage(),
+            builder: (_) => PatientRecommendationDetailPage(
+              item: {
+                'doctor':
+                    latestRecommendation?['doctor_name']?.toString() ??
+                    'Dokter',
+                'date': latestRecommendation?['created_at']?.toString() ?? '-',
+                'status':
+                    latestRecommendation?['category']?.toString() ??
+                    'Rekomendasi',
+                'description':
+                    latestRecommendation?['recommendation_text']?.toString() ??
+                    latestRecommendation?['content']?.toString() ??
+                    '-',
+              },
+            ),
           ),
         );
       },
@@ -293,7 +464,7 @@ class _PatientHomePageState extends State<PatientHomePage> {
               ),
             ),
             const SizedBox(width: 12),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -307,7 +478,7 @@ class _PatientHomePageState extends State<PatientHomePage> {
                   ),
                   SizedBox(height: 4),
                   Text(
-                    'dr. Agus Setiawan, S.PD • 7 Jun 2025',
+                    '$doctorName',
                     style: TextStyle(color: AppColors.dark2, fontSize: 11),
                   ),
                 ],
@@ -403,10 +574,10 @@ class _PatientHomePageState extends State<PatientHomePage> {
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
             child: Row(
-              children: const [
-                Expanded(
+              children: [
+                const Expanded(
                   child: Text(
-                    'Checklist harian — 7 Jun',
+                    'Checklist harian — Hari ini',
                     style: TextStyle(
                       color: AppColors.primaryBlue,
                       fontSize: 13,
@@ -415,8 +586,11 @@ class _PatientHomePageState extends State<PatientHomePage> {
                   ),
                 ),
                 Text(
-                  '2 / 4 selesai',
-                  style: TextStyle(color: AppColors.primaryBlue, fontSize: 11),
+                  '${homeSummary?['daily_checklist']?['completed'] ?? 0} / ${homeSummary?['daily_checklist']?['total'] ?? 4} selesai',
+                  style: const TextStyle(
+                    color: AppColors.primaryBlue,
+                    fontSize: 11,
+                  ),
                 ),
               ],
             ),
@@ -430,7 +604,10 @@ class _PatientHomePageState extends State<PatientHomePage> {
             ),
             alignment: Alignment.centerLeft,
             child: FractionallySizedBox(
-              widthFactor: 0.5,
+              widthFactor:
+                  ((homeSummary?['daily_checklist']?['completed'] ?? 0) /
+                          (homeSummary?['daily_checklist']?['total'] ?? 4))
+                      .clamp(0.0, 1.0),
               child: Container(
                 decoration: BoxDecoration(
                   color: AppColors.primaryBlue,

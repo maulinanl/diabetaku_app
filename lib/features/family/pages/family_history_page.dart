@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../core/theme/app_colors.dart';
+import '../../../data/services/api_service.dart';
 import 'family_history_detail_page.dart';
 import 'family_recommendation_detail_page.dart';
+import 'family_connection_page.dart';
 
 class FamilyHistoryPage extends StatefulWidget {
   const FamilyHistoryPage({super.key});
@@ -15,20 +19,14 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
   int selectedPatientIndex = 0;
   int selectedFilter = 0;
 
-  final patients = [
-    {
-      'initial': 'BS',
-      'name': 'Budi Santoso',
-      'info': 'Ayah • DM Tipe 2 • 58 th',
-    },
-    {
-      'initial': 'SR',
-      'name': 'Sari Rahayu',
-      'info': 'Ibu • DM Tipe 2 • 55 th',
-    },
-  ];
+  bool isLoading = true;
+  String? errorMessage;
 
-  final filters = [
+  List<Map<String, dynamic>> patients = [];
+  List<Map<String, dynamic>> histories = [];
+  List<Map<String, dynamic>> recommendations = [];
+
+  final filters = const [
     'Semua',
     'Glukosa',
     'Fisiologis',
@@ -37,76 +35,174 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
     'Obat',
   ];
 
-  final List<Map<String, Object>> histories = [
-    {
-      'patient': 'Budi Santoso',
-      'type': 'Glukosa',
-      'title': 'Glukosa Puasa',
-      'time': '7 Jun • 08:30',
-      'value': '142',
-      'unit': 'mg/dL',
-      'status': 'Disetujui',
-      'icon': Icons.opacity,
-      'color': Colors.orange,
-    },
-    {
-      'patient': 'Budi Santoso',
-      'type': 'Fisiologis',
-      'title': 'Tekanan Darah',
-      'time': '7 Jun • 08:25',
-      'value': '135/88',
-      'unit': 'mmHg',
-      'status': 'Menunggu',
-      'icon': Icons.bar_chart_rounded,
-      'color': Colors.orange,
-    },
-    {
-      'patient': 'Sari Rahayu',
-      'type': 'Obat',
-      'title': 'Kepatuhan Obat',
-      'time': '7 Jun • 07:00',
-      'value': '',
-      'unit': '',
-      'status': 'Ditolak',
-      'icon': Icons.medication_outlined,
-      'color': AppColors.red,
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadHistoryData();
+  }
 
-  final List<Map<String, String>> recommendationHistories = [
-    {
-      'patient': 'Budi Santoso',
-      'doctor': 'dr. Agus Setiawan, Sp.PD',
-      'date': '7 Jun 2025 • 09:41',
-      'status': 'Tidak Stabil',
-      'description':
-          'Glukosa postprandial tinggi. Keluarga diminta membantu memantau pola makan dan kepatuhan obat pasien.',
-      'initial': 'AS',
-    },
-    {
-      'patient': 'Sari Rahayu',
-      'doctor': 'dr. Sarah Puspita, Sp.PD',
-      'date': '1 Jun 2025 • 11:00',
-      'status': 'Stabil',
-      'description':
-          'Kondisi pasien stabil. Tetap bantu pantau aktivitas ringan dan jadwal minum obat pasien.',
-      'initial': 'SP',
-    },
-  ];
+  Future<void> _loadHistoryData() async {
+    try {
+      setState(() {
+        isLoading = true;
+        errorMessage = null;
+      });
+
+      final prefs = await SharedPreferences.getInstance();
+      final familyId = prefs.getInt('family_id');
+
+      if (familyId == null) {
+        throw Exception('Family ID tidak ditemukan. Coba login ulang.');
+      }
+
+      final familyPatients = await ApiService.getFamilyPatients(familyId);
+
+      if (familyPatients.isEmpty) {
+        if (!mounted) return;
+        setState(() {
+          patients = [];
+          histories = [];
+          recommendations = [];
+          isLoading = false;
+        });
+        return;
+      }
+
+      final patientId = int.parse(
+        familyPatients.first['patient_id'].toString(),
+      );
+
+      final loadedHistories = await ApiService.getFamilyPatientHistories(
+        patientId,
+      );
+
+      final loadedRecommendations =
+          await ApiService.getFamilyPatientRecommendations(patientId);
+
+      if (!mounted) return;
+
+      setState(() {
+        patients = familyPatients;
+        histories = loadedHistories;
+        recommendations = loadedRecommendations;
+        selectedPatientIndex = 0;
+        selectedFilter = 0;
+        isLoading = false;
+        errorMessage = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        errorMessage = e.toString().replaceAll('Exception: ', '');
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _changePatient(int index) async {
+    try {
+      setState(() {
+        isLoading = true;
+        errorMessage = null;
+      });
+
+      final patientId = int.parse(patients[index]['patient_id'].toString());
+
+      final loadedHistories = await ApiService.getFamilyPatientHistories(
+        patientId,
+      );
+
+      final loadedRecommendations =
+          await ApiService.getFamilyPatientRecommendations(patientId);
+
+      if (!mounted) return;
+
+      setState(() {
+        selectedPatientIndex = index;
+        selectedFilter = 0;
+        histories = loadedHistories;
+        recommendations = loadedRecommendations;
+        isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        errorMessage = e.toString().replaceAll('Exception: ', '');
+        isLoading = false;
+      });
+    }
+  }
+
+  String _initial(String name) {
+    final parts = name.trim().split(' ').where((e) => e.isNotEmpty).toList();
+
+    if (parts.isEmpty) return '-';
+    if (parts.length == 1) return parts.first[0].toUpperCase();
+
+    return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+  }
+
+  String _patientName(Map<String, dynamic> patient) {
+    return patient['full_name']?.toString() ??
+        patient['name']?.toString() ??
+        '-';
+  }
+
+  String _patientInfo(Map<String, dynamic> patient) {
+    final relation =
+        patient['relation_name']?.toString() ??
+        patient['relation']?.toString() ??
+        '-';
+
+    final dm = patient['diabetes_type']?.toString() ?? '-';
+
+    return '$relation • $dm';
+  }
+
+  IconData _iconByType(String type) {
+    switch (type) {
+      case 'Glukosa':
+        return Icons.opacity;
+      case 'Fisiologis':
+        return Icons.bar_chart_rounded;
+      case 'Aktivitas':
+        return Icons.directions_run;
+      case 'Makan':
+        return Icons.restaurant_outlined;
+      case 'Obat':
+        return Icons.medication_outlined;
+      default:
+        return Icons.description_outlined;
+    }
+  }
+
+  Color _colorByStatus(String status) {
+    if (status == 'Ditolak') return AppColors.red;
+    if (status == 'Menunggu') return Colors.orange;
+    return const Color(0xFF10C878);
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (errorMessage != null) {
+      return _errorState();
+    }
+
+    if (patients.isEmpty) {
+      return _emptyHistoryState();
+    }
+
     final selectedPatient = patients[selectedPatientIndex];
 
     final healthData = histories.where((item) {
-      final samePatient = item['patient'] == selectedPatient['name'];
-      final sameFilter =
-          selectedFilter == 0 || item['type'] == filters[selectedFilter];
-      return samePatient && sameFilter;
-    }).toList();
-
-    final recommendationData = recommendationHistories.where((item) {
-      return item['patient'] == selectedPatient['name'];
+      if (selectedFilter == 0) return true;
+      return item['type']?.toString() == filters[selectedFilter];
     }).toList();
 
     return Container(
@@ -119,17 +215,134 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
             Expanded(
               child: Container(
                 color: AppColors.background,
+                child: RefreshIndicator(
+                  onRefresh: _loadHistoryData,
+                  child: Column(
+                    children: [
+                      _patientCard(selectedPatient),
+                      Expanded(
+                        child: mainTab == 0
+                            ? _healthContent(healthData)
+                            : _recommendationContent(recommendations),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _emptyHistoryState() {
+    return Container(
+      color: AppColors.background,
+      child: SafeArea(
+        top: false,
+        child: Column(
+          children: [
+            _header(context),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 48, 24, 120),
                 child: Column(
                   children: [
-                    _patientCard(selectedPatient),
-                    Expanded(
-                      child: mainTab == 0
-                          ? _healthContent(healthData)
-                          : _recommendationContent(recommendationData),
+                    Container(
+                      width: 118,
+                      height: 118,
+                      decoration: const BoxDecoration(
+                        color: AppColors.veryLightBlue,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.history_rounded,
+                        size: 54,
+                        color: AppColors.primaryBlue,
+                      ),
+                    ),
+                    const SizedBox(height: 26),
+                    const Text(
+                      'Belum Ada Riwayat Pasien',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.primaryBlue,
+                        fontSize: 21,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Riwayat data kesehatan dan rekomendasi dokter akan muncul setelah akun keluarga terhubung dengan pasien.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.dark2,
+                        fontSize: 13,
+                        height: 1.5,
+                      ),
+                    ),                    
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const FamilyConnectionPage(),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.person_add_alt_1_rounded),
+                        label: const Text(
+                          'Ajukan Koneksi Pasien',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryBlue,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _errorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, color: AppColors.red, size: 42),
+            const SizedBox(height: 12),
+            Text(
+              errorMessage ?? 'Gagal memuat riwayat keluarga',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.dark2, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _loadHistoryData,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryBlue,
+                foregroundColor: Colors.white,
+                elevation: 0,
+              ),
+              child: const Text('Coba lagi'),
             ),
           ],
         ),
@@ -205,7 +418,9 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
     );
   }
 
-  Widget _patientCard(Map<String, String> patient) {
+  Widget _patientCard(Map<String, dynamic> patient) {
+    final name = _patientName(patient);
+
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 18, 20, 0),
       padding: const EdgeInsets.all(13),
@@ -220,7 +435,7 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
             radius: 24,
             backgroundColor: AppColors.lightBlue,
             child: Text(
-              patient['initial']!,
+              _initial(name),
               style: const TextStyle(
                 color: AppColors.primaryBlue,
                 fontWeight: FontWeight.bold,
@@ -233,7 +448,7 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  patient['name']!,
+                  name,
                   style: const TextStyle(
                     color: AppColors.dark1,
                     fontSize: 13,
@@ -242,28 +457,29 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  patient['info']!,
+                  _patientInfo(patient),
                   style: const TextStyle(color: AppColors.dark2, fontSize: 11),
                 ),
               ],
             ),
           ),
-          OutlinedButton.icon(
-            onPressed: _showPatientSelector,
-            icon: const Icon(Icons.swap_horiz, size: 15),
-            label: const Text('Ganti'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.primaryBlue,
-              side: const BorderSide(color: AppColors.light1),
-              padding: const EdgeInsets.symmetric(horizontal: 10),
+          if (patients.length > 1)
+            OutlinedButton.icon(
+              onPressed: _showPatientSelector,
+              icon: const Icon(Icons.swap_horiz, size: 15),
+              label: const Text('Ganti'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primaryBlue,
+                side: const BorderSide(color: AppColors.light1),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+              ),
             ),
-          ),
         ],
       ),
     );
   }
 
-  Widget _healthContent(List<Map<String, Object>> data) {
+  Widget _healthContent(List<Map<String, dynamic>> data) {
     return Column(
       children: [
         _filterChips(),
@@ -272,7 +488,7 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
             children: [
               const Text(
-                '7 JUN 2025',
+                'DATA KESEHATAN',
                 style: TextStyle(
                   color: AppColors.dark2,
                   fontSize: 12,
@@ -291,8 +507,11 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
                   ),
                 )
               else
-                ...data.map(
-                  (item) => Padding(
+                ...data.map((item) {
+                  final type = item['type']?.toString() ?? '-';
+                  final status = item['status']?.toString() ?? '-';
+
+                  return Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(12),
@@ -300,24 +519,26 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => FamilyHistoryDetailPage(
-                              type: item['type'] as String,
-                            ),
+                            builder: (_) =>
+                                FamilyHistoryDetailPage(history: item),
                           ),
                         );
                       },
                       child: _HistoryCard(
-                        title: item['title'] as String,
-                        time: item['time'] as String,
-                        value: item['value'] as String,
-                        unit: item['unit'] as String,
-                        status: item['status'] as String,
-                        icon: item['icon'] as IconData,
-                        color: item['color'] as Color,
+                        title: item['title']?.toString() ?? '-',
+                        time:
+                            item['time']?.toString() ??
+                            item['recorded_at']?.toString() ??
+                            '-',
+                        value: item['value']?.toString() ?? '',
+                        unit: item['unit']?.toString() ?? '',
+                        status: status,
+                        icon: _iconByType(type),
+                        color: _colorByStatus(status),
                       ),
                     ),
-                  ),
-                ),
+                  );
+                }),
             ],
           ),
         ),
@@ -325,7 +546,7 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
     );
   }
 
-  Widget _recommendationContent(List<Map<String, String>> data) {
+  Widget _recommendationContent(List<Map<String, dynamic>> data) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 120),
       children: [
@@ -349,28 +570,47 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
             ),
           )
         else
-          ...data.map(
-            (item) => Padding(
+          ...data.map((item) {
+            final doctor =
+                item['doctor_name']?.toString() ??
+                item['doctor']?.toString() ??
+                'Dokter';
+
+            final description =
+                item['recommendation_text']?.toString() ??
+                item['description']?.toString() ??
+                '-';
+
+            final status =
+                item['category']?.toString() ??
+                item['status']?.toString() ??
+                'Rekomendasi';
+
+            return Padding(
               padding: const EdgeInsets.only(bottom: 14),
               child: GestureDetector(
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const FamilyRecommendationDetailPage(),
+                      builder: (_) =>
+                          FamilyRecommendationDetailPage(item: item),
                     ),
                   );
                 },
                 child: _RecommendationHistoryCard(
-                  initial: item['initial']!,
-                  doctor: item['doctor']!,
-                  date: item['date']!,
-                  status: item['status']!,
-                  description: item['description']!,
+                  initial: _initial(doctor),
+                  doctor: doctor,
+                  date:
+                      item['created_at']?.toString() ??
+                      item['date']?.toString() ??
+                      '-',
+                  status: status,
+                  description: description,
                 ),
               ),
-            ),
-          ),
+            );
+          }),
       ],
     );
   }
@@ -425,31 +665,33 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
             mainAxisSize: MainAxisSize.min,
             children: List.generate(patients.length, (index) {
               final patient = patients[index];
+              final name = _patientName(patient);
               final selected = selectedPatientIndex == index;
 
               return ListTile(
                 leading: CircleAvatar(
-                  backgroundColor:
-                      selected ? AppColors.primaryBlue : AppColors.lightBlue,
+                  backgroundColor: selected
+                      ? AppColors.primaryBlue
+                      : AppColors.lightBlue,
                   child: Text(
-                    patient['initial']!,
+                    _initial(name),
                     style: TextStyle(
                       color: selected ? Colors.white : AppColors.primaryBlue,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-                title: Text(patient['name']!),
-                subtitle: Text(patient['info']!),
+                title: Text(name),
+                subtitle: Text(_patientInfo(patient)),
                 trailing: Icon(
                   selected
                       ? Icons.radio_button_checked
                       : Icons.radio_button_unchecked,
                   color: AppColors.primaryBlue,
                 ),
-                onTap: () {
-                  setState(() => selectedPatientIndex = index);
+                onTap: () async {
                   Navigator.pop(sheetContext);
+                  await _changePatient(index);
                 },
               );
             }),
@@ -547,7 +789,7 @@ class _HistoryCard extends StatelessWidget {
     Color bg;
     Color textColor;
 
-    if (status == 'Disetujui') {
+    if (status == 'Disetujui' || status == 'Valid') {
       bg = const Color(0xFFEAFBF3);
       textColor = const Color(0xFF10C878);
     } else if (status == 'Ditolak') {
@@ -560,7 +802,10 @@ class _HistoryCard extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Text(
         status,
         style: TextStyle(
@@ -586,7 +831,7 @@ class _HistoryCard extends StatelessWidget {
       ],
     );
   }
-}
+} 
 
 class _RecommendationHistoryCard extends StatelessWidget {
   final String initial;
@@ -605,8 +850,6 @@ class _RecommendationHistoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isStable = status == 'Stabil';
-
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: _cardDecoration(),
@@ -660,9 +903,9 @@ class _RecommendationHistoryCard extends StatelessWidget {
           const SizedBox(height: 14),
           _badge(
             text: status,
-            bg: isStable ? const Color(0xFFEAFBF3) : const Color(0xFFFFF4DA),
-            color: isStable ? const Color(0xFF10C878) : Colors.orange,
-            icon: isStable ? Icons.check_rounded : Icons.warning_amber_rounded,
+            bg: const Color(0xFFFFF4DA),
+            color: Colors.orange,
+            icon: Icons.info_outline,
           ),
           const SizedBox(height: 12),
           Text(
