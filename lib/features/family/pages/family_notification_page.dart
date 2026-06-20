@@ -47,8 +47,6 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
         notifications = data;
         isLoading = false;
       });
-
-      await ApiService.markAllNotificationsAsRead(userId);
     } catch (e) {
       if (!mounted) return;
 
@@ -59,10 +57,28 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
     }
   }
 
-  bool _isUnread(Map<String, dynamic> item) {
-    final isRead = item['is_read'];
+  Future<void> _openNotification(Map<String, dynamic> item) async {
+    final notificationId = int.tryParse(
+      (item['notification_id'] ?? item['id'] ?? '').toString(),
+    );
 
-    return isRead == false || isRead == 0 || isRead?.toString() == '0';
+    if (_isUnread(item) && notificationId != null) {
+      try {
+        await ApiService.markNotificationAsRead(notificationId);
+
+        if (!mounted) return;
+
+        setState(() {
+          item['is_read'] = true;
+        });
+      } catch (_) {}
+    }
+  }
+
+  bool _isUnread(Map<String, dynamic> item) {
+    final value = item['is_read'] ?? item['read'];
+
+    return value == false || value == 0 || value.toString() == '0';
   }
 
   String _title(Map<String, dynamic> item) {
@@ -84,33 +100,42 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
   }
 
   String _type(Map<String, dynamic> item) {
-    return item['notification_type']?.toString() ??
-        item['type']?.toString() ??
+    final rawType =
+        item['type_code'] ??
+        item['reference_type'] ??
+        item['type'] ??
+        item['notification_type_name'] ??
+        item['notification_type'] ??
         '';
+
+    return rawType
+        .toString()
+        .toLowerCase()
+        .replaceAll(' ', '_')
+        .replaceAll('-', '_');
   }
 
   IconData _iconFromType(String type) {
-    final lowerType = type.toLowerCase();
-
-    if (lowerType.contains('recommendation') ||
-        lowerType.contains('rekomendasi')) {
+    if (type.contains('recommendation') || type.contains('rekomendasi')) {
       return Icons.description_outlined;
     }
 
-    if (lowerType.contains('validation') ||
-        lowerType.contains('validasi') ||
-        lowerType.contains('data')) {
+    if (type.contains('validation') ||
+        type.contains('validasi') ||
+        type.contains('data')) {
       return Icons.assignment_outlined;
     }
 
-    if (lowerType.contains('connection') ||
-        lowerType.contains('koneksi') ||
-        lowerType.contains('relation')) {
+    if (type.contains('connection') ||
+        type.contains('koneksi') ||
+        type.contains('relation') ||
+        type.contains('relasi')) {
       return Icons.person_outline;
     }
 
-    if (lowerType.contains('disconnect') ||
-        lowerType.contains('putus')) {
+    if (type.contains('disconnect') ||
+        type.contains('disconnected') ||
+        type.contains('putus')) {
       return Icons.link_off_rounded;
     }
 
@@ -118,22 +143,22 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
   }
 
   Color _iconBgFromType(String type) {
-    final lowerType = type.toLowerCase();
-
-    if (lowerType.contains('validation') ||
-        lowerType.contains('validasi') ||
-        lowerType.contains('data')) {
+    if (type.contains('validation') ||
+        type.contains('validasi') ||
+        type.contains('data')) {
       return const Color(0xFFFFF4DA);
     }
 
-    if (lowerType.contains('connection') ||
-        lowerType.contains('koneksi') ||
-        lowerType.contains('relation')) {
+    if (type.contains('connection') ||
+        type.contains('koneksi') ||
+        type.contains('relation') ||
+        type.contains('relasi')) {
       return const Color(0xFFEAFBF3);
     }
 
-    if (lowerType.contains('disconnect') ||
-        lowerType.contains('putus')) {
+    if (type.contains('disconnect') ||
+        type.contains('disconnected') ||
+        type.contains('putus')) {
       return AppColors.lightRed;
     }
 
@@ -141,22 +166,22 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
   }
 
   Color _iconColorFromType(String type) {
-    final lowerType = type.toLowerCase();
-
-    if (lowerType.contains('validation') ||
-        lowerType.contains('validasi') ||
-        lowerType.contains('data')) {
+    if (type.contains('validation') ||
+        type.contains('validasi') ||
+        type.contains('data')) {
       return Colors.orange;
     }
 
-    if (lowerType.contains('connection') ||
-        lowerType.contains('koneksi') ||
-        lowerType.contains('relation')) {
+    if (type.contains('connection') ||
+        type.contains('koneksi') ||
+        type.contains('relation') ||
+        type.contains('relasi')) {
       return const Color(0xFF10C878);
     }
 
-    if (lowerType.contains('disconnect') ||
-        lowerType.contains('putus')) {
+    if (type.contains('disconnect') ||
+        type.contains('disconnected') ||
+        type.contains('putus')) {
       return AppColors.red;
     }
 
@@ -223,6 +248,7 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
               message: _message(item),
               time: _time(item),
               unread: _isUnread(item),
+              onTap: () => _openNotification(item),
             );
           }),
           const SizedBox(height: 24),
@@ -286,9 +312,7 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
 
     return Expanded(
       child: GestureDetector(
-        onTap: () {
-          setState(() => selectedTab = index);
-        },
+        onTap: () => setState(() => selectedTab = index),
         child: Container(
           alignment: Alignment.center,
           decoration: BoxDecoration(
@@ -394,6 +418,7 @@ class _FamilyNotificationItem extends StatelessWidget {
   final String message;
   final String time;
   final bool unread;
+  final VoidCallback onTap;
 
   const _FamilyNotificationItem({
     required this.icon,
@@ -403,26 +428,26 @@ class _FamilyNotificationItem extends StatelessWidget {
     required this.message,
     required this.time,
     required this.unread,
+    required this.onTap,
   });
 
   String _formatTime(String raw) {
     if (raw.isEmpty) return '-';
 
-    try {
-      final dt = DateTime.parse(raw).toLocal();
+    final dt = DateTime.tryParse(raw);
+    if (dt == null) return raw;
 
-      return '${dt.day}/${dt.month}/${dt.year} • '
-          '${dt.hour.toString().padLeft(2, '0')}:'
-          '${dt.minute.toString().padLeft(2, '0')}';
-    } catch (_) {
-      return raw;
-    }
+    final local = dt.toLocal();
+
+    return '${local.day}/${local.month}/${local.year} • '
+        '${local.hour.toString().padLeft(2, '0')}:'
+        '${local.minute.toString().padLeft(2, '0')}';
   }
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () {},
+      onTap: onTap,
       child: Container(
         color: unread ? const Color(0xFFF3F8FF) : AppColors.white,
         padding: const EdgeInsets.fromLTRB(22, 14, 14, 14),

@@ -1010,7 +1010,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
     );
 
     final medicationHistory = filteredMedication.take(5).map((item) {
-      final drugName = item['drug_name']?.toString() ?? 'Obat';
+      final drugName = item['medication_name']?.toString() ?? 'Obat';
       final dosage = item['dosage']?.toString() ?? '';
       final date = item['log_date']?.toString() ?? '-';
       final status = item['status']?.toString() ?? '-';

@@ -88,6 +88,8 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
         'badge': item['validation_status'] ?? 'Valid',
         'icon': Icons.opacity,
         'color': AppColors.red,
+        'input_by_role': item['input_by_role']?.toString() ?? 'Pasien',
+        'input_by_name': item['input_by_name']?.toString() ?? '-',
         'raw': item,
       });
     }
@@ -105,6 +107,8 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
         'badge': item['validation_status'] ?? 'Valid',
         'icon': Icons.bar_chart_rounded,
         'color': Colors.orange,
+        'input_by_role': item['input_by_role']?.toString() ?? 'Pasien',
+        'input_by_name': item['input_by_name']?.toString() ?? '-',
         'raw': item,
       });
     }
@@ -119,9 +123,11 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
         'date_raw': item['activity_date'],
         'value': '${item['duration_minutes'] ?? '-'}',
         'unit': 'menit',
-        'badge': item['intensity'] ?? '-',
+        'badge': item['validation_status'] ?? 'Valid',
         'icon': Icons.directions_run,
         'color': AppColors.primaryBlue,
+        'input_by_role': item['input_by_role']?.toString() ?? 'Pasien',
+        'input_by_name': item['input_by_name']?.toString() ?? '-',
         'raw': item,
       });
     }
@@ -137,6 +143,8 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
         'badge': item['validation_status'] ?? 'Valid',
         'icon': Icons.restaurant_outlined,
         'color': AppColors.primaryBlue,
+        'input_by_role': item['input_by_role']?.toString() ?? 'Pasien',
+        'input_by_name': item['input_by_name']?.toString() ?? '-',
         'raw': item,
       });
     }
@@ -158,6 +166,8 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
         'color': item['status'] == 'Terlewat'
             ? AppColors.red
             : AppColors.primaryBlue,
+        'input_by_role': item['input_by_role']?.toString() ?? 'Pasien',
+        'input_by_name': item['input_by_name']?.toString() ?? '-',
         'raw': item,
       });
     }
@@ -407,6 +417,9 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
                               ),
                             );
                           },
+                          inputByRole:
+                              item['input_by_role']?.toString() ?? 'Pasien',
+                          inputByName: item['input_by_name']?.toString() ?? '-',
                         ),
                       );
                     },
@@ -782,6 +795,8 @@ class _HealthHistoryCard extends StatelessWidget {
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
+  final String inputByRole;
+  final String inputByName;
 
   const _HealthHistoryCard({
     required this.type,
@@ -795,6 +810,8 @@ class _HealthHistoryCard extends StatelessWidget {
     required this.icon,
     required this.color,
     required this.onTap,
+    required this.inputByRole,
+    required this.inputByName,
   });
 
   @override
@@ -806,10 +823,11 @@ class _HealthHistoryCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
+        constraints: const BoxConstraints(minHeight: 104),
         padding: const EdgeInsets.all(12),
         decoration: _cardDecoration(),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
               width: 38,
@@ -821,8 +839,10 @@ class _HealthHistoryCard extends StatelessWidget {
               child: Icon(icon, color: AppColors.primaryBlue, size: 20),
             ),
             const SizedBox(width: 12),
+
             Expanded(
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
@@ -841,6 +861,7 @@ class _HealthHistoryCard extends StatelessWidget {
                       fontSize: 12,
                     ),
                   ),
+
                   if (type == 'Obat' && doctor != null && doctor != '-') ...[
                     const SizedBox(height: 4),
                     Text(
@@ -863,29 +884,41 @@ class _HealthHistoryCard extends StatelessWidget {
                       ),
                     ),
                   ],
+
+                  const SizedBox(height: 7),
+                  _inputBadge(inputByRole, inputByName),
                 ],
               ),
             ),
+
+            const SizedBox(width: 8),
+
             if (hasValue)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    value,
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+              SizedBox(
+                width: 72,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      value,
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  Text(
-                    unit,
-                    style: const TextStyle(
-                      color: AppColors.dark2,
-                      fontSize: 10,
+                    Text(
+                      unit,
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        color: AppColors.dark2,
+                        fontSize: 10,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               )
             else
               _smallBadge(badge),
@@ -910,6 +943,46 @@ class _HealthHistoryCard extends StatelessWidget {
           fontSize: 10,
           fontWeight: FontWeight.w600,
         ),
+      ),
+    );
+  }
+
+  Widget _inputBadge(String role, String name) {
+    final isFamily = role == 'Keluarga';
+    final text = isFamily ? '$role • $name' : role;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: isFamily ? const Color(0xFFFFF4DA) : AppColors.veryLightBlue,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isFamily
+              ? Colors.orange.withValues(alpha: 0.18)
+              : AppColors.primaryBlue.withValues(alpha: 0.18),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isFamily ? Icons.family_restroom_rounded : Icons.person_rounded,
+            size: 11,
+            color: isFamily ? Colors.orange : AppColors.primaryBlue,
+          ),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              text,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: isFamily ? Colors.orange : AppColors.primaryBlue,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1283,24 +1356,35 @@ class PatientHealthDetailPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          Text(
-            data['value'].toString(),
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 30,
-              fontWeight: FontWeight.bold,
+          Center(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  data['value'].toString(),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 30,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  data['unit'].toString(),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  data['date'].toString(),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white, fontSize: 11),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            data['unit'].toString(),
-            style: const TextStyle(color: Colors.white, fontSize: 13),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            data['date'].toString(),
-            style: const TextStyle(color: Colors.white, fontSize: 11),
           ),
           if (data['status'].toString().isNotEmpty) ...[
             const SizedBox(height: 10),

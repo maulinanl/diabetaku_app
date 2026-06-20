@@ -281,7 +281,7 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
                         fontSize: 13,
                         height: 1.5,
                       ),
-                    ),                    
+                    ),
                     const SizedBox(height: 24),
                     SizedBox(
                       width: double.infinity,
@@ -535,6 +535,9 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
                         status: status,
                         icon: _iconByType(type),
                         color: _colorByStatus(status),
+                        inputByRole:
+                            item['input_by_role']?.toString() ?? 'Pasien',
+                        inputByName: item['input_by_name']?.toString() ?? '-',
                       ),
                     ),
                   );
@@ -710,6 +713,8 @@ class _HistoryCard extends StatelessWidget {
   final String status;
   final IconData icon;
   final Color color;
+  final String inputByRole;
+  final String inputByName;
 
   const _HistoryCard({
     required this.title,
@@ -719,6 +724,8 @@ class _HistoryCard extends StatelessWidget {
     required this.status,
     required this.icon,
     required this.color,
+    required this.inputByRole,
+    required this.inputByName,
   });
 
   @override
@@ -759,6 +766,8 @@ class _HistoryCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 _statusBadge(status),
+                const SizedBox(height: 6),
+                _inputBadge(inputByRole, inputByName),
               ],
             ),
           ),
@@ -817,6 +826,42 @@ class _HistoryCard extends StatelessWidget {
     );
   }
 
+  Widget _inputBadge(String role, String name) {
+    final isFamily = role == 'Keluarga';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: isFamily ? const Color(0xFFFFF4DA) : AppColors.veryLightBlue,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isFamily
+              ? Colors.orange.withValues(alpha: 0.18)
+              : AppColors.primaryBlue.withValues(alpha: 0.18),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isFamily ? Icons.family_restroom_rounded : Icons.person_rounded,
+            size: 11,
+            color: isFamily ? Colors.orange : AppColors.primaryBlue,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'Diinput $role',
+            style: TextStyle(
+              color: isFamily ? Colors.orange : AppColors.primaryBlue,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   BoxDecoration _cardDecoration() {
     return BoxDecoration(
       color: AppColors.white,
@@ -831,7 +876,7 @@ class _HistoryCard extends StatelessWidget {
       ],
     );
   }
-} 
+}
 
 class _RecommendationHistoryCard extends StatelessWidget {
   final String initial;

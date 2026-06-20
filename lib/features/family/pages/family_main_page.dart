@@ -801,19 +801,22 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
   }
 
   Widget _summaryCards() {
-    final glucose = dashboardData?['latest_glucose'];
-    final physiological = dashboardData?['latest_physiological'];
+    final latestGlucose =
+        dashboardData?['latest_glucose'] as Map<String, dynamic>?;
 
-    final glucoseValue = glucose?['glucose_value']?.toString() ?? '-';
+    final latestPhysiological =
+        dashboardData?['latest_physiological'] as Map<String, dynamic>?;
 
-    final systolic = physiological?['systolic']?.toString();
-    final diastolic = physiological?['diastolic']?.toString();
+    final glucoseValue = latestGlucose?['glucose_value']?.toString() ?? '-';
+
+    final systolic = latestPhysiological?['systolic']?.toString();
+    final diastolic = latestPhysiological?['diastolic']?.toString();
 
     final bloodPressureValue = systolic != null && diastolic != null
         ? '$systolic/$diastolic'
         : '-';
 
-    final weightValue = physiological?['weight_kg']?.toString() ?? '-';
+    final weightValue = latestPhysiological?['weight_kg']?.toString() ?? '-';
 
     return Row(
       children: [
@@ -1085,13 +1088,15 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
                   date.day == selectedDate.day;
 
               if (status == 'lengkap') {
-                final prevStatus = consistencyStatus[_dateKey(
-                  date.subtract(const Duration(days: 1)),
-                )];
+                final prevStatus =
+                    consistencyStatus[_dateKey(
+                      date.subtract(const Duration(days: 1)),
+                    )];
 
-                final nextStatus = consistencyStatus[_dateKey(
-                  date.add(const Duration(days: 1)),
-                )];
+                final nextStatus =
+                    consistencyStatus[_dateKey(
+                      date.add(const Duration(days: 1)),
+                    )];
 
                 final baseDay = _calendarRangeDay(
                   text: '$dayNumber',

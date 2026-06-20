@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../core/theme/app_colors.dart';
+import '../../../data/services/api_service.dart';
+import 'doctor_connection_page.dart';
 import 'patient_detail_page.dart';
 import 'recommendation_detail_page.dart';
-import 'doctor_connection_page.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../../data/services/api_service.dart';
 
 class DoctorNotificationPage extends StatefulWidget {
   const DoctorNotificationPage({super.key});
@@ -66,126 +67,99 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
     }
   }
 
-  Future<void> _openNotificationDetail(Map<String, dynamic> item) async {
-    final notificationId = int.tryParse(item['notification_id'].toString());
-    final referenceId = int.tryParse(item['reference_id']?.toString() ?? '');
+  String _type(Map<String, dynamic> item) {
+    final raw =
+        item['type_code'] ??
+        item['type'] ??
+        item['notification_type_name'] ??
+        '';
 
-    if (notificationId != null) {
-      await ApiService.markNotificationAsRead(notificationId);
+    return raw
+        .toString()
+        .toLowerCase()
+        .trim()
+        .replaceAll(' ', '_')
+        .replaceAll('-', '_');
+  }
+
+  String _referenceType(Map<String, dynamic> item) {
+    return (item['reference_type'] ?? '')
+        .toString()
+        .toLowerCase()
+        .trim()
+        .replaceAll(' ', '_')
+        .replaceAll('-', '_');
+  }
+
+  bool _isRead(Map<String, dynamic> item) {
+    final value = item['is_read'];
+    return value == true || value == 1 || value.toString() == '1';
+  }
+
+  Future<void> _openNotificationDetail(Map<String, dynamic> item) async {
+    final notificationId = int.tryParse(
+      (item['notification_id'] ?? '').toString(),
+    );
+
+    final referenceId = int.tryParse(
+      (item['reference_id'] ?? '').toString(),
+    );
+
+    final type = _type(item);
+    final refType = _referenceType(item);
+
+    if (notificationId != null && !_isRead(item)) {
+      try {
+        await ApiService.markNotificationAsRead(notificationId);
+
+        if (!mounted) return;
+
+        setState(() {
+          item['is_read'] = true;
+        });
+      } catch (_) {}
     }
 
     if (!mounted) return;
 
-    setState(() {
-      item['is_read'] = true;
-    });
-
-    final type =
-        item['notification_type_name']?.toString().toLowerCase().trim() ?? '';
-
-    if (type == 'data abnormal') {
+    if (type == 'data_abnormal' || refType == 'abnormal') {
       await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) =>
-              AbnormalNotificationDetailPage(patientId: referenceId ?? 1),
+          builder: (_) => AbnormalNotificationDetailPage(
+            item: item,
+            patientId: referenceId ?? 0,
+          ),
         ),
       );
-    } else if (type == 'permintaan koneksi') {
+    } else if (type == 'permintaan_koneksi' ||
+        refType == 'connection' ||
+        refType == 'connection_request') {
       if (referenceId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Data pasien pada permintaan koneksi tidak ditemukan',
-            ),
-          ),
-        );
+        _showSnackBar('Data pasien tidak ditemukan');
         return;
       }
 
-      try {
-        final connection = await ApiService.getDoctorPatientConnectionStatus(
-          patientId: referenceId,
-        );
-
-        final statusId = int.tryParse(connection['status_id'].toString()) ?? 0;
-
-        final statusText = statusId == 1
-            ? 'Koneksi aktif'
-            : statusId == 2
-            ? 'Koneksi ditolak'
-            : 'Menunggu persetujuan dokter';
-
-        if (!mounted) return;
-
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => RequestDetailPage(
-              patientId: referenceId,
-              status: statusId,
-              name:
-                  connection['full_name']?.toString() ??
-                  _extractPatientName(item['message']?.toString() ?? ''),
-              age: _calculateAge(connection['date_of_birth']?.toString()),
-              gender: connection['gender']?.toString() ?? '-',
-              diabetesType: connection['diabetes_type']?.toString() ?? '-',
-              connectionStatus: statusText,
-              time: _formatNotificationTime(item['created_at']),
-            ),
-          ),
-        );
-      } catch (e) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-        );
-      }
-    } else if (type == 'rekomendasi dokter') {
+      await _openConnectionRequest(item, referenceId);
+    } else if (type == 'rekomendasi_dokter' ||
+        refType == 'clinical_note' ||
+        refType == 'recommendation') {
       if (referenceId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Data rekomendasi tidak ditemukan')),
-        );
+        _showSnackBar('Data rekomendasi tidak ditemukan');
         return;
       }
 
-      try {
-        final detail = await ApiService.getRecommendationDetail(referenceId);
-
-        final patient = Map<String, dynamic>.from(detail['patient']);
-        final recommendations = List<Map<String, dynamic>>.from(
-          detail['recommendations'],
-        );
-        final recipients = List<Map<String, dynamic>>.from(
-          detail['recipients'],
-        );
-
-        if (!mounted) return;
-
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => RecommendationDetailPage.fromApi(
-              patient: patient,
-              recommendationsData: recommendations,
-              recipientsData: recipients,
-              time: _formatNotificationTime(item['created_at']),
-            ),
-          ),
-        );
-      } catch (e) {
-        if (!mounted) return;
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-        );
-      }
-    } else if (type == 'putus relasi') {
+      await _openRecommendationDetail(item, referenceId);
+    } else if (type == 'putus_relasi' ||
+        refType == 'disconnected' ||
+        refType == 'patient') {
       await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) =>
-              DisconnectedNotificationDetailPage(patientId: referenceId ?? 1),
+          builder: (_) => DisconnectedNotificationDetailPage(
+            item: item,
+            patientId: referenceId ?? 0,
+          ),
         ),
       );
     }
@@ -195,9 +169,123 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
     }
   }
 
+  Future<void> _openConnectionRequest(
+    Map<String, dynamic> item,
+    int patientId,
+  ) async {
+    try {
+      final connection = await ApiService.getDoctorPatientConnectionStatus(
+        patientId: patientId,
+      );
+
+      final statusId = int.tryParse(connection['status_id'].toString()) ?? 0;
+
+      final statusText = statusId == 1
+          ? 'Koneksi aktif'
+          : statusId == 2
+              ? 'Koneksi ditolak'
+              : 'Menunggu persetujuan dokter';
+
+      if (!mounted) return;
+
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => RequestDetailPage(
+            patientId: patientId,
+            status: statusId,
+            name: connection['full_name']?.toString() ??
+                _extractPatientName(item['message']?.toString() ?? ''),
+            age: _calculateAge(connection['date_of_birth']?.toString()),
+            gender: connection['gender']?.toString() ?? '-',
+            diabetesType: connection['diabetes_type']?.toString() ?? '-',
+            connectionStatus: statusText,
+            time: _formatNotificationTime(item['created_at']),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      _showSnackBar(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  Future<void> _openRecommendationDetail(
+    Map<String, dynamic> item,
+    int clinicalNoteId,
+  ) async {
+    try {
+      final detail = await ApiService.getRecommendationDetail(clinicalNoteId);
+
+      final patient = Map<String, dynamic>.from(detail['patient']);
+      final recommendations = List<Map<String, dynamic>>.from(
+        detail['recommendations'],
+      );
+      final recipients = List<Map<String, dynamic>>.from(detail['recipients']);
+
+      if (!mounted) return;
+
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => RecommendationDetailPage.fromApi(
+            patient: patient,
+            recommendationsData: recommendations,
+            recipientsData: recipients,
+            time: _formatNotificationTime(item['created_at']),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      _showSnackBar(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  List<Map<String, dynamic>> _filteredNotifications() {
+    final keyword = searchController.text.trim().toLowerCase();
+
+    final tabFiltered = selectedTab == 0
+        ? [...notifications]
+        : notifications.where((item) => !_isRead(item)).toList();
+
+    final result = keyword.isEmpty
+        ? tabFiltered
+        : tabFiltered.where((item) {
+            final title = item['title']?.toString().toLowerCase() ?? '';
+            final message = item['message']?.toString().toLowerCase() ?? '';
+            final type = _type(item);
+
+            return title.contains(keyword) ||
+                message.contains(keyword) ||
+                type.contains(keyword);
+          }).toList();
+
+    result.sort((a, b) {
+      final dateA = DateTime.tryParse(a['created_at']?.toString() ?? '') ??
+          DateTime(2000);
+      final dateB = DateTime.tryParse(b['created_at']?.toString() ?? '') ??
+          DateTime(2000);
+
+      return dateB.compareTo(dateA);
+    });
+
+    return result;
+  }
+
   String _extractPatientName(String message) {
     if (message.contains(' mengajukan')) {
       return message.split(' mengajukan').first.trim();
+    }
+
+    if (message.contains(' untuk ')) {
+      return message.split(' untuk ').last.replaceAll(' berhasil dikirim.', '');
     }
 
     return '-';
@@ -237,77 +325,28 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
                 child: isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : errorMessage != null
-                    ? Center(child: Text(errorMessage!))
-                    : ListView(
-                        padding: EdgeInsets.zero,
-                        children: [
-                          _buildTabs(),
-                          if (filtered.isEmpty)
-                            _emptyState()
-                          else ...[
-                            ..._groupedNotifications(filtered),
-                            const SizedBox(height: 24),
-                          ],
-                        ],
-                      ),
+                        ? Center(child: Text(errorMessage!))
+                        : RefreshIndicator(
+                            onRefresh: _loadNotifications,
+                            child: ListView(
+                              padding: EdgeInsets.zero,
+                              children: [
+                                _buildTabs(),
+                                if (filtered.isEmpty)
+                                  _emptyState()
+                                else ...[
+                                  ..._groupedNotifications(filtered),
+                                  const SizedBox(height: 24),
+                                ],
+                              ],
+                            ),
+                          ),
               ),
             ),
           ],
         ),
       ),
     );
-  }
-
-  List<Map<String, dynamic>> _filteredNotifications() {
-    final keyword = searchController.text.trim().toLowerCase();
-
-    final tabFiltered = selectedTab == 0
-        ? notifications
-        : notifications.where((item) {
-            final isRead = item['is_read'];
-            return isRead == false || isRead == 0 || isRead.toString() == '0';
-          }).toList();
-
-    if (keyword.isEmpty) {
-      tabFiltered.sort((a, b) {
-        final dateA =
-            DateTime.tryParse(a['created_at']?.toString() ?? '') ??
-            DateTime(2000);
-
-        final dateB =
-            DateTime.tryParse(b['created_at']?.toString() ?? '') ??
-            DateTime(2000);
-
-        return dateB.compareTo(dateA);
-      });
-
-      return tabFiltered;
-    }
-
-    final result = tabFiltered.where((item) {
-      final title = item['title']?.toString().toLowerCase() ?? '';
-      final message = item['message']?.toString().toLowerCase() ?? '';
-      final type =
-          item['notification_type_name']?.toString().toLowerCase() ?? '';
-
-      return title.contains(keyword) ||
-          message.contains(keyword) ||
-          type.contains(keyword);
-    }).toList();
-
-    result.sort((a, b) {
-      final dateA =
-          DateTime.tryParse(a['created_at']?.toString() ?? '') ??
-          DateTime(2000);
-
-      final dateB =
-          DateTime.tryParse(b['created_at']?.toString() ?? '') ??
-          DateTime(2000);
-
-      return dateB.compareTo(dateA);
-    });
-
-    return result;
   }
 
   Widget _buildHeader(BuildContext context) {
@@ -436,18 +475,13 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
         lastSection = section;
       }
 
-      final isRead =
-          item['is_read'] == true ||
-          item['is_read'] == 1 ||
-          item['is_read'].toString() == '1';
-
       widgets.add(
         _NotificationTile(
           title: item['title']?.toString() ?? '-',
           message: item['message']?.toString() ?? '-',
           time: _formatNotificationTime(item['created_at']),
-          type: item['notification_type_name']?.toString() ?? '',
-          read: isRead,
+          type: _type(item),
+          read: _isRead(item),
           onTap: () => _openNotificationDetail(item),
         ),
       );
@@ -459,27 +493,17 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
   String _getSection(dynamic value) {
     final parsed = DateTime.tryParse(value?.toString() ?? '');
 
-    if (parsed == null) {
-      return 'Sebelumnya';
-    }
+    if (parsed == null) return 'Sebelumnya';
 
     final date = parsed.toLocal();
-
     final now = DateTime.now();
 
-    final difference = DateTime(
-      now.year,
-      now.month,
-      now.day,
-    ).difference(DateTime(date.year, date.month, date.day)).inDays;
+    final difference = DateTime(now.year, now.month, now.day)
+        .difference(DateTime(date.year, date.month, date.day))
+        .inDays;
 
-    if (difference == 0) {
-      return 'Hari Ini';
-    }
-
-    if (difference == 1) {
-      return 'Kemarin';
-    }
+    if (difference == 0) return 'Hari Ini';
+    if (difference == 1) return 'Kemarin';
 
     return 'Sebelumnya';
   }
@@ -573,40 +597,38 @@ class _NotificationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final normalizedType = type.toLowerCase().trim();
-
-    final isAbnormal = normalizedType == 'data abnormal';
-    final isConnection = normalizedType == 'permintaan koneksi';
-    final isRecommendation = normalizedType == 'rekomendasi dokter';
-    final isMedicineReminder = normalizedType == 'pengingat obat';
-    final isVerification = normalizedType == 'status verifikasi';
-    final isDisconnected = normalizedType == 'putus relasi';
+    final isAbnormal = type == 'data_abnormal';
+    final isConnection = type == 'permintaan_koneksi';
+    final isRecommendation = type == 'rekomendasi_dokter';
+    final isMedicineReminder = type == 'pengingat_obat';
+    final isVerification = type == 'status_verifikasi';
+    final isDisconnected = type == 'putus_relasi';
 
     final icon = isAbnormal
         ? Icons.warning_amber_rounded
         : isConnection
-        ? Icons.person_add_alt_1_rounded
-        : isRecommendation
-        ? Icons.medical_information_outlined
-        : isMedicineReminder
-        ? Icons.medication_outlined
-        : isVerification
-        ? Icons.verified_user_outlined
-        : isDisconnected
-        ? Icons.link_off_rounded
-        : Icons.notifications_outlined;
+            ? Icons.person_add_alt_1_rounded
+            : isRecommendation
+                ? Icons.medical_information_outlined
+                : isMedicineReminder
+                    ? Icons.medication_outlined
+                    : isVerification
+                        ? Icons.verified_user_outlined
+                        : isDisconnected
+                            ? Icons.link_off_rounded
+                            : Icons.notifications_outlined;
 
     final color = isAbnormal || isDisconnected
         ? AppColors.red
         : isConnection
-        ? const Color(0xFF10C878)
-        : AppColors.primaryBlue;
+            ? const Color(0xFF10C878)
+            : AppColors.primaryBlue;
 
     final bg = isAbnormal || isDisconnected
         ? AppColors.lightRed
         : isConnection
-        ? const Color(0xFFEAFBF3)
-        : AppColors.veryLightBlue;
+            ? const Color(0xFFEAFBF3)
+            : AppColors.veryLightBlue;
 
     return InkWell(
       onTap: onTap,
@@ -695,45 +717,43 @@ class _NotificationTile extends StatelessWidget {
 }
 
 class AbnormalNotificationDetailPage extends StatelessWidget {
+  final Map<String, dynamic> item;
   final int patientId;
 
-  const AbnormalNotificationDetailPage({super.key, required this.patientId});
+  const AbnormalNotificationDetailPage({
+    super.key,
+    required this.item,
+    required this.patientId,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final title = item['title']?.toString() ?? 'Data Abnormal';
+    final message = item['message']?.toString() ?? '-';
+    final date = _formatTime(item['created_at']);
+
     return _NotificationDetailScaffold(
       title: 'Notifikasi Abnormal',
       icon: Icons.warning_amber_rounded,
-      headerText: 'Glukosa abnormal terdeteksi\nAngelica Sabi Gita\n09:41',
+      headerText: '$title\n$date',
       children: [
         _whiteCard(
-          title: 'Data Pasien',
+          title: 'Data Notifikasi',
           children: [
-            const _InfoRow(label: 'Nama', value: 'Angelica Sabi Gita'),
-            const _InfoRow(label: 'Tipe DM', value: 'DM Tipe 2'),
-            const _InfoRow(label: 'Usia', value: '32 tahun'),
-            const _InfoRow(label: 'Tahun diagnosis', value: '2018'),
+            _InfoRow(label: 'Judul', value: title),
+            _InfoRow(label: 'Waktu', value: date),
+            const _InfoRow(label: 'Status', value: 'Abnormal'),
             const SizedBox(height: 8),
             _detailPatientLink(context, 'Lihat Detail Pasien', patientId, true),
           ],
         ),
         const SizedBox(height: 14),
         _whiteCard(
-          title: 'Data Terdeteksi',
-          children: const [
-            _InfoRow(label: 'Tipe pengukuran', value: 'Postprandial'),
-            _InfoRow(label: 'Nilai', value: '187 mg/dL'),
-            _InfoRow(label: 'Batas normal', value: '80 - 160 mg/dL'),
-            _InfoRow(label: 'Status', value: 'Abnormal'),
-          ],
-        ),
-        const SizedBox(height: 14),
-        _whiteCard(
           title: 'Detail Notifikasi',
-          children: const [
+          children: [
             Text(
-              'Nilai glukosa pasien terdeteksi berada di luar batas normal. Dokter dapat meninjau detail pasien untuk memberikan catatan klinis atau rekomendasi jika diperlukan.',
-              style: TextStyle(
+              message,
+              style: const TextStyle(
                 color: AppColors.dark2,
                 fontSize: 12,
                 height: 1.45,
@@ -747,27 +767,32 @@ class AbnormalNotificationDetailPage extends StatelessWidget {
 }
 
 class DisconnectedNotificationDetailPage extends StatelessWidget {
+  final Map<String, dynamic> item;
   final int patientId;
 
   const DisconnectedNotificationDetailPage({
     super.key,
+    required this.item,
     required this.patientId,
   });
 
   @override
   Widget build(BuildContext context) {
+    final title = item['title']?.toString() ?? 'Relasi Terputus';
+    final message = item['message']?.toString() ?? '-';
+    final date = _formatTime(item['created_at']);
+
     return _NotificationDetailScaffold(
       title: 'Relasi Terputus',
       icon: Icons.link_off_rounded,
-      headerText: 'Relasi pasien terputus\nHendra Gunawan\n6 Jun 2025',
+      headerText: '$title\n$date',
       children: [
         _whiteCard(
-          title: 'Data Pasien',
+          title: 'Data Relasi',
           children: [
-            const _InfoRow(label: 'Nama', value: 'Hendra Gunawan'),
-            const _InfoRow(label: 'Tipe DM', value: 'DM Tipe 2'),
+            _InfoRow(label: 'Judul', value: title),
             const _InfoRow(label: 'Status relasi', value: 'Tidak Terhubung'),
-            const _InfoRow(label: 'Relasi berakhir', value: '6 Jun 2025'),
+            _InfoRow(label: 'Waktu', value: date),
             const SizedBox(height: 8),
             _detailPatientLink(
               context,
@@ -780,10 +805,10 @@ class DisconnectedNotificationDetailPage extends StatelessWidget {
         const SizedBox(height: 14),
         _whiteCard(
           title: 'Keterangan',
-          children: const [
+          children: [
             Text(
-              'Relasi dengan pasien ini telah terputus. Dokter masih dapat melihat data lama sebelum relasi berakhir, tetapi tidak dapat mengakses pembaruan data terbaru atau mengirim rekomendasi baru.',
-              style: TextStyle(
+              message,
+              style: const TextStyle(
                 color: AppColors.dark1,
                 fontSize: 12,
                 height: 1.45,
@@ -794,6 +819,20 @@ class DisconnectedNotificationDetailPage extends StatelessWidget {
       ],
     );
   }
+}
+
+String _formatTime(dynamic value) {
+  final date = DateTime.tryParse(value?.toString() ?? '');
+
+  if (date == null) return '-';
+
+  final local = date.toLocal();
+
+  return '${local.day.toString().padLeft(2, '0')}/'
+      '${local.month.toString().padLeft(2, '0')}/'
+      '${local.year} • '
+      '${local.hour.toString().padLeft(2, '0')}:'
+      '${local.minute.toString().padLeft(2, '0')}';
 }
 
 class _NotificationDetailScaffold extends StatelessWidget {
@@ -937,29 +976,38 @@ Widget _detailPatientLink(
   int patientId,
   bool isConnected,
 ) {
+  final disabled = patientId == 0;
+
   return InkWell(
-    onTap: () {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) =>
-              PatientDetailPage(patientId: patientId, isConnected: isConnected),
-        ),
-      );
-    },
+    onTap: disabled
+        ? null
+        : () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => PatientDetailPage(
+                  patientId: patientId,
+                  isConnected: isConnected,
+                ),
+              ),
+            );
+          },
     child: Row(
       children: [
         Expanded(
           child: Text(
             text,
-            style: const TextStyle(
-              color: AppColors.primaryBlue,
+            style: TextStyle(
+              color: disabled ? AppColors.dark3 : AppColors.primaryBlue,
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
           ),
         ),
-        const Icon(Icons.chevron_right, color: AppColors.primaryBlue),
+        Icon(
+          Icons.chevron_right,
+          color: disabled ? AppColors.dark3 : AppColors.primaryBlue,
+        ),
       ],
     ),
   );

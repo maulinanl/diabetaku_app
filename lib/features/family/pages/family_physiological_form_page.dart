@@ -34,6 +34,7 @@ class _FamilyPhysiologicalFormPageState
   TimeOfDay selectedTime = TimeOfDay.now();
 
   bool isSaving = false;
+  bool isLoadingHeight = true;
 
   bool get isValid {
     return systolicCtr.text.trim().isNotEmpty ||
@@ -44,8 +45,29 @@ class _FamilyPhysiologicalFormPageState
   @override
   void initState() {
     super.initState();
-    for (final c in [systolicCtr, diastolicCtr, weightCtr, heightCtr]) {
+
+    for (final c in [systolicCtr, diastolicCtr, weightCtr]) {
       c.addListener(() => setState(() {}));
+    }
+
+    _loadPatientHeight();
+  }
+
+  Future<void> _loadPatientHeight() async {
+    try {
+      final data = await ApiService.getFamilyPatientDashboard(widget.patientId);
+      final profile = data['profile'] ?? {};
+      final height = profile['height_cm'];
+
+      if (!mounted) return;
+
+      setState(() {
+        heightCtr.text = height == null ? '' : height.toString();
+        isLoadingHeight = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => isLoadingHeight = false);
     }
   }
 
@@ -109,6 +131,19 @@ class _FamilyPhysiologicalFormPageState
       initialDate: selectedDate,
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primaryBlue,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: AppColors.dark1,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
 
     if (picked != null) {
@@ -120,6 +155,19 @@ class _FamilyPhysiologicalFormPageState
     final picked = await showTimePicker(
       context: context,
       initialTime: selectedTime,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primaryBlue,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: AppColors.dark1,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
 
     if (picked != null) {
@@ -154,12 +202,14 @@ class _FamilyPhysiologicalFormPageState
             const SizedBox(height: 18),
             _sectionTitle('Data Fisiologis'),
             const SizedBox(height: 14),
+
             _label('Tanggal dan waktu*'),
             Row(
               children: [
                 Expanded(
                   child: _pickerBox(
                     text: _formatDate(selectedDate),
+                    icon: Icons.calendar_month_rounded,
                     onTap: isSaving ? null : _pickDate,
                   ),
                 ),
@@ -167,11 +217,13 @@ class _FamilyPhysiologicalFormPageState
                 Expanded(
                   child: _pickerBox(
                     text: _formatTime(selectedTime),
+                    icon: Icons.access_time_rounded,
                     onTap: isSaving ? null : _pickTime,
                   ),
                 ),
               ],
             ),
+
             const SizedBox(height: 14),
             _label('Tekanan Darah'),
             Row(
@@ -193,6 +245,7 @@ class _FamilyPhysiologicalFormPageState
                 ),
               ],
             ),
+
             const SizedBox(height: 14),
             _label('Berat Badan (kg)'),
             _input(
@@ -200,13 +253,27 @@ class _FamilyPhysiologicalFormPageState
               hint: 'Masukkan berat badan',
               keyboardType: TextInputType.number,
             ),
+
             const SizedBox(height: 14),
             _label('Tinggi Badan (cm)'),
             _input(
               controller: heightCtr,
-              hint: 'Masukkan tinggi badan untuk hitung BMI',
+              hint: isLoadingHeight
+                  ? 'Mengambil tinggi badan...'
+                  : 'Tinggi badan pasien',
               keyboardType: TextInputType.number,
+              readOnly: true,
             ),
+            const SizedBox(height: 6),
+            const Text(
+              'Tinggi badan diambil dari profil pasien dan tidak dapat diubah oleh keluarga.',
+              style: TextStyle(
+                color: AppColors.dark2,
+                fontSize: 11,
+                height: 1.3,
+              ),
+            ),
+
             if (bmi != null) ...[
               const SizedBox(height: 10),
               Text(
@@ -218,6 +285,7 @@ class _FamilyPhysiologicalFormPageState
                 ),
               ),
             ],
+
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
@@ -330,21 +398,37 @@ class _FamilyPhysiologicalFormPageState
     );
   }
 
-  Widget _pickerBox({required String text, required VoidCallback? onTap}) {
+  Widget _pickerBox({
+    required String text,
+    required IconData icon,
+    required VoidCallback? onTap,
+  }) {
     return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
       child: Container(
         height: 48,
         padding: const EdgeInsets.symmetric(horizontal: 12),
-        alignment: Alignment.centerLeft,
         decoration: BoxDecoration(
           color: AppColors.white,
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(color: AppColors.light1),
         ),
-        child: Text(
-          text,
-          style: const TextStyle(color: AppColors.dark1, fontSize: 12),
+        child: Row(
+          children: [
+            Icon(icon, size: 17, color: AppColors.primaryBlue),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                text,
+                style: const TextStyle(
+                  color: AppColors.dark1,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -354,21 +438,32 @@ class _FamilyPhysiologicalFormPageState
     required TextEditingController controller,
     required String hint,
     TextInputType? keyboardType,
+    bool readOnly = false,
   }) {
     return TextField(
       controller: controller,
       enabled: !isSaving,
+      readOnly: readOnly,
       keyboardType: keyboardType,
-      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+      inputFormatters: readOnly
+          ? []
+          : [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(color: AppColors.dark3, fontSize: 12),
         filled: true,
-        fillColor: AppColors.white,
+        fillColor: readOnly ? AppColors.veryLightBlue : AppColors.white,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 12,
           vertical: 13,
         ),
+        suffixIcon: readOnly
+            ? const Icon(
+                Icons.lock_outline,
+                size: 18,
+                color: AppColors.dark2,
+              )
+            : null,
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6),
           borderSide: const BorderSide(color: AppColors.light1),
@@ -376,6 +471,10 @@ class _FamilyPhysiologicalFormPageState
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6),
           borderSide: const BorderSide(color: AppColors.primaryBlue),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: const BorderSide(color: AppColors.light1),
         ),
       ),
     );

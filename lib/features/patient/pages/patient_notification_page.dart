@@ -88,9 +88,18 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
   }
 
   String _type(Map<String, dynamic> item) {
-    return item['type']?.toString() ??
-        item['notification_type']?.toString() ??
+    final rawType =
+        item['type_code'] ??
+        item['reference_type'] ??
+        item['type'] ??
+        item['notification_type'] ??
         '';
+
+    return rawType
+        .toString()
+        .toLowerCase()
+        .replaceAll(' ', '_')
+        .replaceAll('-', '_');
   }
 
   String _time(Map<String, dynamic> item) {
@@ -166,8 +175,11 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
     }
 
     final type = _type(item);
+    final refType = item['reference_type']?.toString().toLowerCase() ?? '';
 
-    if (type.contains('recommendation')) {
+    if (type.contains('recommendation') ||
+        type.contains('rekomendasi') ||
+        refType.contains('recommendation')) {
       await Navigator.push(
         context,
         MaterialPageRoute(
@@ -184,19 +196,43 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
           ),
         ),
       );
-    } else if (type.contains('validation')) {
+    } else if (type.contains('validation') ||
+        type.contains('validasi') ||
+        refType.contains('validation')) {
       await Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const PatientValidationPage()),
       );
-    } else if (type.contains('family')) {
+    } else if (type.contains('doctor') ||
+        type.contains('dokter') ||
+        refType.contains('doctor')) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => DoctorConnectionAcceptedDetailPage(
+            doctorId: int.tryParse(item['reference_id']?.toString() ?? '') ?? 0,
+            initial: item['initial']?.toString() ?? 'D',
+            name: item['doctor_name']?.toString() ?? 'Dokter',
+            info: item['info']?.toString() ?? '-',
+            status: item['status']?.toString() ?? 'Terhubung',
+            date: _time(item),
+          ),
+        ),
+      );
+    } else if (type.contains('family') ||
+        type.contains('keluarga') ||
+        refType.contains('family')) {
       await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => PatientRequestDetailPage(
             initial: item['initial']?.toString() ?? 'K',
-            name: item['family_name']?.toString() ?? 'Keluarga',
-            relation: item['relation']?.toString() ?? 'Keluarga',
+            name: item['family_name']?.toString().isNotEmpty == true
+                ? item['family_name'].toString()
+                : _title(item),
+            relation: item['relation']?.toString().isNotEmpty == true
+                ? item['relation'].toString()
+                : _desc(item),
             time: _time(item),
             date: _time(item),
             onAccept: () => Navigator.pop(context),
