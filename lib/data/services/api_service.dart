@@ -267,17 +267,17 @@ class ApiService {
 
   static Future<Map<String, dynamic>> getPatientDashboard(int patientId) async {
     final response = await http.get(
-      Uri.parse('$baseUrl/patient/dashboard/$patientId'),
+      Uri.parse('$baseUrl/doctor/patients/$patientId/dashboard'),
       headers: await _authHeaders(),
     );
 
-    final data = jsonDecode(response.body);
+    final body = jsonDecode(response.body);
 
     if (response.statusCode == 200) {
-      return Map<String, dynamic>.from(data['data']);
+      return Map<String, dynamic>.from(body['data']);
     }
 
-    throw Exception(data['message'] ?? 'Gagal mengambil dashboard pasien');
+    throw Exception(body['message'] ?? 'Gagal mengambil dashboard pasien');
   }
 
   static Future<List<Map<String, dynamic>>> getPatientGlucoseRecords(
@@ -426,6 +426,22 @@ class ApiService {
     }
   }
 
+  static Future<void> resetPatientThreshold({
+    required int patientId,
+    required int parameterId,
+  }) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/doctor/patients/$patientId/thresholds/$parameterId'),
+      headers: await _authHeaders(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Gagal reset batas normal');
+    }
+  }
+
   static Future<void> disconnectDoctorPatient(int patientId) async {
     final prefs = await SharedPreferences.getInstance();
     final doctorId = prefs.getInt('doctor_id') ?? 1;
@@ -565,102 +581,71 @@ class ApiService {
     throw Exception(data['message'] ?? 'Gagal mengambil koneksi ditolak');
   }
 
-  static Future<List<Map<String, dynamic>>> getNotifications(
-  int userId,
-) async {
-  final response = await http.get(
-    Uri.parse('$baseUrl/notifications/user/$userId'),
-    headers: await _authHeaders(),
-  );
+  static Future<List<Map<String, dynamic>>> getNotifications(int userId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/notifications/user/$userId'),
+      headers: await _authHeaders(),
+    );
 
-  final body = response.body.isNotEmpty
-      ? jsonDecode(response.body)
-      : {};
+    final body = response.body.isNotEmpty ? jsonDecode(response.body) : {};
 
-  if (response.statusCode == 200) {
-    return List<Map<String, dynamic>>.from(
-      body['data'] ?? [],
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(body['data'] ?? []);
+    }
+
+    throw Exception(body['message'] ?? 'Gagal mengambil notifikasi');
+  }
+
+  static Future<void> markNotificationAsRead(int notificationId) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/notifications/$notificationId/read'),
+      headers: await _authHeaders(),
+    );
+
+    final body = response.body.isNotEmpty ? jsonDecode(response.body) : {};
+
+    if (response.statusCode == 200) {
+      return;
+    }
+
+    throw Exception(
+      body['message'] ?? 'Gagal menandai notifikasi sebagai dibaca',
     );
   }
 
-  throw Exception(
-    body['message'] ?? 'Gagal mengambil notifikasi',
-  );
-}
+  static Future<void> markAllNotificationsAsRead(int userId) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/notifications/user/$userId/read-all'),
+      headers: await _authHeaders(),
+    );
 
-static Future<void> markNotificationAsRead(
-  int notificationId,
-) async {
-  final response = await http.patch(
-    Uri.parse(
-      '$baseUrl/notifications/$notificationId/read',
-    ),
-    headers: await _authHeaders(),
-  );
+    final body = response.body.isNotEmpty ? jsonDecode(response.body) : {};
 
-  final body = response.body.isNotEmpty
-      ? jsonDecode(response.body)
-      : {};
+    if (response.statusCode == 200) {
+      return;
+    }
 
-  if (response.statusCode == 200) {
-    return;
-  }
-
-  throw Exception(
-    body['message'] ??
-        'Gagal menandai notifikasi sebagai dibaca',
-  );
-}
-
-static Future<void> markAllNotificationsAsRead(
-  int userId,
-) async {
-  final response = await http.patch(
-    Uri.parse(
-      '$baseUrl/notifications/user/$userId/read-all',
-    ),
-    headers: await _authHeaders(),
-  );
-
-  final body = response.body.isNotEmpty
-      ? jsonDecode(response.body)
-      : {};
-
-  if (response.statusCode == 200) {
-    return;
-  }
-
-  throw Exception(
-    body['message'] ??
-        'Gagal menandai semua notifikasi sebagai dibaca',
-  );
-}
-
-static Future<Map<String, dynamic>> getNotificationDetail(
-  int notificationId,
-) async {
-  final response = await http.get(
-    Uri.parse(
-      '$baseUrl/notifications/$notificationId',
-    ),
-    headers: await _authHeaders(),
-  );
-
-  final body = response.body.isNotEmpty
-      ? jsonDecode(response.body)
-      : {};
-
-  if (response.statusCode == 200) {
-    return Map<String, dynamic>.from(
-      body['data'] ?? {},
+    throw Exception(
+      body['message'] ?? 'Gagal menandai semua notifikasi sebagai dibaca',
     );
   }
 
-  throw Exception(
-    body['message'] ??
-        'Gagal mengambil detail notifikasi',
-  );
-}
+  static Future<Map<String, dynamic>> getNotificationDetail(
+    int notificationId,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/notifications/$notificationId'),
+      headers: await _authHeaders(),
+    );
+
+    final body = response.body.isNotEmpty ? jsonDecode(response.body) : {};
+
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(body['data'] ?? {});
+    }
+
+    throw Exception(body['message'] ?? 'Gagal mengambil detail notifikasi');
+  }
 
   static Future<Map<String, dynamic>> getDoctorPatientConnectionStatus({
     required int patientId,
@@ -1615,21 +1600,21 @@ static Future<Map<String, dynamic>> getNotificationDetail(
   }
 
   static Future<List<Map<String, dynamic>>> getFamilyPatientHistories(
-  int patientId,
-) async {
-  final response = await http.get(
-    Uri.parse('$baseUrl/family/patients/$patientId/histories'),
-    headers: await _authHeaders(),
-  );
+    int patientId,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/family/patients/$patientId/histories'),
+      headers: await _authHeaders(),
+    );
 
-  final data = jsonDecode(response.body);
+    final data = jsonDecode(response.body);
 
-  if (response.statusCode == 200) {
-    return List<Map<String, dynamic>>.from(data['data'] ?? []);
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(data['data'] ?? []);
+    }
+
+    throw Exception(data['message'] ?? 'Gagal mengambil riwayat pasien');
   }
-
-  throw Exception(data['message'] ?? 'Gagal mengambil riwayat pasien');
-}
 
   static Future<List<Map<String, dynamic>>> getRelationTypes() async {
     final response = await http.get(

@@ -101,9 +101,7 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
       (item['notification_id'] ?? '').toString(),
     );
 
-    final referenceId = int.tryParse(
-      (item['reference_id'] ?? '').toString(),
-    );
+    final referenceId = int.tryParse((item['reference_id'] ?? '').toString());
 
     final type = _type(item);
     final refType = _referenceType(item);
@@ -134,7 +132,8 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
       );
     } else if (type == 'permintaan_koneksi' ||
         refType == 'connection' ||
-        refType == 'connection_request') {
+        refType == 'connection_request' ||
+        refType == 'doctor_connection_request') {
       if (referenceId == null) {
         _showSnackBar('Data pasien tidak ditemukan');
         return;
@@ -152,7 +151,8 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
       await _openRecommendationDetail(item, referenceId);
     } else if (type == 'putus_relasi' ||
         refType == 'disconnected' ||
-        refType == 'patient') {
+        refType == 'patient' ||
+        refType == 'doctor_connection_disconnected') {
       await Navigator.push(
         context,
         MaterialPageRoute(
@@ -165,7 +165,7 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
     }
 
     if (mounted) {
-      _loadNotifications();
+      await _loadNotifications();
     }
   }
 
@@ -174,6 +174,9 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
     int patientId,
   ) async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final doctorId = prefs.getInt('doctor_id') ?? 1;
+
       final connection = await ApiService.getDoctorPatientConnectionStatus(
         patientId: patientId,
       );
@@ -183,27 +186,52 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
       final statusText = statusId == 1
           ? 'Koneksi aktif'
           : statusId == 2
-              ? 'Koneksi ditolak'
-              : 'Menunggu persetujuan dokter';
+          ? 'Koneksi ditolak'
+          : statusId == 3
+          ? 'Koneksi terputus'
+          : 'Menunggu persetujuan dokter';
 
       if (!mounted) return;
 
-      await Navigator.push(
+      final result = await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => RequestDetailPage(
             patientId: patientId,
             status: statusId,
-            name: connection['full_name']?.toString() ??
+            name:
+                connection['full_name']?.toString() ??
                 _extractPatientName(item['message']?.toString() ?? ''),
             age: _calculateAge(connection['date_of_birth']?.toString()),
             gender: connection['gender']?.toString() ?? '-',
             diabetesType: connection['diabetes_type']?.toString() ?? '-',
             connectionStatus: statusText,
             time: _formatNotificationTime(item['created_at']),
+
+            // ini yang bikin tombol Terima/Tolak jalan
+            onAccept: statusId == 0
+                ? () async {
+                    await ApiService.acceptConnectionRequest(
+                      doctorId: doctorId,
+                      patientId: patientId,
+                    );
+                  }
+                : null,
+            onReject: statusId == 0
+                ? () async {
+                    await ApiService.rejectConnectionRequest(
+                      doctorId: doctorId,
+                      patientId: patientId,
+                    );
+                  }
+                : null,
           ),
         ),
       );
+
+      if (result == true && mounted) {
+        await _loadNotifications();
+      }
     } catch (e) {
       if (!mounted) return;
       _showSnackBar(e.toString().replaceFirst('Exception: ', ''));
@@ -243,9 +271,9 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
   }
 
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   List<Map<String, dynamic>> _filteredNotifications() {
@@ -268,9 +296,11 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
           }).toList();
 
     result.sort((a, b) {
-      final dateA = DateTime.tryParse(a['created_at']?.toString() ?? '') ??
+      final dateA =
+          DateTime.tryParse(a['created_at']?.toString() ?? '') ??
           DateTime(2000);
-      final dateB = DateTime.tryParse(b['created_at']?.toString() ?? '') ??
+      final dateB =
+          DateTime.tryParse(b['created_at']?.toString() ?? '') ??
           DateTime(2000);
 
       return dateB.compareTo(dateA);
@@ -325,22 +355,22 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
                 child: isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : errorMessage != null
-                        ? Center(child: Text(errorMessage!))
-                        : RefreshIndicator(
-                            onRefresh: _loadNotifications,
-                            child: ListView(
-                              padding: EdgeInsets.zero,
-                              children: [
-                                _buildTabs(),
-                                if (filtered.isEmpty)
-                                  _emptyState()
-                                else ...[
-                                  ..._groupedNotifications(filtered),
-                                  const SizedBox(height: 24),
-                                ],
-                              ],
-                            ),
-                          ),
+                    ? Center(child: Text(errorMessage!))
+                    : RefreshIndicator(
+                        onRefresh: _loadNotifications,
+                        child: ListView(
+                          padding: EdgeInsets.zero,
+                          children: [
+                            _buildTabs(),
+                            if (filtered.isEmpty)
+                              _emptyState()
+                            else ...[
+                              ..._groupedNotifications(filtered),
+                              const SizedBox(height: 24),
+                            ],
+                          ],
+                        ),
+                      ),
               ),
             ),
           ],
@@ -481,6 +511,7 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
           message: item['message']?.toString() ?? '-',
           time: _formatNotificationTime(item['created_at']),
           type: _type(item),
+          referenceType: _referenceType(item),
           read: _isRead(item),
           onTap: () => _openNotificationDetail(item),
         ),
@@ -498,9 +529,11 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
     final date = parsed.toLocal();
     final now = DateTime.now();
 
-    final difference = DateTime(now.year, now.month, now.day)
-        .difference(DateTime(date.year, date.month, date.day))
-        .inDays;
+    final difference = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).difference(DateTime(date.year, date.month, date.day)).inDays;
 
     if (difference == 0) return 'Hari Ini';
     if (difference == 1) return 'Kemarin';
@@ -583,6 +616,7 @@ class _NotificationTile extends StatelessWidget {
   final String message;
   final String time;
   final String type;
+  final String referenceType;
   final bool read;
   final VoidCallback onTap;
 
@@ -591,18 +625,36 @@ class _NotificationTile extends StatelessWidget {
     required this.message,
     required this.time,
     required this.type,
+    required this.referenceType,
     required this.read,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isAbnormal = type == 'data_abnormal';
-    final isConnection = type == 'permintaan_koneksi';
-    final isRecommendation = type == 'rekomendasi_dokter';
+    final isAbnormal =
+        type == 'data_abnormal' ||
+        type == 'abnormal' ||
+        referenceType == 'abnormal';
+
+    final isConnection =
+        type == 'permintaan_koneksi' ||
+        referenceType == 'connection' ||
+        referenceType == 'connection_request' ||
+        referenceType == 'doctor_connection_request';
+
+    final isRecommendation =
+        type == 'rekomendasi_dokter' ||
+        referenceType == 'clinical_note' ||
+        referenceType == 'recommendation';
+
     final isMedicineReminder = type == 'pengingat_obat';
     final isVerification = type == 'status_verifikasi';
-    final isDisconnected = type == 'putus_relasi';
+
+    final isDisconnected =
+        type == 'putus_relasi' ||
+        referenceType == 'disconnected' ||
+        referenceType == 'doctor_connection_disconnected';
 
     final icon = isAbnormal
         ? Icons.warning_amber_rounded

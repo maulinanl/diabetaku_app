@@ -262,11 +262,38 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
     );
   }
 
-  void _resetToDefault(int index) {
-    setState(() {
-      _items[index].lower = _items[index].defaultLower;
-      _items[index].upper = _items[index].defaultUpper;
-    });
+  Future<void> _resetToDefault(int index) async {
+    try {
+      await ApiService.resetPatientThreshold(
+        patientId: widget.patientId,
+        parameterId: _items[index].parameterId,
+      );
+
+      _lowerCtrls[index]?.text = _items[index].defaultLower;
+      _upperCtrls[index]?.text = _items[index].defaultUpper;
+
+      await _fetchThresholds();
+
+      if (widget.onThresholdChanged != null) {
+        await widget.onThresholdChanged!();
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        _hasChanges = true;
+        _editingIndex = null;
+        _errorText = null;
+      });
+
+      _showSuccessBottomSheet();
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
   }
 
   @override

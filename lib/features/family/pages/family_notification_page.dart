@@ -26,12 +26,14 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
   }
 
   Future<void> _loadNotifications() async {
-    try {
-      setState(() {
-        isLoading = true;
-        errorMessage = null;
-      });
+    if (!mounted) return;
 
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getInt('user_id');
 
@@ -40,6 +42,16 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
       }
 
       final data = await ApiService.getNotifications(userId);
+
+      data.sort((a, b) {
+        final dateA =
+            DateTime.tryParse(a['created_at']?.toString() ?? '') ??
+                DateTime(2000);
+        final dateB =
+            DateTime.tryParse(b['created_at']?.toString() ?? '') ??
+                DateTime(2000);
+        return dateB.compareTo(dateA);
+      });
 
       if (!mounted) return;
 
@@ -51,7 +63,7 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
       if (!mounted) return;
 
       setState(() {
-        errorMessage = e.toString().replaceAll('Exception: ', '');
+        errorMessage = e.toString().replaceFirst('Exception: ', '');
         isLoading = false;
       });
     }
@@ -73,12 +85,19 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
         });
       } catch (_) {}
     }
+
+    if (!mounted) return;
+
+    _showNotificationDetail(item);
   }
 
   bool _isUnread(Map<String, dynamic> item) {
     final value = item['is_read'] ?? item['read'];
 
-    return value == false || value == 0 || value.toString() == '0';
+    return value == false ||
+        value == 0 ||
+        value == '0' ||
+        value?.toString().toLowerCase() == 'false';
   }
 
   String _title(Map<String, dynamic> item) {
@@ -93,15 +112,30 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
         '-';
   }
 
-  String _time(Map<String, dynamic> item) {
+  String _rawTime(Map<String, dynamic> item) {
     return item['created_at']?.toString() ??
         item['notification_date']?.toString() ??
         '';
   }
 
+  String _formatTime(dynamic raw) {
+    final value = raw?.toString() ?? '';
+    if (value.isEmpty) return '-';
+
+    final dt = DateTime.tryParse(value);
+    if (dt == null) return value;
+
+    final local = dt.toLocal();
+
+    return '${local.day.toString().padLeft(2, '0')}/'
+        '${local.month.toString().padLeft(2, '0')}/'
+        '${local.year} • '
+        '${local.hour.toString().padLeft(2, '0')}:'
+        '${local.minute.toString().padLeft(2, '0')}';
+  }
+
   String _type(Map<String, dynamic> item) {
-    final rawType =
-        item['type_code'] ??
+    final rawType = item['type_code'] ??
         item['reference_type'] ??
         item['type'] ??
         item['notification_type_name'] ??
@@ -111,19 +145,28 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
     return rawType
         .toString()
         .toLowerCase()
+        .trim()
         .replaceAll(' ', '_')
         .replaceAll('-', '_');
   }
 
   IconData _iconFromType(String type) {
-    if (type.contains('recommendation') || type.contains('rekomendasi')) {
-      return Icons.description_outlined;
+    if (type.contains('recommendation') ||
+        type.contains('rekomendasi') ||
+        type.contains('doctor_recommendation')) {
+      return Icons.medical_information_outlined;
     }
 
     if (type.contains('validation') ||
         type.contains('validasi') ||
-        type.contains('data')) {
+        type.contains('family_data')) {
       return Icons.assignment_outlined;
+    }
+
+    if (type.contains('disconnect') ||
+        type.contains('disconnected') ||
+        type.contains('putus')) {
+      return Icons.link_off_rounded;
     }
 
     if (type.contains('connection') ||
@@ -133,20 +176,20 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
       return Icons.person_outline;
     }
 
-    if (type.contains('disconnect') ||
-        type.contains('disconnected') ||
-        type.contains('putus')) {
-      return Icons.link_off_rounded;
-    }
-
     return Icons.notifications_none_outlined;
   }
 
   Color _iconBgFromType(String type) {
     if (type.contains('validation') ||
         type.contains('validasi') ||
-        type.contains('data')) {
+        type.contains('family_data')) {
       return const Color(0xFFFFF4DA);
+    }
+
+    if (type.contains('disconnect') ||
+        type.contains('disconnected') ||
+        type.contains('putus')) {
+      return AppColors.lightRed;
     }
 
     if (type.contains('connection') ||
@@ -156,20 +199,20 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
       return const Color(0xFFEAFBF3);
     }
 
-    if (type.contains('disconnect') ||
-        type.contains('disconnected') ||
-        type.contains('putus')) {
-      return AppColors.lightRed;
-    }
-
-    return AppColors.lightBlue;
+    return AppColors.veryLightBlue;
   }
 
   Color _iconColorFromType(String type) {
     if (type.contains('validation') ||
         type.contains('validasi') ||
-        type.contains('data')) {
+        type.contains('family_data')) {
       return Colors.orange;
+    }
+
+    if (type.contains('disconnect') ||
+        type.contains('disconnected') ||
+        type.contains('putus')) {
+      return AppColors.red;
     }
 
     if (type.contains('connection') ||
@@ -179,13 +222,96 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
       return const Color(0xFF10C878);
     }
 
-    if (type.contains('disconnect') ||
-        type.contains('disconnected') ||
-        type.contains('putus')) {
-      return AppColors.red;
-    }
-
     return AppColors.primaryBlue;
+  }
+
+  void _showNotificationDetail(Map<String, dynamic> item) {
+    final type = _type(item);
+    final icon = _iconFromType(type);
+    final iconBg = _iconBgFromType(type);
+    final iconColor = _iconColorFromType(type);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 26),
+            decoration: const BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 48,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: AppColors.light1,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+                const SizedBox(height: 22),
+                CircleAvatar(
+                  radius: 42,
+                  backgroundColor: iconBg,
+                  child: Icon(icon, color: iconColor, size: 42),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  _title(item),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.primaryBlue,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _formatTime(_rawTime(item)),
+                  style: const TextStyle(
+                    color: AppColors.dark2,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  _message(item),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.dark1,
+                    fontSize: 13,
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(sheetContext),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryBlue,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text('Mengerti'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -246,7 +372,7 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
               iconColor: _iconColorFromType(type),
               title: _title(item),
               message: _message(item),
-              time: _time(item),
+              time: _formatTime(_rawTime(item)),
               unread: _isUnread(item),
               onTap: () => _openNotification(item),
             );
@@ -431,19 +557,6 @@ class _FamilyNotificationItem extends StatelessWidget {
     required this.onTap,
   });
 
-  String _formatTime(String raw) {
-    if (raw.isEmpty) return '-';
-
-    final dt = DateTime.tryParse(raw);
-    if (dt == null) return raw;
-
-    final local = dt.toLocal();
-
-    return '${local.day}/${local.month}/${local.year} • '
-        '${local.hour.toString().padLeft(2, '0')}:'
-        '${local.minute.toString().padLeft(2, '0')}';
-  }
-
   @override
   Widget build(BuildContext context) {
     return InkWell(
@@ -512,7 +625,7 @@ class _FamilyNotificationItem extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        _formatTime(time),
+                        time,
                         style: const TextStyle(
                           color: AppColors.primaryBlue,
                           fontSize: 10,

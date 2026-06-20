@@ -111,6 +111,7 @@ class _DoctorHomeContentState extends State<DoctorHomeContent> {
     return abnormal == true ||
         abnormal == 1 ||
         abnormal?.toString() == '1' ||
+        abnormal?.toString().toLowerCase() == 'true' ||
         status == 'abnormal';
   }
 

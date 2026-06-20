@@ -60,6 +60,8 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
   }
 
   Future<void> _loadData() async {
+    if (!mounted) return;
+
     setState(() {
       isLoading = true;
       errorMessage = null;
@@ -73,6 +75,8 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
       final accepted = await ApiService.getDoctorPatients(doctorId);
       final rejected = await ApiService.getRejectedConnectionRequests(doctorId);
 
+      if (!mounted) return;
+
       setState(() {
         pendingRequests = pending;
         acceptedRequests = accepted;
@@ -80,6 +84,8 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
         isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
+
       setState(() {
         errorMessage = e.toString().replaceFirst('Exception: ', '');
         isLoading = false;
@@ -88,41 +94,21 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
   }
 
   Future<void> _acceptRequest(int patientId) async {
-    try {
-      await ApiService.acceptConnectionRequest(
-        doctorId: doctorId,
-        patientId: patientId,
-      );
+    await ApiService.acceptConnectionRequest(
+      doctorId: doctorId,
+      patientId: patientId,
+    );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Permintaan berhasil diterima')),
-      );
-
-      _loadData();
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-      );
-    }
+    await _loadData();
   }
 
   Future<void> _rejectRequest(int patientId) async {
-    try {
-      await ApiService.rejectConnectionRequest(
-        doctorId: doctorId,
-        patientId: patientId,
-      );
+    await ApiService.rejectConnectionRequest(
+      doctorId: doctorId,
+      patientId: patientId,
+    );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Permintaan berhasil ditolak')),
-      );
-
-      _loadData();
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-      );
-    }
+    await _loadData();
   }
 
   @override
@@ -130,8 +116,8 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
     final data = selectedTab == 0
         ? pendingRequests
         : selectedTab == 1
-        ? acceptedRequests
-        : rejectedRequests;
+            ? acceptedRequests
+            : rejectedRequests;
 
     return Scaffold(
       backgroundColor: AppColors.primaryBlue,
@@ -146,95 +132,98 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
                 child: isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : errorMessage != null
-                    ? Center(child: Text(errorMessage!))
-                    : Column(
-                        children: [
-                          _buildTabs(),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 18),
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                selectedTab == 0
-                                    ? 'KONEKSI MENUNGGU - ${data.length}'
-                                    : selectedTab == 1
-                                    ? 'KONEKSI DITERIMA - ${data.length}'
-                                    : 'KONEKSI DITOLAK - ${data.length}',
-                                style: const TextStyle(
-                                  color: AppColors.primaryBlue,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
+                        ? Center(child: Text(errorMessage!))
+                        : Column(
+                            children: [
+                              _buildTabs(),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 18,
+                                ),
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    selectedTab == 0
+                                        ? 'KONEKSI MENUNGGU - ${data.length}'
+                                        : selectedTab == 1
+                                            ? 'KONEKSI DITERIMA - ${data.length}'
+                                            : 'KONEKSI DITOLAK - ${data.length}',
+                                    style: const TextStyle(
+                                      color: AppColors.primaryBlue,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Expanded(
-                            child: data.isEmpty
-                                ? _emptyState()
-                                : RefreshIndicator(
-                                    onRefresh: _loadData,
-                                    child: ListView.separated(
-                                      padding: const EdgeInsets.fromLTRB(
-                                        18,
-                                        0,
-                                        18,
-                                        120,
-                                      ),
-                                      itemCount: data.length,
-                                      separatorBuilder: (_, __) =>
-                                          const SizedBox(height: 14),
-                                      itemBuilder: (context, index) {
-                                        final item = data[index];
+                              const SizedBox(height: 10),
+                              Expanded(
+                                child: data.isEmpty
+                                    ? _emptyState()
+                                    : RefreshIndicator(
+                                        onRefresh: _loadData,
+                                        child: ListView.separated(
+                                          padding: const EdgeInsets.fromLTRB(
+                                            18,
+                                            0,
+                                            18,
+                                            120,
+                                          ),
+                                          itemCount: data.length,
+                                          separatorBuilder: (_, __) =>
+                                              const SizedBox(height: 14),
+                                          itemBuilder: (context, index) {
+                                            final item = data[index];
 
-                                        final patientId = int.parse(
-                                          item['patient_id'].toString(),
-                                        );
+                                            final patientId = int.parse(
+                                              item['patient_id'].toString(),
+                                            );
 
-                                        final name =
-                                            item['full_name']?.toString() ??
-                                            '-';
-                                        final gender =
-                                            item['gender']?.toString() ?? '-';
-                                        final age = _calculateAge(
-                                          item['date_of_birth']?.toString(),
-                                        );
-                                        final type = _formatDiabetesType(
-                                          item['diabetes_type'],
-                                        );
+                                            final name =
+                                                item['full_name']?.toString() ??
+                                                    '-';
+                                            final gender =
+                                                item['gender']?.toString() ??
+                                                    '-';
+                                            final age = _calculateAge(
+                                              item['date_of_birth']?.toString(),
+                                            );
+                                            final type = _formatDiabetesType(
+                                              item['diabetes_type'],
+                                            );
 
-                                        final diagnosis = selectedTab == 0
-                                            ? 'Menunggu persetujuan dokter'
-                                            : selectedTab == 1
-                                            ? 'Koneksi diterima'
-                                            : 'Koneksi ditolak';
+                                            final diagnosis = selectedTab == 0
+                                                ? 'Menunggu persetujuan dokter'
+                                                : selectedTab == 1
+                                                    ? 'Koneksi diterima'
+                                                    : 'Koneksi ditolak';
 
-                                        return _RequestCard(
-                                          initial: _getInitials(name),
-                                          name: name,
-                                          info:
-                                              'DM $type • $age tahun • $gender',
-                                          diagnosis: diagnosis,
-                                          time: '',
-                                          status: selectedTab,
-                                          onDetail: () {
-                                            if (selectedTab == 1) {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (_) =>
-                                                      PatientDetailPage(
+                                            return _RequestCard(
+                                              initial: _getInitials(name),
+                                              name: name,
+                                              info:
+                                                  'DM $type • $age tahun • $gender',
+                                              diagnosis: diagnosis,
+                                              status: selectedTab,
+                                              onDetail: () async {
+                                                if (selectedTab == 1) {
+                                                  await Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (_) =>
+                                                          PatientDetailPage(
                                                         patientId: patientId,
                                                         isConnected: true,
                                                       ),
-                                                ),
-                                              );
-                                            } else {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (_) =>
-                                                      RequestDetailPage(
+                                                    ),
+                                                  );
+                                                } else {
+                                                  final result =
+                                                      await Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (_) =>
+                                                          RequestDetailPage(
                                                         patientId: patientId,
                                                         status: selectedTab,
                                                         name: name,
@@ -244,38 +233,36 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
                                                             'DM $type',
                                                         connectionStatus:
                                                             diagnosis,
-                                                        onAccept:
-                                                            selectedTab == 0
+                                                        onAccept: selectedTab ==
+                                                                0
                                                             ? () =>
-                                                                  _acceptRequest(
-                                                                    patientId,
-                                                                  )
+                                                                _acceptRequest(
+                                                                  patientId,
+                                                                )
                                                             : null,
-                                                        onReject:
-                                                            selectedTab == 0
+                                                        onReject: selectedTab ==
+                                                                0
                                                             ? () =>
-                                                                  _rejectRequest(
-                                                                    patientId,
-                                                                  )
+                                                                _rejectRequest(
+                                                                  patientId,
+                                                                )
                                                             : null,
                                                       ),
-                                                ),
-                                              );
-                                            }
+                                                    ),
+                                                  );
+
+                                                  if (result == true) {
+                                                    await _loadData();
+                                                  }
+                                                }
+                                              },
+                                            );
                                           },
-                                          onAccept: selectedTab == 0
-                                              ? () => _acceptRequest(patientId)
-                                              : null,
-                                          onReject: selectedTab == 0
-                                              ? () => _rejectRequest(patientId)
-                                              : null,
-                                        );
-                                      },
-                                    ),
-                                  ),
+                                        ),
+                                      ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
               ),
             ),
           ],
@@ -366,27 +353,20 @@ class _RequestCard extends StatelessWidget {
   final String name;
   final String info;
   final String diagnosis;
-  final String time;
   final int status;
-  final VoidCallback? onDetail;
-  final VoidCallback? onAccept;
-  final VoidCallback? onReject;
+  final VoidCallback onDetail;
 
   const _RequestCard({
     required this.initial,
     required this.name,
     required this.info,
     required this.diagnosis,
-    required this.time,
     required this.status,
     required this.onDetail,
-    this.onAccept,
-    this.onReject,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isPending = status == 0;
     final isAccepted = status == 1;
     final isRejected = status == 2;
 
@@ -416,9 +396,8 @@ class _RequestCard extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 25,
-                  backgroundColor: isRejected
-                      ? AppColors.lightRed
-                      : AppColors.lightBlue,
+                  backgroundColor:
+                      isRejected ? AppColors.lightRed : AppColors.lightBlue,
                   child: Text(
                     initial,
                     style: TextStyle(
@@ -451,12 +430,11 @@ class _RequestCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (onDetail != null)
-                  const Icon(
-                    Icons.chevron_right,
-                    size: 18,
-                    color: AppColors.dark3,
-                  ),
+                const Icon(
+                  Icons.chevron_right,
+                  size: 18,
+                  color: AppColors.dark3,
+                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -473,8 +451,8 @@ class _RequestCard extends StatelessWidget {
                     isAccepted
                         ? Icons.check_circle_outline
                         : isRejected
-                        ? Icons.cancel_outlined
-                        : Icons.hourglass_bottom_rounded,
+                            ? Icons.cancel_outlined
+                            : Icons.hourglass_bottom_rounded,
                     size: 13,
                     color: statusColor,
                   ),
@@ -486,50 +464,6 @@ class _RequestCard extends StatelessWidget {
                 ],
               ),
             ),
-            if (isPending) ...[
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: 40,
-                      child: ElevatedButton.icon(
-                        onPressed: onAccept,
-                        icon: const Icon(Icons.check, size: 16),
-                        label: const Text('Terima'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primaryBlue,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: SizedBox(
-                      height: 40,
-                      child: OutlinedButton.icon(
-                        onPressed: onReject,
-                        icon: const Icon(Icons.close, size: 16),
-                        label: const Text('Tolak'),
-                        style: OutlinedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: AppColors.red,
-                          side: const BorderSide(color: AppColors.red),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
           ],
         ),
       ),
@@ -537,11 +471,11 @@ class _RequestCard extends StatelessWidget {
   }
 }
 
-class RequestDetailPage extends StatelessWidget {
+class RequestDetailPage extends StatefulWidget {
   final int patientId;
   final int status;
-  final VoidCallback? onAccept;
-  final VoidCallback? onReject;
+  final Future<void> Function()? onAccept;
+  final Future<void> Function()? onReject;
 
   final String name;
   final int age;
@@ -565,10 +499,340 @@ class RequestDetailPage extends StatelessWidget {
   });
 
   @override
+  State<RequestDetailPage> createState() => _RequestDetailPageState();
+}
+
+class _RequestDetailPageState extends State<RequestDetailPage> {
+  bool isProcessing = false;
+  late int currentStatus;
+  late String currentStatusText;
+
+  @override
+  void initState() {
+    super.initState();
+    currentStatus = widget.status;
+    currentStatusText = widget.connectionStatus;
+  }
+
+  Future<void> _confirmAccept() async {
+    await _showConfirmSheet(
+      title: 'Terima permintaan koneksi?',
+      message:
+          'Pasien akan terhubung dengan dokter dan dapat dipantau melalui aplikasi.',
+      icon: Icons.check_circle_outline,
+      iconColor: AppColors.primaryBlue,
+      buttonText: 'Terima Permintaan',
+      buttonColor: AppColors.primaryBlue,
+      onConfirm: _handleAccept,
+    );
+  }
+
+  Future<void> _confirmReject() async {
+    await _showConfirmSheet(
+      title: 'Tolak permintaan koneksi?',
+      message:
+          'Permintaan koneksi akan ditolak dan pasien tidak akan terhubung dengan dokter.',
+      icon: Icons.cancel_outlined,
+      iconColor: AppColors.red,
+      buttonText: 'Tolak Permintaan',
+      buttonColor: AppColors.red,
+      onConfirm: _handleReject,
+    );
+  }
+
+  Future<void> _handleAccept() async {
+    if (widget.onAccept == null || isProcessing) return;
+
+    setState(() => isProcessing = true);
+
+    try {
+      await widget.onAccept!();
+
+      if (!mounted) return;
+
+      setState(() {
+        currentStatus = 1;
+        currentStatusText = 'Koneksi diterima';
+        isProcessing = false;
+      });
+
+      await _showSuccessSheet(
+        title: 'Koneksi Berhasil',
+        message:
+            'Pasien telah berhasil terhubung dengan dokter. Anda sekarang dapat memantau kondisi pasien.',
+        icon: Icons.check_circle_outline,
+        buttonText: 'Lihat Detail Pasien',
+        onPrimaryTap: () {
+          Navigator.pop(context);
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => PatientDetailPage(
+                patientId: widget.patientId,
+                isConnected: true,
+              ),
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() => isProcessing = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
+  }
+
+  Future<void> _handleReject() async {
+    if (widget.onReject == null || isProcessing) return;
+
+    setState(() => isProcessing = true);
+
+    try {
+      await widget.onReject!();
+
+      if (!mounted) return;
+
+      setState(() {
+        currentStatus = 2;
+        currentStatusText = 'Koneksi ditolak';
+        isProcessing = false;
+      });
+
+      await _showSuccessSheet(
+        title: 'Permintaan Ditolak',
+        message:
+            'Permintaan koneksi pasien telah ditolak dan tidak akan ditampilkan sebagai koneksi aktif.',
+        icon: Icons.cancel_outlined,
+        buttonText: 'Kembali',
+        isReject: true,
+        onPrimaryTap: () {
+          Navigator.pop(context);
+          Navigator.pop(context, true);
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() => isProcessing = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
+  }
+
+  Future<void> _showConfirmSheet({
+    required String title,
+    required String message,
+    required IconData icon,
+    required Color iconColor,
+    required String buttonText,
+    required Color buttonColor,
+    required Future<void> Function() onConfirm,
+  }) async {
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 28),
+            decoration: const BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 48,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: AppColors.light1,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                CircleAvatar(
+                  radius: 42,
+                  backgroundColor: iconColor.withValues(alpha: 0.12),
+                  child: Icon(icon, color: iconColor, size: 46),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.primaryBlue,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.dark2,
+                    fontSize: 13,
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(sheetContext);
+                      onConfirm();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: buttonColor,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(buttonText),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () => Navigator.pop(sheetContext),
+                  child: const Text(
+                    'Batal',
+                    style: TextStyle(
+                      color: AppColors.primaryBlue,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showSuccessSheet({
+    required String title,
+    required String message,
+    required IconData icon,
+    required String buttonText,
+    required VoidCallback onPrimaryTap,
+    bool isReject = false,
+  }) async {
+    await showModalBottomSheet(
+      context: context,
+      isDismissible: false,
+      enableDrag: false,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return SafeArea(
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 28),
+            decoration: const BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 48,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: AppColors.light1,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                CircleAvatar(
+                  radius: 42,
+                  backgroundColor:
+                      isReject ? AppColors.lightRed : AppColors.veryLightBlue,
+                  child: Icon(
+                    icon,
+                    color: isReject ? AppColors.red : AppColors.primaryBlue,
+                    size: 46,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.primaryBlue,
+                    fontSize: 21,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.dark2,
+                    fontSize: 13,
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: ElevatedButton(
+                    onPressed: onPrimaryTap,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          isReject ? AppColors.red : AppColors.primaryBlue,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(buttonText),
+                  ),
+                ),
+                if (!isReject) ...[
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.pop(context, true);
+                    },
+                    child: const Text(
+                      'Kembali',
+                      style: TextStyle(
+                        color: AppColors.primaryBlue,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final isPending = status == 0;
-    final isAccepted = status == 1;
-    final isRejected = status == 2;
+    final isPending = currentStatus == 0;
+    final isAccepted = currentStatus == 1;
+    final isRejected = currentStatus == 2;
 
     return Scaffold(
       backgroundColor: AppColors.primaryBlue,
@@ -587,38 +851,9 @@ class RequestDetailPage extends StatelessWidget {
                       _dataPatientCard(),
                       if (isPending) ...[
                         const SizedBox(height: 24),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 44,
-                          child: ElevatedButton(
-                            onPressed: onAccept,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primaryBlue,
-                              foregroundColor: Colors.white,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: const Text('Terima Permintaan'),
-                          ),
-                        ),
+                        _primaryButton(),
                         const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 44,
-                          child: OutlinedButton(
-                            onPressed: onReject,
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.red,
-                              side: const BorderSide(color: AppColors.red),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: const Text('Tolak Permintaan'),
-                          ),
-                        ),
+                        _outlineButton(),
                       ] else if (isAccepted) ...[
                         const SizedBox(height: 18),
                         _infoBox(
@@ -629,28 +864,7 @@ class RequestDetailPage extends StatelessWidget {
                           bg: AppColors.veryLightBlue,
                         ),
                         const SizedBox(height: 14),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 44,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => PatientDetailPage(
-                                    patientId: patientId,
-                                    isConnected: true,
-                                  ),
-                                ),
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primaryBlue,
-                              foregroundColor: Colors.white,
-                            ),
-                            child: const Text('Lihat Detail Pasien'),
-                          ),
-                        ),
+                        _detailButton(),
                       ] else if (isRejected) ...[
                         const SizedBox(height: 18),
                         _infoBox(
@@ -667,6 +881,71 @@ class RequestDetailPage extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _primaryButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 44,
+      child: ElevatedButton.icon(
+        onPressed: isProcessing ? null : _confirmAccept,
+        icon: const Icon(Icons.check, size: 16),
+        label: const Text('Terima permintaan'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primaryBlue,
+          disabledBackgroundColor: const Color(0xFFAFCBEA),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+        ),
+      ),
+    );
+  }
+
+  Widget _outlineButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 44,
+      child: OutlinedButton.icon(
+        onPressed: isProcessing ? null : _confirmReject,
+        icon: const Icon(Icons.close, size: 16),
+        label: const Text('Tolak permintaan'),
+        style: OutlinedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: AppColors.red,
+          side: const BorderSide(color: AppColors.red),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+        ),
+      ),
+    );
+  }
+
+  Widget _detailButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 44,
+      child: ElevatedButton.icon(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => PatientDetailPage(
+                patientId: widget.patientId,
+                isConnected: true,
+              ),
+            ),
+          );
+        },
+        icon: const Icon(Icons.visibility_outlined, size: 16),
+        label: const Text('Lihat Detail Pasien'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primaryBlue,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         ),
       ),
     );
@@ -689,7 +968,7 @@ class RequestDetailPage extends StatelessWidget {
           Row(
             children: [
               IconButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: isProcessing ? null : () => Navigator.pop(context),
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
               ),
               Expanded(
@@ -697,8 +976,8 @@ class RequestDetailPage extends StatelessWidget {
                   isAccepted
                       ? 'Koneksi Aktif'
                       : isRejected
-                      ? 'Koneksi Ditolak'
-                      : 'Permintaan Koneksi',
+                          ? 'Koneksi Ditolak'
+                          : 'Permintaan Koneksi',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: Colors.white,
@@ -721,15 +1000,14 @@ class RequestDetailPage extends StatelessWidget {
             child: Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: isRejected
-                      ? AppColors.lightRed
-                      : AppColors.lightBlue,
+                  backgroundColor:
+                      isRejected ? AppColors.lightRed : AppColors.lightBlue,
                   child: Icon(
                     isAccepted
                         ? Icons.check_circle_outline
                         : isRejected
-                        ? Icons.cancel_outlined
-                        : Icons.person_add_alt_1,
+                            ? Icons.cancel_outlined
+                            : Icons.person_add_alt_1,
                     color: isRejected ? AppColors.red : AppColors.primaryBlue,
                   ),
                 ),
@@ -737,10 +1015,10 @@ class RequestDetailPage extends StatelessWidget {
                 Expanded(
                   child: Text(
                     isAccepted
-                        ? 'Permintaan koneksi diterima\n$time'
+                        ? 'Permintaan koneksi diterima\n${widget.time}'
                         : isRejected
-                        ? 'Permintaan koneksi ditolak\n$time'
-                        : 'Permintaan koneksi baru\n$time',
+                            ? 'Permintaan koneksi ditolak\n${widget.time}'
+                            : 'Permintaan koneksi baru\n${widget.time}',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 12,
@@ -777,11 +1055,11 @@ class RequestDetailPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          _DetailRow(label: 'Nama', value: name),
-          _DetailRow(label: 'Usia', value: '$age tahun'),
-          _DetailRow(label: 'Jenis Kelamin', value: gender),
-          _DetailRow(label: 'Tipe Diabetes', value: diabetesType),
-          _DetailRow(label: 'Status', value: connectionStatus),
+          _DetailRow(label: 'Nama', value: widget.name),
+          _DetailRow(label: 'Usia', value: '${widget.age} tahun'),
+          _DetailRow(label: 'Jenis Kelamin', value: widget.gender),
+          _DetailRow(label: 'Tipe Diabetes', value: widget.diabetesType),
+          _DetailRow(label: 'Status', value: currentStatusText),
         ],
       ),
     );
