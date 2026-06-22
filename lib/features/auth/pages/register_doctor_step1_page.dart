@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import 'register_doctor_step2_page.dart';
 import 'package:flutter/services.dart';
+import '../../../data/services/api_service.dart';
 
 class RegisterDoctorStep1Page extends StatefulWidget {
   const RegisterDoctorStep1Page({super.key});
@@ -20,6 +21,7 @@ class _RegisterDoctorStep1PageState extends State<RegisterDoctorStep1Page> {
 
   bool obscurePassword = true;
   bool obscureConfirm = true;
+  bool isCheckingEmail = false;
 
   String gender = 'Laki-laki';
 
@@ -107,18 +109,61 @@ class _RegisterDoctorStep1PageState extends State<RegisterDoctorStep1Page> {
     super.dispose();
   }
 
-  void _goToStep2() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => RegisterDoctorStep2Page(
-          fullName: nameCtr.text.trim(),
-          email: emailCtr.text.trim(),
-          phoneNumber: phoneCtr.text.trim(),
-          password: passwordCtr.text.trim(),
-          confirmPassword: confirmPasswordCtr.text.trim(),
-          gender: gender,
+  Future<void> _goToStep2() async {
+    setState(() => isCheckingEmail = true);
+
+    try {
+      final emailExists = await ApiService.checkEmailExists(
+        emailCtr.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      setState(() => isCheckingEmail = false);
+
+      if (emailExists) {
+        _showSnackBar('Email sudah terdaftar. Gunakan email lain.');
+        return;
+      }
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => RegisterDoctorStep2Page(
+            fullName: nameCtr.text.trim(),
+            email: emailCtr.text.trim(),
+            phoneNumber: phoneCtr.text.trim(),
+            password: passwordCtr.text.trim(),
+            confirmPassword: confirmPasswordCtr.text.trim(),
+            gender: gender,
+          ),
         ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() => isCheckingEmail = false);
+
+      _showSnackBar(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        backgroundColor: AppColors.red,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -215,9 +260,33 @@ class _RegisterDoctorStep1PageState extends State<RegisterDoctorStep1Page> {
                             borderRadius: BorderRadius.circular(6),
                           ),
                         ),
-                        child: const Text(
-                          'Lanjut',
-                          style: TextStyle(fontWeight: FontWeight.w600),
+                        child: ElevatedButton(
+                          onPressed: isValid && !isCheckingEmail
+                              ? _goToStep2
+                              : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primaryBlue,
+                            disabledBackgroundColor: const Color(0xFFAFCBEA),
+                            disabledForegroundColor: AppColors.white,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                          ),
+                          child: isCheckingEmail
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text(
+                                  'Lanjut',
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
                         ),
                       ),
                     ),

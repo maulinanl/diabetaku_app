@@ -30,9 +30,9 @@ class SplashPage extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Image.asset('assets/images/logo.png', width: 140),
+                Image.asset('assets/images/logo.png', width: 200),
                 const SizedBox(height: 80),
-                Image.asset('assets/images/heart.png', width: 90),
+                Image.asset('assets/images/blood.png', width: 160),
               ],
             ),
           ),

@@ -1,3 +1,6 @@
+// ganti seluruh file FamilyMainPage kamu dengan versi ini
+// bagian import tetap sama
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -31,26 +34,18 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
   List<Map<String, dynamic>> patients = [];
   Map<String, dynamic>? dashboardData;
   List<Map<String, dynamic>> recommendations = [];
-
-  final dailyChecks = const [
-    ['Glukosa', Icons.opacity, true],
-    ['Obat', Icons.medication_outlined, true],
-    ['Aktivitas', Icons.directions_run, false],
-    ['Makan', Icons.restaurant_outlined, false],
-  ];
+  Map<String, dynamic> healthHistories = {};
+  List<Map<String, dynamic>> pendingValidations = [];
 
   DateTime currentMonth = DateTime(DateTime.now().year, DateTime.now().month);
   DateTime selectedDate = DateTime.now();
 
-  final Map<String, String> consistencyStatus = {
-    '2025-06-01': 'lengkap',
-    '2025-06-02': 'lengkap',
-    '2025-06-03': 'lengkap',
-    '2025-06-04': 'lengkap',
-    '2025-06-05': 'sebagian',
-    '2025-06-06': 'lengkap',
-    '2025-06-07': 'lengkap',
-  };
+  final healthChecklistTypes = const [
+    ['Glukosa', Icons.opacity, 'glucose'],
+    ['Obat', Icons.medication_outlined, 'medication'],
+    ['Aktivitas', Icons.directions_run, 'activity'],
+    ['Makan', Icons.restaurant_outlined, 'meal'],
+  ];
 
   @override
   void initState() {
@@ -87,8 +82,10 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
       final rawPatients = await ApiService.getFamilyPatients(storedFamilyId);
       final acceptedPatients = _acceptedPatientsOnly(rawPatients);
 
-      Map<String, dynamic>? dashboard;
+      Map<String, dynamic>? loadedDashboard;
       List<Map<String, dynamic>> loadedRecommendations = [];
+      Map<String, dynamic> loadedHealthHistories = {};
+      List<Map<String, dynamic>> loadedPendingValidations = [];
       List<Map<String, dynamic>> loadedNotifications = [];
 
       if (acceptedPatients.isNotEmpty) {
@@ -96,10 +93,19 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
           acceptedPatients.first['patient_id'].toString(),
         );
 
-        dashboard = await ApiService.getFamilyPatientDashboard(firstPatientId);
+        loadedDashboard = await ApiService.getFamilyPatientDashboard(
+          firstPatientId,
+        );
 
         loadedRecommendations =
             await ApiService.getFamilyPatientRecommendations(firstPatientId);
+
+        loadedHealthHistories = await ApiService.getPatientHealthHistory(
+          firstPatientId,
+        );
+
+        loadedPendingValidations =
+            await ApiService.getPatientPendingValidations(firstPatientId);
       }
 
       if (storedUserId != null) {
@@ -112,8 +118,10 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
         familyId = storedFamilyId;
         familyName = profile['full_name']?.toString() ?? storedName;
         patients = acceptedPatients;
-        dashboardData = dashboard;
+        dashboardData = loadedDashboard;
         recommendations = loadedRecommendations;
+        healthHistories = loadedHealthHistories;
+        pendingValidations = loadedPendingValidations;
         selectedPatientIndex = 0;
 
         hasUnreadNotification = loadedNotifications.any((n) {
@@ -127,7 +135,7 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
       if (!mounted) return;
 
       setState(() {
-        errorMessage = e.toString().replaceAll('Exception: ', '');
+        errorMessage = e.toString().replaceFirst('Exception: ', '');
         isLoading = false;
       });
     }
@@ -136,17 +144,28 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
   Future<void> _loadSelectedPatientDashboard(int index) async {
     final patientId = int.parse(patients[index]['patient_id'].toString());
 
-    final dashboard = await ApiService.getFamilyPatientDashboard(patientId);
+    final loadedDashboard = await ApiService.getFamilyPatientDashboard(
+      patientId,
+    );
 
     final loadedRecommendations =
         await ApiService.getFamilyPatientRecommendations(patientId);
+
+    final loadedHealthHistories = await ApiService.getPatientHealthHistory(
+      patientId,
+    );
+
+    final loadedPendingValidations =
+        await ApiService.getPatientPendingValidations(patientId);
 
     if (!mounted) return;
 
     setState(() {
       selectedPatientIndex = index;
-      dashboardData = dashboard;
+      dashboardData = loadedDashboard;
       recommendations = loadedRecommendations;
+      healthHistories = loadedHealthHistories;
+      pendingValidations = loadedPendingValidations;
     });
   }
 
@@ -158,12 +177,8 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
       body: _buildPage(),
       bottomNavigationBar: FamilyBottomNavBar(
         currentIndex: currentIndex,
-        onTap: (index) {
-          setState(() => currentIndex = index);
-        },
-        onAddTap: () {
-          setState(() => currentIndex = 4);
-        },
+        onTap: (index) => setState(() => currentIndex = index),
+        onAddTap: () => setState(() => currentIndex = 4),
       ),
     );
   }
@@ -176,24 +191,14 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
 
     return FamilyAddDataPage(
       showBackButton: false,
-      onGoConnection: () {
-        setState(() => currentIndex = 1);
-      },
+      onGoConnection: () => setState(() => currentIndex = 1),
     );
   }
 
   Widget _familyHomeContent() {
-    if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (errorMessage != null) {
-      return _errorState();
-    }
-
-    if (patients.isEmpty) {
-      return _emptyPatientState();
-    }
+    if (isLoading) return const Center(child: CircularProgressIndicator());
+    if (errorMessage != null) return _errorState();
+    if (patients.isEmpty) return _emptyPatientState();
 
     return Container(
       color: AppColors.primaryBlue,
@@ -227,6 +232,592 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
                 ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _validationCard() {
+    final count = pendingValidations.length;
+
+    return _smallInfoCard(
+      icon: Icons.assignment_outlined,
+      title: count == 0
+          ? 'Tidak ada validasi menunggu'
+          : '$count data menunggu validasi',
+      subtitle: count == 0
+          ? 'Semua data yang kamu input sudah diproses pasien'
+          : 'Data yang kamu input masih menunggu konfirmasi pasien',
+      onTap: () {},
+    );
+  }
+
+  bool _hasRecordToday(String type) {
+    final todayKey = _dateKey(DateTime.now());
+    final records = List<Map<String, dynamic>>.from(
+      healthHistories[type] ?? [],
+    );
+
+    final dateField = _dateFieldByType(type);
+
+    return records.any((item) {
+      final parsed = DateTime.tryParse(item[dateField]?.toString() ?? '');
+      if (parsed == null) return false;
+      return _dateKey(parsed) == todayKey;
+    });
+  }
+
+  String _dateFieldByType(String type) {
+    if (type == 'glucose') return 'measured_at';
+    if (type == 'physiological') return 'measured_at';
+    if (type == 'activity') return 'activity_date';
+    if (type == 'meal') return 'meal_date';
+    if (type == 'medication') return 'log_date';
+    return 'created_at';
+  }
+
+  Widget _dailyChecklistCard() {
+    final checks = healthChecklistTypes.map((item) {
+      final type = item[2] as String;
+
+      return {'label': item[0], 'icon': item[1], 'done': _hasRecordToday(type)};
+    }).toList();
+
+    final doneCount = checks.where((item) => item['done'] == true).length;
+
+    return Container(
+      decoration: _cardDecoration(),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Kepatuhan pasien — Hari ini',
+                    style: TextStyle(
+                      color: AppColors.primaryBlue,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                Text(
+                  '$doneCount / ${checks.length} selesai',
+                  style: const TextStyle(
+                    color: AppColors.primaryBlue,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            height: 3,
+            margin: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: AppColors.light1,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            alignment: Alignment.centerLeft,
+            child: FractionallySizedBox(
+              widthFactor: checks.isEmpty ? 0 : doneCount / checks.length,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.primaryBlue,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          GridView.builder(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: checks.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
+              childAspectRatio: 3.2,
+            ),
+            itemBuilder: (context, index) {
+              final item = checks[index];
+              final isDone = item['done'] == true;
+
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.light1),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: AppColors.veryLightBlue,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        item['icon'] as IconData,
+                        color: AppColors.primaryBlue,
+                        size: 17,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        item['label'].toString(),
+                        style: const TextStyle(
+                          color: AppColors.dark1,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      isDone
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked,
+                      color: isDone ? AppColors.primaryBlue : AppColors.dark4,
+                      size: 18,
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Map<String, String> _buildConsistencyStatus() {
+    final result = <String, Set<String>>{};
+
+    for (final type in ['glucose', 'medication', 'activity', 'meal']) {
+      final records = List<Map<String, dynamic>>.from(
+        healthHistories[type] ?? [],
+      );
+
+      final dateField = _dateFieldByType(type);
+
+      for (final item in records) {
+        final parsed = DateTime.tryParse(item[dateField]?.toString() ?? '');
+        if (parsed == null) continue;
+
+        final key = _dateKey(parsed);
+        result.putIfAbsent(key, () => <String>{});
+        result[key]!.add(type);
+      }
+    }
+
+    return result.map((key, value) {
+      if (value.length >= 4) return MapEntry(key, 'lengkap');
+      if (value.isNotEmpty) return MapEntry(key, 'sebagian');
+      return MapEntry(key, 'tidak');
+    });
+  }
+
+  Widget _calendarCard() {
+    final consistencyStatus = _buildConsistencyStatus();
+
+    final year = currentMonth.year;
+    final month = currentMonth.month;
+    final totalDays = _daysInMonth(currentMonth);
+
+    final firstDay = DateTime(year, month, 1);
+    final startOffset = firstDay.weekday - 1;
+
+    final prevMonth = DateTime(year, month - 1);
+    final prevMonthDays = _daysInMonth(prevMonth);
+
+    const totalCells = 35;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+      decoration: _cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Konsistensi — ${_monthName(month)} $year',
+                  style: const TextStyle(
+                    color: AppColors.dark1,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    currentMonth = DateTime(year, month - 1);
+                  });
+                },
+                child: _calendarNavButton(Icons.chevron_left),
+              ),
+              const SizedBox(width: 10),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    currentMonth = DateTime(year, month + 1);
+                  });
+                },
+                child: _calendarNavButton(Icons.chevron_right),
+              ),
+            ],
+          ),
+          const SizedBox(height: 26),
+          const Row(
+            children: [
+              _WeekLabel('Sen'),
+              _WeekLabel('Sel'),
+              _WeekLabel('Rab'),
+              _WeekLabel('Kam'),
+              _WeekLabel('Jum'),
+              _WeekLabel('Sab'),
+              _WeekLabel('Min'),
+            ],
+          ),
+          const SizedBox(height: 18),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: totalCells,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 7,
+              mainAxisSpacing: 18,
+              crossAxisSpacing: 0,
+              childAspectRatio: 1.15,
+            ),
+            itemBuilder: (context, index) {
+              final dayNumber = index - startOffset + 1;
+
+              if (dayNumber < 1) {
+                final prevDay = prevMonthDays + dayNumber;
+                return _calendarTextDay('$prevDay', color: AppColors.dark4);
+              }
+
+              if (dayNumber > totalDays) {
+                final nextDay = dayNumber - totalDays;
+                return _calendarTextDay('$nextDay', color: AppColors.dark4);
+              }
+
+              final date = DateTime(year, month, dayNumber);
+              final status = consistencyStatus[_dateKey(date)];
+
+              final isSelected =
+                  date.year == selectedDate.year &&
+                  date.month == selectedDate.month &&
+                  date.day == selectedDate.day;
+
+              final prevStatus =
+                  consistencyStatus[_dateKey(
+                    date.subtract(const Duration(days: 1)),
+                  )];
+
+              final nextStatus =
+                  consistencyStatus[_dateKey(
+                    date.add(const Duration(days: 1)),
+                  )];
+
+              if (status == 'lengkap' ||
+                  status == 'sebagian' ||
+                  status == 'tidak') {
+                return _calendarStreakDay(
+                  text: '$dayNumber',
+                  status: status!,
+                  selected: isSelected,
+                  connectLeft: prevStatus == status,
+                  connectRight: nextStatus == status,
+                );
+              }
+
+              if (isSelected) {
+                return _calendarSelectedDay('$dayNumber');
+              }
+
+              return _calendarTextDay(
+                '$dayNumber',
+                color: AppColors.primaryBlue,
+              );
+            },
+          ),
+          const SizedBox(height: 24),
+          const Row(
+            children: [
+              _Legend(color: Color(0xFFEAF7F1), label: 'Lengkap'),
+              SizedBox(width: 18),
+              _Legend(color: Color(0xFFFFF3BA), label: 'Sebagian'),
+              SizedBox(width: 18),
+              _Legend(color: Color(0xFFFFEAEA), label: 'Tidak ada'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _calendarStreakDay({
+    required String text,
+    required String status,
+    required bool selected,
+    required bool connectLeft,
+    required bool connectRight,
+  }) {
+    Color bg;
+    Color textColor;
+
+    if (status == 'lengkap') {
+      bg = const Color(0xFFEAF7F1);
+      textColor = AppColors.primaryBlue;
+    } else if (status == 'sebagian') {
+      bg = const Color(0xFFFFF3BA);
+      textColor = AppColors.primaryBlue;
+    } else {
+      bg = const Color(0xFFFFEAEA);
+      textColor = AppColors.red;
+    }
+
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Positioned.fill(
+          top: 5,
+          bottom: 5,
+          left: connectLeft ? 0 : 4,
+          right: connectRight ? 0 : 4,
+          child: Container(
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.horizontal(
+                left: connectLeft ? Radius.zero : const Radius.circular(30),
+                right: connectRight ? Radius.zero : const Radius.circular(30),
+              ),
+            ),
+          ),
+        ),
+        Container(
+          width: 42,
+          height: 42,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? AppColors.primaryBlue : Colors.transparent,
+            shape: BoxShape.circle,
+          ),
+          child: Text(
+            text,
+            style: TextStyle(
+              color: selected ? Colors.white : textColor,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _calendarNavButton(IconData icon) {
+    return Container(
+      width: 42,
+      height: 42,
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.light1),
+      ),
+      child: Icon(icon, color: AppColors.dark3, size: 24),
+    );
+  }
+
+  Widget _calendarTextDay(String text, {required Color color}) {
+    return Center(
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  Widget _calendarSelectedDay(String text) {
+    return Center(
+      child: Container(
+        width: 46,
+        height: 46,
+        alignment: Alignment.center,
+        decoration: const BoxDecoration(
+          color: AppColors.primaryBlue,
+          shape: BoxShape.circle,
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _recommendationCard() {
+    if (recommendations.isEmpty) {
+      return _smallInfoCard(
+        icon: Icons.description_outlined,
+        title: 'Belum ada rekomendasi',
+        subtitle: 'Dokter belum memberikan rekomendasi',
+        onTap: () {},
+      );
+    }
+
+    final latest = recommendations.first;
+
+    return _smallInfoCard(
+      icon: Icons.description_outlined,
+      title: latest['category']?.toString() ?? 'Rekomendasi',
+      subtitle: latest['recommendation_text']?.toString() ?? '-',
+      onTap: () {},
+    );
+  }
+
+  Widget _summaryCards() {
+    final latestGlucose =
+        dashboardData?['latest_glucose'] as Map<String, dynamic>?;
+
+    final latestPhysiological =
+        dashboardData?['latest_physiological'] as Map<String, dynamic>?;
+
+    final glucoseValue = latestGlucose?['glucose_value']?.toString() ?? '-';
+
+    final systolic = latestPhysiological?['systolic']?.toString();
+    final diastolic = latestPhysiological?['diastolic']?.toString();
+
+    final bloodPressureValue = systolic != null && diastolic != null
+        ? '$systolic/$diastolic'
+        : '-';
+
+    final weightValue = latestPhysiological?['weight_kg']?.toString() ?? '-';
+
+    return Row(
+      children: [
+        Expanded(
+          child: _HealthSummaryCard(
+            title: 'Glukosa',
+            value: glucoseValue,
+            unit: 'mg/dL',
+            status: _glucoseStatus(glucoseValue),
+            color: _glucoseColor(glucoseValue),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _HealthSummaryCard(
+            title: 'Tekanan Darah',
+            value: bloodPressureValue,
+            unit: 'mmHg',
+            status: bloodPressureValue == '-' ? '-' : 'Tercatat',
+            color: const Color(0xFF10C878),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _HealthSummaryCard(
+            title: 'Berat Badan',
+            value: weightValue,
+            unit: 'kg',
+            status: weightValue == '-' ? '-' : 'Tercatat',
+            color: const Color(0xFFFFC542),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _glucoseStatus(String value) {
+    final glucose = double.tryParse(value);
+
+    if (glucose == null) return '-';
+    if (glucose > 180) return 'Tinggi';
+    if (glucose < 70) return 'Rendah';
+
+    return 'Normal';
+  }
+
+  Color _glucoseColor(String value) {
+    final status = _glucoseStatus(value);
+
+    if (status == 'Normal') return const Color(0xFF10C878);
+    if (status == '-') return AppColors.dark3;
+
+    return AppColors.red;
+  }
+
+  Widget _smallInfoCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(13),
+        decoration: _cardDecoration(),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: AppColors.veryLightBlue,
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Icon(icon, color: AppColors.primaryBlue, size: 19),
+            ),
+            const SizedBox(width: 11),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: AppColors.primaryBlue,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.dark2,
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: AppColors.dark3),
           ],
         ),
       ),
@@ -315,9 +906,7 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
                       width: double.infinity,
                       height: 52,
                       child: ElevatedButton.icon(
-                        onPressed: () {
-                          setState(() => currentIndex = 1);
-                        },
+                        onPressed: () => setState(() => currentIndex = 1),
                         icon: const Icon(Icons.person_add_alt_1_rounded),
                         label: const Text(
                           'Ajukan Koneksi Pasien',
@@ -356,73 +945,20 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
           bottomRight: Radius.circular(22),
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '$greeting\n$familyName',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    height: 1.35,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+          Expanded(
+            child: Text(
+              '$greeting\n$familyName',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                height: 1.35,
+                fontWeight: FontWeight.w700,
               ),
-              _notificationButton(),
-            ],
-          ),
-          const SizedBox(height: 18),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(13),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: AppColors.lightBlue,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Icon(
-                    Icons.family_restroom_rounded,
-                    color: AppColors.primaryBlue,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Akun Keluarga',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Belum ada pasien yang terhubung',
-                        style: TextStyle(color: Colors.white, fontSize: 11),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
             ),
           ),
+          _notificationButton(),
         ],
       ),
     );
@@ -474,20 +1010,16 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
 
   String get greeting {
     final hour = DateTime.now().hour;
-
     if (hour < 12) return 'Selamat Pagi';
     if (hour < 15) return 'Selamat Siang';
     if (hour < 18) return 'Selamat Sore';
-
     return 'Selamat Malam';
   }
 
   String _initial(String name) {
     final parts = name.trim().split(' ').where((e) => e.isNotEmpty).toList();
-
     if (parts.isEmpty) return '-';
     if (parts.length == 1) return parts.first[0].toUpperCase();
-
     return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
   }
 
@@ -523,7 +1055,6 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
         ),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
@@ -564,26 +1095,14 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        patientName,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        '${_patientRelation(patient)} • ${_patientDm(patient)}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    '$patientName\n${_patientRelation(patient)} • ${_patientDm(patient)}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      height: 1.4,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 if (patients.length > 1)
@@ -596,9 +1115,6 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
                       backgroundColor: AppColors.lightBlue,
                       side: BorderSide.none,
                       padding: const EdgeInsets.symmetric(horizontal: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
                     ),
                   ),
               ],
@@ -622,363 +1138,43 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 42,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.light1,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'Pilih pasien yang ingin dilihat',
-                style: TextStyle(
-                  color: AppColors.dark1,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 12),
-              ...List.generate(patients.length, (index) {
-                final patient = patients[index];
-                final name = _patientName(patient);
-                final selected = selectedPatientIndex == index;
+            children: List.generate(patients.length, (index) {
+              final patient = patients[index];
+              final name = _patientName(patient);
+              final selected = selectedPatientIndex == index;
 
-                return InkWell(
-                  onTap: () async {
-                    Navigator.pop(sheetContext);
-                    await _loadSelectedPatientDashboard(index);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 24,
-                          backgroundColor: selected
-                              ? AppColors.primaryBlue
-                              : AppColors.lightBlue,
-                          child: Text(
-                            _initial(name),
-                            style: TextStyle(
-                              color: selected
-                                  ? Colors.white
-                                  : AppColors.primaryBlue,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                name,
-                                style: const TextStyle(
-                                  color: AppColors.dark1,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                '${_patientRelation(patient)} • ${_patientDm(patient)}',
-                                style: const TextStyle(
-                                  color: AppColors.dark2,
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Icon(
-                          selected
-                              ? Icons.radio_button_checked
-                              : Icons.radio_button_unchecked,
-                          color: AppColors.primaryBlue,
-                        ),
-                      ],
+              return ListTile(
+                onTap: () async {
+                  Navigator.pop(sheetContext);
+                  await _loadSelectedPatientDashboard(index);
+                },
+                leading: CircleAvatar(
+                  backgroundColor: selected
+                      ? AppColors.primaryBlue
+                      : AppColors.lightBlue,
+                  child: Text(
+                    _initial(name),
+                    style: TextStyle(
+                      color: selected ? Colors.white : AppColors.primaryBlue,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                );
-              }),
-            ],
+                ),
+                title: Text(name),
+                subtitle: Text(
+                  '${_patientRelation(patient)} • ${_patientDm(patient)}',
+                ),
+                trailing: Icon(
+                  selected
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_unchecked,
+                  color: AppColors.primaryBlue,
+                ),
+              );
+            }),
           ),
         );
       },
-    );
-  }
-
-  Widget _recommendationCard() {
-    if (recommendations.isEmpty) {
-      return _smallInfoCard(
-        icon: Icons.description_outlined,
-        title: 'Belum ada rekomendasi',
-        subtitle: 'Dokter belum memberikan rekomendasi',
-        onTap: () {},
-      );
-    }
-
-    final latest = recommendations.first;
-
-    return _smallInfoCard(
-      icon: Icons.description_outlined,
-      title: latest['category']?.toString() ?? 'Rekomendasi',
-      subtitle: latest['recommendation_text']?.toString() ?? '-',
-      onTap: () {},
-    );
-  }
-
-  Widget _validationCard() {
-    return _smallInfoCard(
-      icon: Icons.assignment_outlined,
-      title: 'Validasi data pasien',
-      subtitle: 'Data yang kamu input menunggu konfirmasi pasien',
-      onTap: () {},
-    );
-  }
-
-  Widget _smallInfoCard({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(13),
-        decoration: _cardDecoration(),
-        child: Row(
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: AppColors.veryLightBlue,
-                borderRadius: BorderRadius.circular(9),
-              ),
-              child: Icon(icon, color: AppColors.primaryBlue, size: 19),
-            ),
-            const SizedBox(width: 11),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: AppColors.primaryBlue,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    subtitle,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AppColors.dark2,
-                      fontSize: 10,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.chevron_right, color: AppColors.dark3),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _summaryCards() {
-    final latestGlucose =
-        dashboardData?['latest_glucose'] as Map<String, dynamic>?;
-
-    final latestPhysiological =
-        dashboardData?['latest_physiological'] as Map<String, dynamic>?;
-
-    final glucoseValue = latestGlucose?['glucose_value']?.toString() ?? '-';
-
-    final systolic = latestPhysiological?['systolic']?.toString();
-    final diastolic = latestPhysiological?['diastolic']?.toString();
-
-    final bloodPressureValue = systolic != null && diastolic != null
-        ? '$systolic/$diastolic'
-        : '-';
-
-    final weightValue = latestPhysiological?['weight_kg']?.toString() ?? '-';
-
-    return Row(
-      children: [
-        Expanded(
-          child: _HealthSummaryCard(
-            title: 'Glukosa',
-            value: glucoseValue,
-            unit: 'mg/dL',
-            status: _glucoseStatus(glucoseValue),
-            color: _glucoseColor(glucoseValue),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _HealthSummaryCard(
-            title: 'Tekanan Darah',
-            value: bloodPressureValue,
-            unit: 'mmHg',
-            status: bloodPressureValue == '-' ? '-' : 'Normal',
-            color: const Color(0xFF10C878),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _HealthSummaryCard(
-            title: 'Berat Badan',
-            value: weightValue,
-            unit: 'kg',
-            status: weightValue == '-' ? '-' : 'Stabil',
-            color: const Color(0xFFFFC542),
-          ),
-        ),
-      ],
-    );
-  }
-
-  String _glucoseStatus(String value) {
-    final glucose = double.tryParse(value);
-
-    if (glucose == null) return '-';
-    if (glucose > 180) return 'Tinggi';
-    if (glucose < 70) return 'Rendah';
-
-    return 'Normal';
-  }
-
-  Color _glucoseColor(String value) {
-    final status = _glucoseStatus(value);
-
-    if (status == 'Normal') return const Color(0xFF10C878);
-    if (status == '-') return AppColors.dark3;
-
-    return AppColors.red;
-  }
-
-  Widget _dailyChecklistCard() {
-    return Container(
-      decoration: _cardDecoration(),
-      child: Column(
-        children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(14, 14, 14, 10),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Kepatuhan pasien — Hari ini',
-                    style: TextStyle(
-                      color: AppColors.primaryBlue,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                Text(
-                  '2 / 4 selesai',
-                  style: TextStyle(color: AppColors.primaryBlue, fontSize: 11),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            height: 3,
-            margin: const EdgeInsets.symmetric(horizontal: 14),
-            decoration: BoxDecoration(
-              color: AppColors.light1,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            alignment: Alignment.centerLeft,
-            child: FractionallySizedBox(
-              widthFactor: 0.5,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppColors.primaryBlue,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          GridView.builder(
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: dailyChecks.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 10,
-              crossAxisSpacing: 10,
-              childAspectRatio: 3.2,
-            ),
-            itemBuilder: (context, index) {
-              final item = dailyChecks[index];
-              final isDone = item[2] as bool;
-
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.light1),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: AppColors.veryLightBlue,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        item[1] as IconData,
-                        color: AppColors.primaryBlue,
-                        size: 17,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        item[0] as String,
-                        style: const TextStyle(
-                          color: AppColors.dark1,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                    Icon(
-                      isDone
-                          ? Icons.radio_button_checked
-                          : Icons.radio_button_unchecked,
-                      color: isDone ? AppColors.primaryBlue : AppColors.dark4,
-                      size: 18,
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ],
-      ),
     );
   }
 
@@ -1006,248 +1202,6 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
       'Desember',
     ];
     return names[month - 1];
-  }
-
-  Widget _calendarCard() {
-    final year = currentMonth.year;
-    final month = currentMonth.month;
-    final totalDays = _daysInMonth(currentMonth);
-    final firstDay = DateTime(year, month, 1);
-    final startOffset = firstDay.weekday - 1;
-    final totalCells = startOffset + totalDays;
-    final rowCount = (totalCells / 7).ceil();
-    final cellCount = rowCount * 7;
-
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: _cardDecoration(),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Konsistensi Pelaporan — ${_monthName(month)} $year',
-                  style: const TextStyle(
-                    color: AppColors.dark1,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              GestureDetector(
-                onTap: () {
-                  setState(() => currentMonth = DateTime(year, month - 1));
-                },
-                child: _smallArrow(Icons.chevron_left),
-              ),
-              const SizedBox(width: 10),
-              GestureDetector(
-                onTap: () {
-                  setState(() => currentMonth = DateTime(year, month + 1));
-                },
-                child: _smallArrow(Icons.chevron_right),
-              ),
-            ],
-          ),
-          const SizedBox(height: 26),
-          const Row(
-            children: [
-              _WeekLabel('Sen'),
-              _WeekLabel('Sel'),
-              _WeekLabel('Rab'),
-              _WeekLabel('Kam'),
-              _WeekLabel('Jum'),
-              _WeekLabel('Sab'),
-              _WeekLabel('Min'),
-            ],
-          ),
-          const SizedBox(height: 18),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: cellCount,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 7,
-              mainAxisSpacing: 14,
-              childAspectRatio: 1,
-            ),
-            itemBuilder: (context, index) {
-              final dayNumber = index - startOffset + 1;
-
-              if (dayNumber < 1 || dayNumber > totalDays) {
-                return const SizedBox();
-              }
-
-              final date = DateTime(year, month, dayNumber);
-              final status = consistencyStatus[_dateKey(date)];
-
-              final isSelected =
-                  date.year == selectedDate.year &&
-                  date.month == selectedDate.month &&
-                  date.day == selectedDate.day;
-
-              if (status == 'lengkap') {
-                final prevStatus =
-                    consistencyStatus[_dateKey(
-                      date.subtract(const Duration(days: 1)),
-                    )];
-
-                final nextStatus =
-                    consistencyStatus[_dateKey(
-                      date.add(const Duration(days: 1)),
-                    )];
-
-                final baseDay = _calendarRangeDay(
-                  text: '$dayNumber',
-                  color: const Color(0xFFEAFBF3),
-                  textColor: AppColors.primaryBlue,
-                  connectLeft: prevStatus == 'lengkap',
-                  connectRight: nextStatus == 'lengkap',
-                );
-
-                if (isSelected) {
-                  return Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      baseDay,
-                      _calendarOutlineDay(text: '$dayNumber'),
-                    ],
-                  );
-                }
-
-                return baseDay;
-              }
-
-              if (status == 'sebagian') {
-                return _calendarCircle(
-                  text: '$dayNumber',
-                  color: const Color(0xFFFFF4C7),
-                  textColor: AppColors.primaryBlue,
-                );
-              }
-
-              if (status == 'tidak') {
-                return _calendarCircle(
-                  text: '$dayNumber',
-                  color: const Color(0xFFFFF3F3),
-                  textColor: AppColors.red,
-                );
-              }
-
-              if (isSelected) return _calendarOutlineDay(text: '$dayNumber');
-
-              return Center(
-                child: Text(
-                  '$dayNumber',
-                  style: const TextStyle(
-                    color: AppColors.primaryBlue,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 22),
-          const Row(
-            children: [
-              _Legend(color: Color(0xFFEAFBF3), label: 'Lengkap'),
-              SizedBox(width: 18),
-              _Legend(color: Color(0xFFFFF4C7), label: 'Sebagian'),
-              SizedBox(width: 18),
-              _Legend(color: Color(0xFFFFF3F3), label: 'Tidak ada'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _calendarRangeDay({
-    required String text,
-    required Color color,
-    required Color textColor,
-    required bool connectLeft,
-    required bool connectRight,
-  }) {
-    return Container(
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.horizontal(
-          left: connectLeft ? Radius.zero : const Radius.circular(28),
-          right: connectRight ? Radius.zero : const Radius.circular(28),
-        ),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: textColor,
-          fontSize: 15,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  Widget _calendarOutlineDay({required String text}) {
-    return Center(
-      child: Container(
-        width: 42,
-        height: 42,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: Colors.transparent,
-          shape: BoxShape.circle,
-          border: Border.all(color: AppColors.primaryBlue, width: 2),
-        ),
-        child: Text(
-          text,
-          style: const TextStyle(
-            color: AppColors.primaryBlue,
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _calendarCircle({
-    required String text,
-    required Color color,
-    required Color textColor,
-  }) {
-    return Center(
-      child: Container(
-        width: 42,
-        height: 42,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: textColor,
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _smallArrow(IconData icon) {
-    return Container(
-      width: 28,
-      height: 28,
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.light1),
-      ),
-      child: Icon(icon, color: AppColors.dark2, size: 18),
-    );
   }
 
   BoxDecoration _cardDecoration() {

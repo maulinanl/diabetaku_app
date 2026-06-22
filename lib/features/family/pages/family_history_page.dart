@@ -201,9 +201,24 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
     final selectedPatient = patients[selectedPatientIndex];
 
     final healthData = histories.where((item) {
-      if (selectedFilter == 0) return true;
-      return item['type']?.toString() == filters[selectedFilter];
-    }).toList();
+  final type = item['type']?.toString() ?? '';
+
+  final allowedHealthTypes = [
+    'Glukosa',
+    'Fisiologis',
+    'Aktivitas',
+    'Makan',
+    'Obat',
+  ];
+
+  if (!allowedHealthTypes.contains(type)) {
+    return false;
+  }
+
+  if (selectedFilter == 0) return true;
+
+  return type == filters[selectedFilter];
+}).toList();
 
     return Container(
       color: AppColors.primaryBlue,

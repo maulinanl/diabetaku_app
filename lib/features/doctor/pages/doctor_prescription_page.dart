@@ -1,11 +1,19 @@
 import 'package:flutter/material.dart';
+
 import '../../../core/theme/app_colors.dart';
+import '../../../data/services/api_service.dart';
 import 'doctor_prescription_detail_page.dart';
+import 'doctor_prescription_form_page.dart';
 
 class DoctorPrescriptionPage extends StatefulWidget {
+  final int patientId;
   final bool isConnected;
 
-  const DoctorPrescriptionPage({super.key, this.isConnected = true});
+  const DoctorPrescriptionPage({
+    super.key,
+    required this.patientId,
+    required this.isConnected,
+  });
 
   @override
   State<DoctorPrescriptionPage> createState() => _DoctorPrescriptionPageState();
@@ -14,63 +22,59 @@ class DoctorPrescriptionPage extends StatefulWidget {
 class _DoctorPrescriptionPageState extends State<DoctorPrescriptionPage> {
   int selectedSubTab = 0;
 
-  final activePrescriptions = [
-    {
-      'medicine': 'Metformin',
-      'dose': '850 mg',
-      'form': 'Tablet',
-      'schedule': 'Pagi 1 tablet • Malam 1 tablet',
-      'rule': 'Sesudah makan',
-      'note': 'Minum teratur dan jangan lewatkan dosis malam.',
-      'doctor': 'dr. Agus Setiawan, Sp.PD',
-      'date': '7 Jun 2025',
-      'isMine': true,
-    },
-    {
-      'medicine': 'Amlodipine',
-      'dose': '5 mg',
-      'form': 'Tablet',
-      'schedule': 'Pagi 1 tablet',
-      'rule': 'Sesudah sarapan',
-      'note': 'Pantau tekanan darah secara rutin.',
-      'doctor': 'dr. Rina Wulandari, Sp.PD',
-      'date': '2 Jun 2025',
-      'isMine': false,
-    },
-  ];
+  bool isLoading = true;
+  bool isSaving = false;
 
-  final historyPrescriptions = [
-    {
-      'medicine': 'Metformin',
-      'dose': '500 mg',
-      'form': 'Tablet',
-      'schedule': 'Pagi 1 tablet • Malam 1 tablet',
-      'rule': 'Sesudah makan',
-      'doctor': 'dr. Agus Setiawan, Sp.PD',
-      'startDate': '1 Jan 2025',
-      'endDate': '7 Jun 2025',
-      'reason': 'Dosis diperbarui menjadi 850 mg',
-    },
-    {
-      'medicine': 'Glimepiride',
-      'dose': '2 mg',
-      'form': 'Tablet',
-      'schedule': 'Pagi 1 tablet',
-      'rule': 'Sebelum makan',
-      'doctor': 'dr. Agus Setiawan, Sp.PD',
-      'startDate': '10 Feb 2025',
-      'endDate': '15 Mei 2025',
-      'reason': 'Obat dihentikan',
-    },
-  ];
+  List<Map<String, dynamic>> activePrescriptions = [];
+  List<Map<String, dynamic>> historyPrescriptions = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPrescriptions();
+  }
+
+  Future<void> _loadPrescriptions() async {
+    try {
+      if (mounted) setState(() => isLoading = true);
+
+      final active = await ApiService.getDoctorPatientActivePrescriptions(
+        widget.patientId,
+      );
+
+      final history = await ApiService.getDoctorPatientPrescriptionHistory(
+        widget.patientId,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        activePrescriptions = active;
+        historyPrescriptions = history;
+        isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() => isLoading = false);
+      _showSnackBar(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Padding(
+        padding: EdgeInsets.all(24),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Column(
       children: [
         _subTabs(),
         const SizedBox(height: 14),
-        if (selectedSubTab == 0) _activeContent() else _historyContent(),
+        selectedSubTab == 0 ? _activeContent() : _historyContent(),
       ],
     );
   }
@@ -130,58 +134,76 @@ class _DoctorPrescriptionPageState extends State<DoctorPrescriptionPage> {
                 ),
               ),
             ),
-            ElevatedButton.icon(
-              onPressed: () => _showPrescriptionForm(context),
-              icon: const Icon(Icons.add, size: 16),
-              label: const Text('Tambah Obat'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryBlue,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                textStyle: const TextStyle(fontSize: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+            if (widget.isConnected)
+              ElevatedButton.icon(
+                onPressed: isSaving
+                    ? null
+                    : () async {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => DoctorPrescriptionFormPage(
+                              patientId: widget.patientId,
+                            ),
+                          ),
+                        );
+
+                        if (result == true) {
+                          await _loadPrescriptions();
+                        }
+                      },
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Tambah Obat'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryBlue,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  textStyle: const TextStyle(fontSize: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
               ),
-            ),
           ],
         ),
         const SizedBox(height: 14),
-        ...activePrescriptions.map(
-          (item) => Padding(
-            padding: const EdgeInsets.only(bottom: 14),
-            child: _PrescriptionCard(
-              medicine: item['medicine'] as String,
-              dose: item['dose'] as String,
-              form: item['form'] as String,
-              schedule: item['schedule'] as String,
-              rule: item['rule'] as String,
-              note: item['note'] as String,
-              doctor: item['doctor'] as String,
-              date: item['date'] as String,
-              isMine: item['isMine'] as bool,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => DoctorPrescriptionDetailPage(
-                      medicine: item['medicine'] as String,
-                      dose: item['dose'] as String,
-                      form: item['form'] as String,
-                      schedule: item['schedule'] as String,
-                      rule: item['rule'] as String,
-                      note: item['note'] as String,
-                      doctor: item['doctor'] as String,
-                      date: item['date'] as String,
-                      isMine: item['isMine'] as bool,
-                      isConnected: widget.isConnected,
+        if (activePrescriptions.isEmpty)
+          _emptyCard('Belum ada resep aktif')
+        else
+          ...activePrescriptions.map((item) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: _PrescriptionCard(
+                medicine: item['medication_name']?.toString() ?? '-',
+                dose: item['dosage']?.toString() ?? '-',
+                form: item['form']?.toString() ?? '-',
+                schedule: _buildScheduleText(item),
+                rule: item['meal_rule']?.toString() ?? '-',
+                note: item['notes']?.toString() ?? '-',
+                doctor: item['doctor_name']?.toString() ?? '-',
+                date: _formatDate(item['valid_from']),
+                isMine:
+                    item['is_mine'] == true ||
+                    item['is_mine'] == 1 ||
+                    item['is_mine']?.toString() == '1',
+                onTap: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => DoctorPrescriptionDetailPage(
+                        prescription: item,
+                        isConnected: widget.isConnected,
+                      ),
                     ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
+                  );
+
+                  if (result == true) {
+                    await _loadPrescriptions();
+                  }
+                },
+              ),
+            );
+          }),
       ],
     );
   }
@@ -199,305 +221,107 @@ class _DoctorPrescriptionPageState extends State<DoctorPrescriptionPage> {
           ),
         ),
         const SizedBox(height: 14),
-        ...historyPrescriptions.map(
-          (item) => Padding(
-            padding: const EdgeInsets.only(bottom: 14),
-            child: _PrescriptionHistoryCard(
-              medicine: item['medicine'] as String,
-              dose: item['dose'] as String,
-              form: item['form'] as String,
-              schedule: item['schedule'] as String,
-              rule: item['rule'] as String,
-              doctor: item['doctor'] as String,
-              startDate: item['startDate'] as String,
-              endDate: item['endDate'] as String,
-              reason: item['reason'] as String,
-            ),
-          ),
-        ),
+        if (historyPrescriptions.isEmpty)
+          _emptyCard('Belum ada riwayat resep')
+        else
+          ...historyPrescriptions.map((item) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: _PrescriptionHistoryCard(
+                medicine: item['medication_name']?.toString() ?? '-',
+                dose: item['dosage']?.toString() ?? '-',
+                form: item['form']?.toString() ?? '-',
+                schedule: _buildScheduleText(item),
+                rule: item['meal_rule']?.toString() ?? '-',
+                doctor: item['doctor_name']?.toString() ?? '-',
+                startDate: _formatDate(item['valid_from']),
+                endDate: _formatDate(item['valid_until']),
+                status: item['status']?.toString() ?? 'Selesai',
+                reason:
+                    item['reason']?.toString() ??
+                    item['stop_reason']?.toString() ??
+                    'Tidak aktif',
+              ),
+            );
+          }),
       ],
     );
   }
 
-  void _showPrescriptionForm(BuildContext context, {bool editMode = false}) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
-          ),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
-            ),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 42,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: AppColors.light1,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    editMode ? 'Ubah Obat' : 'Tambah Obat',
-                    style: const TextStyle(
-                      color: AppColors.primaryBlue,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _label('Nama Obat*'),
-                  _input('Contoh: Metformin'),
-                  const SizedBox(height: 12),
-                  _label('Dosis*'),
-                  _input('Contoh: 850 mg'),
-                  const SizedBox(height: 12),
-                  _label('Bentuk Sediaan*'),
-                  _input('Contoh: Tablet'),
-                  const SizedBox(height: 12),
-                  _label('Indikasi'),
-                  _input('Contoh: Mengontrol kadar glukosa darah'),
-                  const SizedBox(height: 12),
-                  _label('Jadwal Minum*'),
-                  Row(
-                    children: [
-                      Expanded(child: _scheduleBox('Pagi')),
-                      const SizedBox(width: 8),
-                      Expanded(child: _scheduleBox('Siang')),
-                      const SizedBox(width: 8),
-                      Expanded(child: _scheduleBox('Malam')),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  _label('Aturan Minum'),
-                  _input('Contoh: Sesudah makan'),
-                  const SizedBox(height: 12),
-                  _label('Catatan untuk pasien'),
-                  _input('Contoh: Minum rutin sesuai jadwal', maxLines: 3),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 46,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(sheetContext);
-                        _showSuccessSheet(
-                          context,
-                          editMode
-                              ? 'Obat berhasil diperbarui'
-                              : 'Obat berhasil ditambahkan ke resep',
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryBlue,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                      ),
-                      child: Text(
-                        editMode ? 'Simpan Perubahan' : 'Simpan ke Resep',
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _label(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 7),
+  Widget _emptyCard(String text) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.light1),
+      ),
       child: Text(
         text,
-        style: const TextStyle(
-          color: AppColors.primaryBlue,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  Widget _input(String hint, {int maxLines = 1}) {
-    return TextField(
-      maxLines: maxLines,
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.dark3, fontSize: 12),
-        filled: true,
-        fillColor: AppColors.white,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 13,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: const BorderSide(color: AppColors.light1),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: const BorderSide(color: AppColors.primaryBlue),
-        ),
-      ),
-    );
-  }
-
-  Widget _scheduleBox(String title) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.veryLightBlue,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.lightBlue),
-      ),
-      child: Text(
-        title,
         textAlign: TextAlign.center,
-        style: const TextStyle(
-          color: AppColors.primaryBlue,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
+        style: const TextStyle(color: AppColors.dark2, fontSize: 12),
       ),
     );
   }
 
-  // ignore: unused_element
-  void _showStopConfirmation(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircleAvatar(
-                radius: 36,
-                backgroundColor: AppColors.lightRed,
-                child: Icon(Icons.block, color: AppColors.red, size: 36),
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'Hentikan obat ini?',
-                style: TextStyle(
-                  color: AppColors.primaryBlue,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Obat tidak dihapus, tetapi statusnya menjadi tidak berlaku dan tersimpan sebagai riwayat.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.dark2, fontSize: 13),
-              ),
-              const SizedBox(height: 22),
-              SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(sheetContext);
-                    _showSuccessSheet(context, 'Obat berhasil dihentikan');
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.red,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                  ),
-                  child: const Text('Ya, Hentikan'),
-                ),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(sheetContext),
-                child: const Text(
-                  'Batal',
-                  style: TextStyle(color: AppColors.primaryBlue),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+
+
+
+
+
+
+
+  String _buildScheduleText(Map<String, dynamic> prescription) {
+    final schedules = List<Map<String, dynamic>>.from(
+      prescription['schedules'] ?? [],
     );
+
+    if (schedules.isEmpty) return '-';
+
+    return schedules
+        .map((item) {
+          final session = item['session_name']?.toString() ?? '-';
+          final dose = item['dose_per_session']?.toString() ?? '';
+          final time = _normalizeTime(
+            item['reminder_time'] ?? item['default_reminder_time'],
+          );
+
+          if (dose.isEmpty) return '$session $time';
+          return '$session ($dose, $time)';
+        })
+        .join(' • ');
   }
 
-  void _showSuccessSheet(BuildContext context, String message) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircleAvatar(
-                radius: 36,
-                backgroundColor: Color(0xFFEAFBF3),
-                child: Icon(Icons.check, color: Color(0xFF10C878), size: 36),
-              ),
-              const SizedBox(height: 18),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppColors.primaryBlue,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Pasien dan keluarga akan menerima notifikasi pembaruan resep.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.dark2, fontSize: 13),
-              ),
-              const SizedBox(height: 22),
-              SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(sheetContext),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryBlue,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                  ),
-                  child: const Text('Selesai'),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+  String _formatDate(dynamic value) {
+    if (value == null) return '-';
+
+    final date = DateTime.tryParse(value.toString());
+    if (date == null) return value.toString();
+
+    return '${date.day.toString().padLeft(2, '0')}/'
+        '${date.month.toString().padLeft(2, '0')}/'
+        '${date.year}';
+  }
+
+  String _normalizeTime(dynamic value) {
+    if (value == null) return '07:00';
+
+    final text = value.toString();
+    if (text.isEmpty || text == '-') return '07:00';
+
+    if (text.length >= 5) return text.substring(0, 5);
+
+    return text;
+  }
+
+    void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: AppColors.red,
+        behavior: SnackBarBehavior.floating,
+        content: Text(message),
+      ),
     );
   }
 }
@@ -599,7 +423,7 @@ class _PrescriptionCard extends StatelessWidget {
           ),
           Expanded(
             child: Text(
-              value,
+              value.isEmpty ? '-' : value,
               style: const TextStyle(color: AppColors.dark1, fontSize: 12),
             ),
           ),
@@ -651,6 +475,7 @@ class _PrescriptionHistoryCard extends StatelessWidget {
   final String doctor;
   final String startDate;
   final String endDate;
+  final String status;
   final String reason;
 
   const _PrescriptionHistoryCard({
@@ -662,6 +487,7 @@ class _PrescriptionHistoryCard extends StatelessWidget {
     required this.doctor,
     required this.startDate,
     required this.endDate,
+    required this.status,
     required this.reason,
   });
 
@@ -695,7 +521,7 @@ class _PrescriptionHistoryCard extends StatelessWidget {
                   ),
                 ),
               ),
-              _inactiveBadge(),
+              _inactiveBadge(status),
             ],
           ),
           const SizedBox(height: 12),
@@ -732,7 +558,7 @@ class _PrescriptionHistoryCard extends StatelessWidget {
           ),
           Expanded(
             child: Text(
-              value,
+              value.isEmpty ? '-' : value,
               style: const TextStyle(color: AppColors.dark1, fontSize: 12),
             ),
           ),
@@ -741,7 +567,7 @@ class _PrescriptionHistoryCard extends StatelessWidget {
     );
   }
 
-  Widget _inactiveBadge() {
+  Widget _inactiveBadge(String status) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -749,9 +575,9 @@ class _PrescriptionHistoryCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.red.withValues(alpha: 0.25)),
       ),
-      child: const Text(
-        'Tidak Berlaku',
-        style: TextStyle(
+      child: Text(
+        status,
+        style: const TextStyle(
           color: AppColors.red,
           fontSize: 9,
           fontWeight: FontWeight.w600,

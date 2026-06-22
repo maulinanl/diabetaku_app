@@ -176,10 +176,13 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
 
     final type = _type(item);
     final refType = item['reference_type']?.toString().toLowerCase() ?? '';
+    final title = _title(item).toLowerCase();
+    final desc = _desc(item).toLowerCase();
 
-    if (type.contains('recommendation') ||
-        type.contains('rekomendasi') ||
-        refType.contains('recommendation')) {
+    final routeKey = '$type $refType $title $desc';
+
+    if (routeKey.contains('recommendation') ||
+        routeKey.contains('rekomendasi')) {
       await Navigator.push(
         context,
         MaterialPageRoute(
@@ -196,16 +199,45 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
           ),
         ),
       );
-    } else if (type.contains('validation') ||
-        type.contains('validasi') ||
-        refType.contains('validation')) {
+    } else if (routeKey.contains('validation') ||
+        routeKey.contains('validasi')) {
       await Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const PatientValidationPage()),
       );
-    } else if (type.contains('doctor') ||
-        type.contains('dokter') ||
-        refType.contains('doctor')) {
+    } else if (routeKey.contains('rejected') ||
+        routeKey.contains('ditolak') ||
+        routeKey.contains('tolak')) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => DoctorConnectionRejectedDetailPage(
+            name: item['doctor_name']?.toString() ?? 'Dokter',
+            info: item['info']?.toString() ?? '-',
+            date: _time(item),
+            message: _desc(item),
+          ),
+        ),
+      );
+    } else if (routeKey.contains('disconnect') ||
+        routeKey.contains('diputus') ||
+        routeKey.contains('terputus')) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => DoctorDisconnectedDetailPage(
+            doctorId: int.tryParse(item['doctor_id']?.toString() ?? '') ?? 0,
+            initial: item['initial']?.toString() ?? 'D',
+            name: item['doctor_name']?.toString() ?? 'Dokter',
+            info: item['info']?.toString() ?? '-',
+            status: item['status']?.toString() ?? 'Tidak Terhubung',
+            date: _time(item),
+          ),
+        ),
+      );
+    } else if (routeKey.contains('accepted') ||
+        routeKey.contains('diterima') ||
+        routeKey.contains('terhubung')) {
       await Navigator.push(
         context,
         MaterialPageRoute(
@@ -219,9 +251,7 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
           ),
         ),
       );
-    } else if (type.contains('family') ||
-        type.contains('keluarga') ||
-        refType.contains('family')) {
+    } else if (routeKey.contains('family') || routeKey.contains('keluarga')) {
       await Navigator.push(
         context,
         MaterialPageRoute(
@@ -237,34 +267,6 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
             date: _time(item),
             onAccept: () => Navigator.pop(context),
             onReject: () => Navigator.pop(context),
-          ),
-        ),
-      );
-    } else if (type.contains('doctor_connection')) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => DoctorConnectionAcceptedDetailPage(
-            doctorId: int.tryParse(item['doctor_id']?.toString() ?? '') ?? 0,
-            initial: item['initial']?.toString() ?? 'D',
-            name: item['doctor_name']?.toString() ?? 'Dokter',
-            info: item['info']?.toString() ?? '-',
-            status: item['status']?.toString() ?? 'Terhubung',
-            date: _time(item),
-          ),
-        ),
-      );
-    } else if (type.contains('disconnect')) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => DoctorDisconnectedDetailPage(
-            doctorId: int.tryParse(item['doctor_id']?.toString() ?? '') ?? 0,
-            initial: item['initial']?.toString() ?? 'D',
-            name: item['doctor_name']?.toString() ?? 'Dokter',
-            info: item['info']?.toString() ?? '-',
-            status: item['status']?.toString() ?? 'Tidak Terhubung',
-            date: _time(item),
           ),
         ),
       );
@@ -706,6 +708,44 @@ class DoctorConnectionAcceptedDetailPage extends StatelessWidget {
                 ],
               ),
             ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class DoctorConnectionRejectedDetailPage extends StatelessWidget {
+  final String name;
+  final String info;
+  final String date;
+  final String message;
+
+  const DoctorConnectionRejectedDetailPage({
+    super.key,
+    required this.name,
+    required this.info,
+    required this.date,
+    required this.message,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _NotificationDetailScaffold(
+      title: 'Koneksi Dokter Ditolak',
+      icon: Icons.cancel_outlined,
+      headerText: 'Permintaan koneksi ditolak\n$name\n$date',
+      children: [
+        _whiteCard(
+          title: 'Status Permintaan',
+          children: [
+            _InfoRow(label: 'Nama Dokter', value: name),
+            _InfoRow(
+              label: 'Spesialisasi',
+              value: info == '-' ? '-' : info.split('•').first.trim(),
+            ),
+            const _InfoRow(label: 'Status', value: 'Ditolak'),
+            _InfoRow(label: 'Tanggal', value: date),
           ],
         ),
       ],

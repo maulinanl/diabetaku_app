@@ -15,6 +15,8 @@ class PatientHistoryPage extends StatefulWidget {
 class _PatientHistoryPageState extends State<PatientHistoryPage> {
   int mainTab = 0;
   int healthFilter = 0;
+  int? selectedDoctorId;
+
   DateTimeRange? selectedRange;
 
   bool isLoading = true;
@@ -22,6 +24,7 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
 
   List<Map<String, dynamic>> healthHistories = [];
   List<Map<String, String>> recommendationHistories = [];
+  List<Map<String, dynamic>> connectedDoctors = [];
 
   final healthFilters = const [
     'Semua',
@@ -52,16 +55,22 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
         throw Exception('Patient ID tidak ditemukan. Coba login ulang.');
       }
 
-      final healthData = await ApiService.getPatientHealthHistory(patientId);
-      final recommendations = await ApiService.getPatientRecommendations(
-        patientId,
-      );
+      final results = await Future.wait([
+        ApiService.getPatientHealthHistory(patientId),
+        ApiService.getPatientRecommendations(patientId),
+        ApiService.getConnectedDoctors(patientId),
+      ]);
 
       if (!mounted) return;
 
       setState(() {
-        healthHistories = _mapHealthHistories(healthData);
-        recommendationHistories = _mapRecommendationHistories(recommendations);
+        healthHistories = _mapHealthHistories(
+          results[0] as Map<String, dynamic>,
+        );
+        recommendationHistories = _mapRecommendationHistories(
+          results[1] as List<Map<String, dynamic>>,
+        );
+        connectedDoctors = results[2] as List<Map<String, dynamic>>;
         isLoading = false;
       });
     } catch (e) {
@@ -113,12 +122,10 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
       });
     }
 
-    for (final item in List<Map<String, dynamic>>.from(
-      data['activity'] ?? [],
-    )) {
+    for (final item in List<Map<String, dynamic>>.from(data['activity'] ?? [])) {
       result.add({
         'type': 'Aktivitas',
-        'title': 'Aktivitas Fisik',
+        'title': item['activity_name']?.toString() ?? 'Aktivitas Fisik',
         'time': _formatDateTime(item['activity_date']),
         'date_raw': item['activity_date'],
         'value': '${item['duration_minutes'] ?? '-'}',
@@ -135,7 +142,7 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
     for (final item in List<Map<String, dynamic>>.from(data['meal'] ?? [])) {
       result.add({
         'type': 'Makan',
-        'title': 'Pola Makan',
+        'title': item['meal_type_name']?.toString() ?? 'Pola Makan',
         'time': _formatDateTime(item['meal_date']),
         'date_raw': item['meal_date'],
         'value': '${item['carbohydrate_estimate'] ?? '-'}',
@@ -193,6 +200,7 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
       return {
         'initial': initial,
         'doctor': doctorName,
+        'doctor_id': item['doctor_id']?.toString() ?? '',
         'date': _formatDateTime(item['created_at']),
         'status': item['category']?.toString() ?? 'Rekomendasi',
         'description': item['recommendation_text']?.toString() ?? '-',
@@ -228,6 +236,27 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
     }).toList();
   }
 
+  List<Map<String, String>> get _filteredRecommendations {
+    if (selectedDoctorId == null) return recommendationHistories;
+
+    return recommendationHistories.where((item) {
+      return item['doctor_id'] == selectedDoctorId.toString();
+    }).toList();
+  }
+
+  String _selectedDoctorName() {
+    if (selectedDoctorId == null) return 'Semua Dokter';
+
+    final doctor = connectedDoctors.firstWhere(
+      (item) => item['doctor_id']?.toString() == selectedDoctorId.toString(),
+      orElse: () => {},
+    );
+
+    return doctor['full_name']?.toString() ??
+        doctor['doctor_name']?.toString() ??
+        'Dokter';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -246,7 +275,7 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
                     ? _errorState()
                     : mainTab == 0
                     ? _healthContent(_filteredHealth)
-                    : _recommendationContent(recommendationHistories),
+                    : _recommendationContent(_filteredRecommendations),
               ),
             ),
           ],
@@ -447,27 +476,34 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Container(
-                  height: 44,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: AppColors.white,
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: AppColors.light1),
-                  ),
-                  child: const Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Semua Dokter',
-                          style: TextStyle(
-                            color: AppColors.dark3,
-                            fontSize: 13,
+                child: GestureDetector(
+                  onTap: _showDoctorFilterSheet,
+                  child: Container(
+                    height: 44,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.white,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: AppColors.light1),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _selectedDoctorName(),
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.dark3,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
-                      ),
-                      Icon(Icons.keyboard_arrow_down, color: AppColors.dark2),
-                    ],
+                        const Icon(
+                          Icons.keyboard_arrow_down,
+                          color: AppColors.dark2,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -498,11 +534,11 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
                             );
                           },
                           child: _RecommendationHistoryCard(
-                            initial: item['initial']!,
-                            doctor: item['doctor']!,
-                            date: item['date']!,
-                            status: item['status']!,
-                            description: item['description']!,
+                            initial: item['initial'] ?? 'D',
+                            doctor: item['doctor'] ?? 'Dokter',
+                            date: item['date'] ?? '-',
+                            status: item['status'] ?? 'Rekomendasi',
+                            description: item['description'] ?? '-',
                           ),
                         ),
                       );
@@ -511,6 +547,126 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
                 ),
         ),
       ],
+    );
+  }
+
+  void _showDoctorFilterSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.light1,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  'Pilih Dokter',
+                  style: TextStyle(
+                    color: AppColors.primaryBlue,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _doctorOptionTile(
+                  title: 'Semua Dokter',
+                  selected: selectedDoctorId == null,
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    setState(() => selectedDoctorId = null);
+                  },
+                ),
+                if (connectedDoctors.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8, bottom: 8),
+                    child: Text(
+                      'Belum ada dokter terhubung',
+                      style: TextStyle(color: AppColors.dark2, fontSize: 13),
+                    ),
+                  )
+                else
+                  ...connectedDoctors.map((doctor) {
+                    final doctorId = int.tryParse(
+                      doctor['doctor_id']?.toString() ?? '',
+                    );
+
+                    final name = doctor['full_name']?.toString() ??
+                        doctor['doctor_name']?.toString() ??
+                        'Dokter';
+
+                    return _doctorOptionTile(
+                      title: name,
+                      selected: selectedDoctorId == doctorId,
+                      onTap: () {
+                        Navigator.pop(sheetContext);
+                        setState(() => selectedDoctorId = doctorId);
+                      },
+                    );
+                  }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _doctorOptionTile({
+    required String title,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.veryLightBlue : AppColors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected ? AppColors.primaryBlue : AppColors.light1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  color: selected ? AppColors.primaryBlue : AppColors.dark1,
+                  fontSize: 14,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ),
+            Icon(
+              selected
+                  ? Icons.radio_button_checked
+                  : Icons.radio_button_unchecked,
+              color: selected ? AppColors.primaryBlue : AppColors.dark4,
+              size: 20,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -764,10 +920,7 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: const TextStyle(color: AppColors.dark2, fontSize: 10),
-          ),
+          Text(label, style: const TextStyle(color: AppColors.dark2, fontSize: 10)),
           const SizedBox(height: 3),
           Text(
             value,

@@ -25,6 +25,16 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
   String bloodType = 'O';
   String rhesus = 'Positif (+)';
 
+  late String originalName;
+  late String originalPhone;
+  late String originalBirth;
+  late String originalDiagnosis;
+  late String originalHeight;
+  late String originalGender;
+  late String originalDmType;
+  late String originalBloodType;
+  late String originalRhesus;
+
   bool isSaving = false;
 
   @override
@@ -44,6 +54,40 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
     dmType = profile['diabetes_type']?.toString() ?? 'Tipe 2';
     bloodType = profile['blood_type']?.toString() ?? 'O';
     rhesus = profile['rhesus_type']?.toString() ?? 'Positif (+)';
+
+    originalName = nameCtr.text.trim();
+    originalPhone = phoneCtr.text.trim();
+    originalBirth = birthCtr.text.trim();
+    originalDiagnosis = diagnosisCtr.text.trim();
+    originalHeight = heightCtr.text.trim();
+    originalGender = gender;
+    originalDmType = dmType;
+    originalBloodType = bloodType;
+    originalRhesus = rhesus;
+
+    for (final controller in [
+      nameCtr,
+      phoneCtr,
+      birthCtr,
+      diagnosisCtr,
+      heightCtr,
+    ]) {
+      controller.addListener(() {
+        if (mounted) setState(() {});
+      });
+    }
+  }
+
+  bool get hasChanged {
+    return nameCtr.text.trim() != originalName ||
+        phoneCtr.text.trim() != originalPhone ||
+        birthCtr.text.trim() != originalBirth ||
+        diagnosisCtr.text.trim() != originalDiagnosis ||
+        heightCtr.text.trim() != originalHeight ||
+        gender != originalGender ||
+        dmType != originalDmType ||
+        bloodType != originalBloodType ||
+        rhesus != originalRhesus;
   }
 
   int get bloodTypeId {
@@ -114,6 +158,8 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
   Future<void> _saveProfile() async {
     FocusScope.of(context).unfocus();
 
+    if (!hasChanged) return;
+
     setState(() => isSaving = true);
 
     try {
@@ -138,23 +184,142 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
       );
 
       if (!mounted) return;
-
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
-
       _showStyledSnackBar(
         message: e.toString().replaceFirst('Exception: ', ''),
       );
     } finally {
-      if (mounted) {
-        setState(() => isSaving = false);
-      }
+      if (mounted) setState(() => isSaving = false);
     }
+  }
+
+  void _showOptionSheet({
+    required String title,
+    required List<String> items,
+    required String selectedValue,
+    required ValueChanged<String> onSelected,
+  }) {
+    if (isSaving) return;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.light1,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: AppColors.primaryBlue,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ...items.map((item) {
+                  final selected = item == selectedValue;
+
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      setState(() => onSelected(item));
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? AppColors.veryLightBlue
+                            : AppColors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: selected
+                              ? AppColors.primaryBlue
+                              : AppColors.light1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              item,
+                              style: TextStyle(
+                                color: selected
+                                    ? AppColors.primaryBlue
+                                    : AppColors.dark1,
+                                fontSize: 14,
+                                fontWeight: selected
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          Icon(
+                            selected
+                                ? Icons.radio_button_checked
+                                : Icons.radio_button_unchecked,
+                            color: selected
+                                ? AppColors.primaryBlue
+                                : AppColors.dark4,
+                            size: 20,
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+                const SizedBox(height: 4),
+                SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(sheetContext),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primaryBlue,
+                      side: const BorderSide(color: AppColors.light1),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text('Batal'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final canSave = hasChanged && !isSaving;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -193,21 +358,28 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
                     ),
 
                     _label('Jenis Kelamin'),
-                    _dropdown(
+                    _selectInput(
                       value: gender,
-                      items: const ['Laki-laki', 'Perempuan'],
-                      onChanged: (v) => setState(() => gender = v!),
+                      onTap: () => _showOptionSheet(
+                        title: 'Pilih Jenis Kelamin',
+                        items: const ['Laki-laki', 'Perempuan'],
+                        selectedValue: gender,
+                        onSelected: (value) => gender = value,
+                      ),
                     ),
 
                     const SizedBox(height: 18),
-
                     _sectionTitle(Icons.medical_services, 'Data Medis'),
 
                     _label('Tipe DM'),
-                    _dropdown(
+                    _selectInput(
                       value: dmType,
-                      items: const ['Tipe 1', 'Tipe 2'],
-                      onChanged: (v) => setState(() => dmType = v!),
+                      onTap: () => _showOptionSheet(
+                        title: 'Pilih Tipe DM',
+                        items: const ['Tipe 1', 'Tipe 2'],
+                        selectedValue: dmType,
+                        onSelected: (value) => dmType = value,
+                      ),
                     ),
 
                     _label('Tanggal Diagnosis'),
@@ -223,18 +395,26 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
                     Row(
                       children: [
                         Expanded(
-                          child: _dropdown(
+                          child: _selectInput(
                             value: bloodType,
-                            items: const ['A', 'B', 'AB', 'O'],
-                            onChanged: (v) => setState(() => bloodType = v!),
+                            onTap: () => _showOptionSheet(
+                              title: 'Pilih Golongan Darah',
+                              items: const ['A', 'B', 'AB', 'O'],
+                              selectedValue: bloodType,
+                              onSelected: (value) => bloodType = value,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: _dropdown(
+                          child: _selectInput(
                             value: rhesus,
-                            items: const ['Positif (+)', 'Negatif (-)'],
-                            onChanged: (v) => setState(() => rhesus = v!),
+                            onTap: () => _showOptionSheet(
+                              title: 'Pilih Rhesus',
+                              items: const ['Positif (+)', 'Negatif (-)'],
+                              selectedValue: rhesus,
+                              onSelected: (value) => rhesus = value,
+                            ),
                           ),
                         ),
                       ],
@@ -249,11 +429,12 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
                       width: double.infinity,
                       height: 48,
                       child: ElevatedButton(
-                        onPressed: isSaving ? null : _saveProfile,
+                        onPressed: canSave ? _saveProfile : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryBlue,
                           foregroundColor: Colors.white,
                           disabledBackgroundColor: const Color(0xFFAFCBEA),
+                          disabledForegroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(6),
@@ -365,7 +546,7 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
   }) {
     return TextFormField(
       controller: controller,
-      enabled: enabled,
+      enabled: enabled && !isSaving,
       keyboardType: keyboardType,
       decoration: _inputDecoration(),
     );
@@ -377,8 +558,9 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
   }) {
     return TextFormField(
       controller: controller,
+      enabled: !isSaving,
       readOnly: true,
-      onTap: onTap,
+      onTap: isSaving ? null : onTap,
       decoration: _inputDecoration(
         suffixIcon: const Icon(
           Icons.calendar_today_outlined,
@@ -389,27 +571,25 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
     );
   }
 
-  Widget _dropdown({
+  Widget _selectInput({
     required String value,
-    required List<String> items,
-    required ValueChanged<String?> onChanged,
+    required VoidCallback onTap,
   }) {
-    return DropdownButtonFormField<String>(
-      value: items.contains(value) ? value : items.first,
-      items: items
-          .map(
-            (item) => DropdownMenuItem(
-              value: item,
-              child: Text(item, style: const TextStyle(fontSize: 13)),
+    return InkWell(
+      onTap: isSaving ? null : onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: IgnorePointer(
+        child: TextFormField(
+          enabled: !isSaving,
+          controller: TextEditingController(text: value),
+          decoration: _inputDecoration(
+            suffixIcon: const Icon(
+              Icons.keyboard_arrow_down_rounded,
+              color: AppColors.primaryBlue,
             ),
-          )
-          .toList(),
-      onChanged: onChanged,
-      icon: const Icon(
-        Icons.keyboard_arrow_down_rounded,
-        color: AppColors.primaryBlue,
+          ),
+        ),
       ),
-      decoration: _inputDecoration(),
     );
   }
 

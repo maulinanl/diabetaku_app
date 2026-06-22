@@ -5,6 +5,7 @@ import 'patient_threshold_page.dart';
 import 'clinical_note_form_page.dart';
 import 'doctor_prescription_page.dart';
 import '../../../data/services/api_service.dart';
+import 'doctor_patient_health_history_page.dart';
 
 class PatientDetailPage extends StatefulWidget {
   final int patientId;
@@ -455,7 +456,15 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
         Colors.orange,
       ],
       ['BMI', bmi, '', bmi == '-' ? 'Belum ada' : 'Tercatat', Colors.blue],
-      ['Kepatuhan Obat', '-', '', 'Belum ada', const Color(0xFF10C878)],
+      [
+        'Kepatuhan Obat',
+        medicationRecords.isEmpty
+            ? '-'
+            : '${_medicationAdherencePercent().toStringAsFixed(0)}',
+        medicationRecords.isEmpty ? '' : '%',
+        _latestMedicationStatus(),
+        const Color(0xFF10C878),
+      ],
     ];
 
     return GridView.builder(
@@ -780,7 +789,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
     } else if (selectedPeriod == 1) {
       startDate = now.subtract(const Duration(days: 30));
     } else if (selectedPeriod == 2) {
-      startDate = DateTime(now.year, now.month - 3, now.day);
+      startDate = now.subtract(const Duration(days: 90));
     } else {
       startDate =
           selectedDateRange?.start ?? now.subtract(const Duration(days: 7));
@@ -805,17 +814,56 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
   }) {
     if (records.isEmpty) return const [FlSpot(0, 0), FlSpot(1, 0)];
 
-    final sorted = [...records]
-      ..sort((a, b) {
-        final dateA = _parseDate(a[dateKey]) ?? DateTime(2000);
-        final dateB = _parseDate(b[dateKey]) ?? DateTime(2000);
-        return dateA.compareTo(dateB);
-      });
+    final Map<String, List<double>> grouped = {};
 
-    return List.generate(sorted.length, (index) {
-      final value = double.tryParse(sorted[index][valueKey].toString()) ?? 0;
-      return FlSpot(index.toDouble(), value);
+    for (final item in records) {
+      final date = _parseDate(item[dateKey]);
+      final value = double.tryParse(item[valueKey]?.toString() ?? '');
+
+      if (date == null || value == null) continue;
+
+      final key =
+          '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+      grouped.putIfAbsent(key, () => []);
+      grouped[key]!.add(value);
+    }
+
+    final sortedKeys = grouped.keys.toList()..sort();
+
+    if (sortedKeys.isEmpty) return const [FlSpot(0, 0), FlSpot(1, 0)];
+
+    return List.generate(sortedKeys.length, (index) {
+      final values = grouped[sortedKeys[index]]!;
+      final average = values.reduce((a, b) => a + b) / values.length;
+
+      return FlSpot(index.toDouble(), average);
     });
+  }
+
+  String _activeHistoryCategory() {
+    if (selectedTab == 0) return 'Glukosa';
+    if (selectedTab == 1) return 'Fisiologis';
+
+    if (selectedTab == 2) {
+      if (selectedBehaviorTab == 0) return 'Aktivitas';
+      if (selectedBehaviorTab == 1) return 'Makan';
+      return 'Obat';
+    }
+
+    return 'Glukosa';
+  }
+
+  void _openFullHistory() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DoctorPatientHealthHistoryPage(
+          patientId: widget.patientId,
+          initialCategory: _activeHistoryCategory(),
+        ),
+      ),
+    );
   }
 
   List<List<String>> _latestFiveHistory({
@@ -843,7 +891,10 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
 
   Widget _buildDynamicContent() {
     if (selectedTab == 3) {
-      return DoctorPrescriptionPage(isConnected: widget.isConnected);
+      return DoctorPrescriptionPage(
+        patientId: widget.patientId,
+        isConnected: widget.isConnected,
+      );
     }
 
     if (selectedTab == 0) {
@@ -883,12 +934,24 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
         'measured_at',
       );
 
-      final history = filteredPhysiological.take(5).map((item) {
+      final sortedPhysiological = [...filteredPhysiological]
+        ..sort((a, b) {
+          final dateA = _parseDate(a['measured_at']) ?? DateTime(2000);
+          final dateB = _parseDate(b['measured_at']) ?? DateTime(2000);
+          return dateB.compareTo(dateA);
+        });
+
+      final history = sortedPhysiological.take(5).map((item) {
         final date = item['measured_at']?.toString() ?? '-';
         final systolic = item['systolic']?.toString() ?? '-';
         final diastolic = item['diastolic']?.toString() ?? '-';
+        final bmi = item['bmi']?.toString() ?? '-';
 
-        return ['Tekanan Darah', date, '$systolic/$diastolic mmHg'];
+        return [
+          'Data Fisiologis',
+          date,
+          '$systolic/$diastolic mmHg • BMI $bmi',
+        ];
       }).toList();
 
       return _buildTrendAndHistory(
@@ -914,19 +977,32 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
   List<FlSpot> _buildMedicationSpots(List<Map<String, dynamic>> records) {
     if (records.isEmpty) return const [FlSpot(0, 0), FlSpot(1, 0)];
 
-    final sorted = [...records]
-      ..sort((a, b) {
-        final dateA = _parseDate(a['log_date']) ?? DateTime(2000);
-        final dateB = _parseDate(b['log_date']) ?? DateTime(2000);
-        return dateA.compareTo(dateB);
-      });
+    final Map<String, List<Map<String, dynamic>>> grouped = {};
 
-    return List.generate(sorted.length, (index) {
-      final status = sorted[index]['status']?.toString();
+    for (final item in records) {
+      final date = _parseDate(item['log_date']);
+      if (date == null) continue;
 
-      final value = status == 'Diminum' ? 1.0 : 0.0;
+      final key =
+          '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
-      return FlSpot(index.toDouble(), value);
+      grouped.putIfAbsent(key, () => []);
+      grouped[key]!.add(item);
+    }
+
+    final sortedKeys = grouped.keys.toList()..sort();
+
+    if (sortedKeys.isEmpty) return const [FlSpot(0, 0), FlSpot(1, 0)];
+
+    return List.generate(sortedKeys.length, (index) {
+      final items = grouped[sortedKeys[index]]!;
+      final taken = items.where((item) {
+        return item['status']?.toString() == 'Diminum';
+      }).length;
+
+      final percent = (taken / items.length) * 100;
+
+      return FlSpot(index.toDouble(), percent);
     });
   }
 
@@ -1011,11 +1087,12 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
 
     final medicationHistory = filteredMedication.take(5).map((item) {
       final drugName = item['medication_name']?.toString() ?? 'Obat';
-      final dosage = item['dosage']?.toString() ?? '';
+      final session = item['session_name']?.toString() ?? '-';
+      final dose = item['dose_per_session']?.toString() ?? '-';
       final date = item['log_date']?.toString() ?? '-';
       final status = item['status']?.toString() ?? '-';
 
-      return ['$drugName $dosage', date, status];
+      return ['$drugName • $session', date, '$status • $dose'];
     }).toList();
 
     return Column(
@@ -1025,7 +1102,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
         const SizedBox(height: 18),
         _buildTrendAndHistory(
           title: 'Tren Kepatuhan Obat',
-          unitLabel: 'status',
+          unitLabel: '%',
           lineColor: AppColors.primaryBlue,
           spots: _buildMedicationSpots(filteredMedication),
           history: medicationHistory.isEmpty
@@ -1036,6 +1113,29 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
         ),
       ],
     );
+  }
+
+  double _medicationAdherencePercent() {
+    if (medicationRecords.isEmpty) return 0;
+
+    final taken = medicationRecords.where((item) {
+      return item['status']?.toString() == 'Diminum';
+    }).length;
+
+    return (taken / medicationRecords.length) * 100;
+  }
+
+  String _latestMedicationStatus() {
+    if (medicationRecords.isEmpty) return 'Belum ada';
+
+    final latest = [...medicationRecords]
+      ..sort((a, b) {
+        final dateA = _parseDate(a['log_date']) ?? DateTime(2000);
+        final dateB = _parseDate(b['log_date']) ?? DateTime(2000);
+        return dateB.compareTo(dateA);
+      });
+
+    return latest.first['status']?.toString() ?? 'Belum ada';
   }
 
   Widget _buildBehaviorTabs() {
@@ -1236,7 +1336,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                             return Padding(
                               padding: const EdgeInsets.only(top: 8),
                               child: Text(
-                                _bottomLabel(value.toInt()),
+                                _bottomLabel(value.toInt(), safeSpots),
                                 style: const TextStyle(
                                   color: AppColors.dark3,
                                   fontSize: 10,
@@ -1363,6 +1463,27 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
             ),
           );
         }),
+        const SizedBox(height: 10),
+
+        SizedBox(
+          width: double.infinity,
+          height: 46,
+          child: ElevatedButton(
+            onPressed: _openFullHistory,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryBlue,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text(
+              'Lihat Semua Riwayat',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -1375,11 +1496,12 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
     return 100;
   }
 
-  String _bottomLabel(int index) {
-    const labels = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+  String _bottomLabel(int index, List<FlSpot> spots) {
+    if (spots.length > 7) {
+      if (index % 2 != 0) return '';
+    }
 
-    if (index < 0 || index >= labels.length) return '';
-    return labels[index];
+    return (index + 1).toString();
   }
 
   Future<void> _pickCustomRange() async {

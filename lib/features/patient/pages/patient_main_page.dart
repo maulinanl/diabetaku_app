@@ -73,14 +73,43 @@ class _PatientHomePageState extends State<PatientHomePage> {
   Map<String, dynamic>? latestRecommendation;
   List<Map<String, dynamic>> notifications = [];
 
-  Map<String, dynamic> get glucose =>
-      dashboardData?['glucose'] as Map<String, dynamic>? ?? {};
+  Map<String, dynamic>? get latestGlucose =>
+      dashboardData?['latest_glucose'] as Map<String, dynamic>?;
 
-  Map<String, dynamic> get bloodPressure =>
-      dashboardData?['blood_pressure'] as Map<String, dynamic>? ?? {};
+  Map<String, dynamic>? get latestPhysiological =>
+      dashboardData?['latest_physiological'] as Map<String, dynamic>?;
 
-  Map<String, dynamic> get weight =>
-      dashboardData?['weight'] as Map<String, dynamic>? ?? {};
+  String get glucoseValue {
+    return latestGlucose?['glucose_value']?.toString() ?? '-';
+  }
+
+  String get glucoseStatus {
+    if (latestGlucose == null) return '-';
+    return 'Tercatat';
+  }
+
+  String get bloodPressureValue {
+    final systolic = latestPhysiological?['systolic']?.toString();
+    final diastolic = latestPhysiological?['diastolic']?.toString();
+
+    if (systolic == null || diastolic == null) return '-';
+
+    return '$systolic/$diastolic';
+  }
+
+  String get bloodPressureStatus {
+    if (latestPhysiological == null) return '-';
+    return 'Tercatat';
+  }
+
+  String get weightValue {
+    return latestPhysiological?['weight_kg']?.toString() ?? '-';
+  }
+
+  String get weightStatus {
+    if (latestPhysiological == null) return '-';
+    return 'Tercatat';
+  }
 
   bool get hasUnreadNotification {
     return notifications.any((n) {
@@ -103,16 +132,6 @@ class _PatientHomePageState extends State<PatientHomePage> {
     return 'Selamat Malam';
   }
 
-  Color getGlucoseColor() {
-    final status = glucose['status']?.toString().toLowerCase();
-
-    if (status == 'normal') {
-      return const Color(0xFF10C878);
-    }
-
-    return AppColors.red;
-  }
-
   List<List<Object>> get dailyChecks {
     final items =
         homeSummary?['daily_checklist']?['items'] as Map<String, dynamic>? ??
@@ -129,15 +148,38 @@ class _PatientHomePageState extends State<PatientHomePage> {
   DateTime currentMonth = DateTime(DateTime.now().year, DateTime.now().month);
   DateTime selectedDate = DateTime.now();
 
-  final Map<String, String> consistencyStatus = {
-    '2025-06-01': 'lengkap',
-    '2025-06-02': 'lengkap',
-    '2025-06-03': 'lengkap',
-    '2025-06-04': 'lengkap',
-    '2025-06-05': 'sebagian',
-    '2025-06-06': 'lengkap',
-    '2025-06-07': 'lengkap',
-  };
+  Map<String, String> get consistencyStatus {
+    final raw =
+        homeSummary?['consistency'] ??
+        homeSummary?['consistency_calendar'] ??
+        homeSummary?['monthly_consistency'] ??
+        {};
+
+    if (raw is Map<String, dynamic>) {
+      return raw.map(
+        (key, value) => MapEntry(key.toString(), value.toString()),
+      );
+    }
+
+    if (raw is List) {
+      final result = <String, String>{};
+
+      for (final item in raw) {
+        if (item is Map) {
+          final date = item['date']?.toString();
+          final status = item['status']?.toString();
+
+          if (date != null && status != null) {
+            result[date] = status;
+          }
+        }
+      }
+
+      return result;
+    }
+
+    return {};
+  }
 
   String _monthName(int month) {
     const names = [
@@ -287,117 +329,125 @@ class _PatientHomePageState extends State<PatientHomePage> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    final topPad = MediaQuery.of(context).padding.top;
+  final topPad = MediaQuery.of(context).padding.top;
 
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.fromLTRB(22, topPad + 24, 22, 22),
-      decoration: const BoxDecoration(
-        color: AppColors.primaryBlue,
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(22),
-          bottomRight: Radius.circular(22),
-        ),
+  return Container(
+    width: double.infinity,
+    padding: EdgeInsets.fromLTRB(22, topPad + 24, 22, 22),
+    decoration: const BoxDecoration(
+      color: AppColors.primaryBlue,
+      borderRadius: BorderRadius.only(
+        bottomLeft: Radius.circular(22),
+        bottomRight: Radius.circular(22),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '$greeting\n$patientName',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    height: 1.35,
-                    fontWeight: FontWeight.w700,
-                  ),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                '$greeting\n$patientName',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  height: 1.35,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const PatientNotificationPage(),
+            ),
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const PatientNotificationPage(),
+                  ),
+                ).then((_) {
+                  _loadData();
+                });
+              },
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                  ).then((_) {
-                    _loadData();
-                  });
-                },
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Icon(
-                        Icons.notifications_none_rounded,
-                        color: AppColors.primaryBlue,
-                      ),
+                    child: const Icon(
+                      Icons.notifications_none_rounded,
+                      color: AppColors.primaryBlue,
                     ),
-                    if (hasUnreadNotification || hasPendingValidation)
-                      Positioned(
-                        top: 9,
-                        right: 9,
-                        child: Container(
-                          width: 9,
-                          height: 9,
-                          decoration: BoxDecoration(
-                            color: AppColors.red,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 1.5),
-                          ),
+                  ),
+                  if (hasUnreadNotification || hasPendingValidation)
+                    Positioned(
+                      top: 9,
+                      right: 9,
+                      child: Container(
+                        width: 9,
+                        height: 9,
+                        decoration: BoxDecoration(
+                          color: AppColors.red,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 1.5),
                         ),
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          Row(
-            children: [
-              Expanded(
-                child: _HealthSummaryCard(
-                  title: 'Glukosa',
-                  value: glucose['value']?.toString() ?? '-',
-                  unit: 'mg/dL',
-                  status: glucose['status']?.toString() ?? '-',
-                  color: getGlucoseColor(),
-                ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 18),
+
+        Row(
+          children: [
+            Expanded(
+              child: _HealthSummaryCard(
+                title: 'Glukosa',
+                value: glucoseValue,
+                unit: 'mg/dL',
+                status: glucoseStatus,
+                color: glucoseValue == '-'
+                    ? AppColors.dark4
+                    : const Color(0xFF10C878),
               ),
-              SizedBox(width: 8),
-              Expanded(
-                child: _HealthSummaryCard(
-                  title: 'Tekanan Darah',
-                  value: bloodPressure['value']?.toString() ?? '-',
-                  unit: 'mmHg',
-                  status: bloodPressure['status']?.toString() ?? '-',
-                  color: Color(0xFF10C878),
-                ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _HealthSummaryCard(
+                title: 'Tekanan Darah',
+                value: bloodPressureValue,
+                unit: 'mmHg',
+                status: bloodPressureStatus,
+                color: bloodPressureValue == '-'
+                    ? AppColors.dark4
+                    : const Color(0xFF10C878),
               ),
-              SizedBox(width: 8),
-              Expanded(
-                child: _HealthSummaryCard(
-                  title: 'Berat Badan',
-                  value: weight['value']?.toString() ?? '-',
-                  unit: 'kg',
-                  status: weight['status']?.toString() ?? '-',
-                  color: Color(0xFFFFC542),
-                ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _HealthSummaryCard(
+                title: 'Berat Badan',
+                value: weightValue,
+                unit: 'kg',
+                status: weightStatus,
+                color: weightValue == '-'
+                    ? AppColors.dark4
+                    : const Color(0xFFFFC542),
               ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _doctorNoteCard() {
     if (latestRecommendation == null) {
@@ -683,21 +733,25 @@ class _PatientHomePageState extends State<PatientHomePage> {
   }
 
   Widget _calendarCard() {
+    final statusMap = consistencyStatus;
+
     final year = currentMonth.year;
     final month = currentMonth.month;
     final totalDays = _daysInMonth(currentMonth);
-    final firstDay = DateTime(year, month, 1);
 
-    // weekday: Senin = 1, Minggu = 7
+    final firstDay = DateTime(year, month, 1);
     final startOffset = firstDay.weekday - 1;
-    final totalCells = startOffset + totalDays;
-    final rowCount = (totalCells / 7).ceil();
-    final cellCount = rowCount * 7;
+
+    final prevMonth = DateTime(year, month - 1);
+    final prevMonthDays = _daysInMonth(prevMonth);
+
+    final totalCells = ((startOffset + totalDays) / 7).ceil() * 7;
 
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
       decoration: _cardDecoration(),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
@@ -706,8 +760,8 @@ class _PatientHomePageState extends State<PatientHomePage> {
                   'Konsistensi — ${_monthName(month)} $year',
                   style: const TextStyle(
                     color: AppColors.dark1,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -717,7 +771,7 @@ class _PatientHomePageState extends State<PatientHomePage> {
                     currentMonth = DateTime(year, month - 1);
                   });
                 },
-                child: _smallArrow(Icons.chevron_left),
+                child: _calendarNavButton(Icons.chevron_left),
               ),
               const SizedBox(width: 10),
               GestureDetector(
@@ -726,13 +780,11 @@ class _PatientHomePageState extends State<PatientHomePage> {
                     currentMonth = DateTime(year, month + 1);
                   });
                 },
-                child: _smallArrow(Icons.chevron_right),
+                child: _calendarNavButton(Icons.chevron_right),
               ),
             ],
           ),
-
           const SizedBox(height: 26),
-
           const Row(
             children: [
               _WeekLabel('Sen'),
@@ -744,107 +796,75 @@ class _PatientHomePageState extends State<PatientHomePage> {
               _WeekLabel('Min'),
             ],
           ),
-
           const SizedBox(height: 18),
-
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: cellCount,
+            itemCount: totalCells,
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 7,
-              mainAxisSpacing: 14,
+              mainAxisSpacing: 18,
               crossAxisSpacing: 0,
-              childAspectRatio: 1,
+              childAspectRatio: 1.15,
             ),
             itemBuilder: (context, index) {
               final dayNumber = index - startOffset + 1;
 
-              if (dayNumber < 1 || dayNumber > totalDays) {
-                return const SizedBox();
+              if (dayNumber < 1) {
+                final prevDay = prevMonthDays + dayNumber;
+                return _calendarTextDay('$prevDay', color: AppColors.dark4);
+              }
+
+              if (dayNumber > totalDays) {
+                final nextDay = dayNumber - totalDays;
+                return _calendarTextDay('$nextDay', color: AppColors.dark4);
               }
 
               final date = DateTime(year, month, dayNumber);
-              final status = consistencyStatus[_dateKey(date)];
+              final key = _dateKey(date);
+              final status = statusMap[key]?.toLowerCase();
 
               final isSelected =
                   date.year == selectedDate.year &&
                   date.month == selectedDate.month &&
                   date.day == selectedDate.day;
 
-              if (status == 'lengkap') {
-                final prevDate = date.subtract(const Duration(days: 1));
-                final nextDate = date.add(const Duration(days: 1));
+              final prevStatus =
+                  statusMap[_dateKey(date.subtract(const Duration(days: 1)))];
 
-                final prevStatus = consistencyStatus[_dateKey(prevDate)];
-                final nextStatus = consistencyStatus[_dateKey(nextDate)];
+              final nextStatus =
+                  statusMap[_dateKey(date.add(const Duration(days: 1)))];
 
-                final connectLeft = prevStatus == 'lengkap';
-                final connectRight = nextStatus == 'lengkap';
-
-                final baseDay = _calendarRangeDay(
+              if (status == 'lengkap' ||
+                  status == 'sebagian' ||
+                  status == 'tidak') {
+                return _calendarStreakDay(
                   text: '$dayNumber',
-                  color: const Color(0xFFEAFBF3),
-                  textColor: AppColors.primaryBlue,
-                  connectLeft: connectLeft,
-                  connectRight: connectRight,
-                );
-
-                if (isSelected) {
-                  return Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      baseDay,
-                      _calendarOutlineDay(text: '$dayNumber'),
-                    ],
-                  );
-                }
-
-                return baseDay;
-              }
-              if (status == 'sebagian') {
-                return _calendarCircle(
-                  text: '$dayNumber',
-                  color: const Color(0xFFFFF4C7),
-                  textColor: AppColors.primaryBlue,
-                );
-              }
-
-              if (status == 'tidak') {
-                return _calendarCircle(
-                  text: '$dayNumber',
-                  color: const Color(0xFFFFF3F3),
-                  textColor: AppColors.red,
+                  status: status!,
+                  selected: isSelected,
+                  connectLeft: prevStatus == status,
+                  connectRight: nextStatus == status,
                 );
               }
 
               if (isSelected) {
-                return _calendarOutlineDay(text: '$dayNumber');
+                return _calendarSelectedDay('$dayNumber');
               }
 
-              return Center(
-                child: Text(
-                  '$dayNumber',
-                  style: const TextStyle(
-                    color: AppColors.primaryBlue,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+              return _calendarTextDay(
+                '$dayNumber',
+                color: AppColors.primaryBlue,
               );
             },
           ),
-
-          const SizedBox(height: 22),
-
+          const SizedBox(height: 24),
           const Row(
-            mainAxisAlignment: MainAxisAlignment.start,
             children: [
-              _Legend(color: Color(0xFFEAFBF3), label: 'Lengkap'),
+              _Legend(color: Color(0xFFEAF7F1), label: 'Lengkap'),
               SizedBox(width: 18),
-              _Legend(color: Color(0xFFFFF4C7), label: 'Sebagian'),
+              _Legend(color: Color(0xFFFFF3BA), label: 'Sebagian'),
               SizedBox(width: 18),
-              _Legend(color: Color(0xFFFFF3F3), label: 'Tidak ada'),
+              _Legend(color: Color(0xFFFFEAEA), label: 'Tidak ada'),
             ],
           ),
         ],
@@ -852,89 +872,111 @@ class _PatientHomePageState extends State<PatientHomePage> {
     );
   }
 
-  Widget _calendarRangeDay({
+  Widget _calendarStreakDay({
     required String text,
-    required Color color,
-    required Color textColor,
+    required String status,
+    required bool selected,
     required bool connectLeft,
     required bool connectRight,
   }) {
-    return Container(
+    Color bg;
+    Color textColor;
+
+    if (status == 'lengkap') {
+      bg = const Color(0xFFEAF7F1);
+      textColor = AppColors.primaryBlue;
+    } else if (status == 'sebagian') {
+      bg = const Color(0xFFFFF3BA);
+      textColor = AppColors.primaryBlue;
+    } else {
+      bg = const Color(0xFFFFEAEA);
+      textColor = AppColors.red;
+    }
+
+    return Stack(
       alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.horizontal(
-          left: connectLeft ? Radius.zero : const Radius.circular(28),
-          right: connectRight ? Radius.zero : const Radius.circular(28),
+      children: [
+        Positioned.fill(
+          top: 5,
+          bottom: 5,
+          left: connectLeft ? 0 : 4,
+          right: connectRight ? 0 : 4,
+          child: Container(
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.horizontal(
+                left: connectLeft ? Radius.zero : const Radius.circular(30),
+                right: connectRight ? Radius.zero : const Radius.circular(30),
+              ),
+            ),
+          ),
         ),
+        Container(
+          width: 42,
+          height: 42,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? AppColors.primaryBlue : Colors.transparent,
+            shape: BoxShape.circle,
+          ),
+          child: Text(
+            text,
+            style: TextStyle(
+              color: selected ? Colors.white : textColor,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _calendarNavButton(IconData icon) {
+    return Container(
+      width: 42,
+      height: 42,
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.light1),
       ),
+      child: Icon(icon, color: AppColors.dark3, size: 24),
+    );
+  }
+
+  Widget _calendarTextDay(String text, {required Color color}) {
+    return Center(
       child: Text(
         text,
         style: TextStyle(
-          color: textColor,
+          color: color,
           fontSize: 15,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
   }
 
-  Widget _calendarOutlineDay({required String text}) {
+  Widget _calendarSelectedDay(String text) {
     return Center(
       child: Container(
-        width: 42,
-        height: 42,
+        width: 46,
+        height: 46,
         alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: Colors.transparent,
+        decoration: const BoxDecoration(
+          color: AppColors.primaryBlue,
           shape: BoxShape.circle,
-          border: Border.all(color: AppColors.primaryBlue, width: 2),
         ),
         child: Text(
           text,
-          style: const TextStyle(
-            color: AppColors.primaryBlue,
-            fontSize: 15,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 16,
             fontWeight: FontWeight.w700,
           ),
         ),
       ),
-    );
-  }
-
-  Widget _calendarCircle({
-    required String text,
-    required Color color,
-    required Color textColor,
-  }) {
-    return Center(
-      child: Container(
-        width: 42,
-        height: 42,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: textColor,
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _smallArrow(IconData icon) {
-    return Container(
-      width: 28,
-      height: 28,
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.light1),
-      ),
-      child: Icon(icon, color: AppColors.dark2, size: 18),
     );
   }
 

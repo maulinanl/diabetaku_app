@@ -12,8 +12,9 @@ class FamilyNotificationPage extends StatefulWidget {
 }
 
 class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
-  int selectedTab = 0;
+  final searchController = TextEditingController();
 
+  int selectedTab = 0;
   bool isLoading = true;
   String? errorMessage;
 
@@ -22,12 +23,17 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
   @override
   void initState() {
     super.initState();
+    searchController.addListener(() => setState(() {}));
     _loadNotifications();
   }
 
-  Future<void> _loadNotifications() async {
-    if (!mounted) return;
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
 
+  Future<void> _loadNotifications() async {
     setState(() {
       isLoading = true;
       errorMessage = null;
@@ -50,6 +56,7 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
         final dateB =
             DateTime.tryParse(b['created_at']?.toString() ?? '') ??
                 DateTime(2000);
+
         return dateB.compareTo(dateA);
       });
 
@@ -67,28 +74,6 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
         isLoading = false;
       });
     }
-  }
-
-  Future<void> _openNotification(Map<String, dynamic> item) async {
-    final notificationId = int.tryParse(
-      (item['notification_id'] ?? item['id'] ?? '').toString(),
-    );
-
-    if (_isUnread(item) && notificationId != null) {
-      try {
-        await ApiService.markNotificationAsRead(notificationId);
-
-        if (!mounted) return;
-
-        setState(() {
-          item['is_read'] = true;
-        });
-      } catch (_) {}
-    }
-
-    if (!mounted) return;
-
-    _showNotificationDetail(item);
   }
 
   bool _isUnread(Map<String, dynamic> item) {
@@ -134,6 +119,26 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
         '${local.minute.toString().padLeft(2, '0')}';
   }
 
+  String _section(Map<String, dynamic> item) {
+    final raw = _rawTime(item);
+    final date = DateTime.tryParse(raw);
+
+    if (date == null) return 'Notifikasi';
+
+    final local = date.toLocal();
+    final now = DateTime.now();
+
+    final today = DateTime(now.year, now.month, now.day);
+    final target = DateTime(local.year, local.month, local.day);
+
+    if (target == today) return 'Hari Ini';
+    if (target == today.subtract(const Duration(days: 1))) return 'Kemarin';
+
+    return '${local.day.toString().padLeft(2, '0')}/'
+        '${local.month.toString().padLeft(2, '0')}/'
+        '${local.year}';
+  }
+
   String _type(Map<String, dynamic> item) {
     final rawType = item['type_code'] ??
         item['reference_type'] ??
@@ -163,6 +168,12 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
       return Icons.assignment_outlined;
     }
 
+    if (type.contains('medication') ||
+        type.contains('obat') ||
+        type.contains('pengingat')) {
+      return Icons.medication_outlined;
+    }
+
     if (type.contains('disconnect') ||
         type.contains('disconnected') ||
         type.contains('putus')) {
@@ -184,6 +195,12 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
         type.contains('validasi') ||
         type.contains('family_data')) {
       return const Color(0xFFFFF4DA);
+    }
+
+    if (type.contains('medication') ||
+        type.contains('obat') ||
+        type.contains('pengingat')) {
+      return AppColors.veryLightBlue;
     }
 
     if (type.contains('disconnect') ||
@@ -225,6 +242,74 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
     return AppColors.primaryBlue;
   }
 
+  String _categoryLabel(String type) {
+    if (type.contains('validation') || type.contains('validasi')) {
+      return 'Validasi Data';
+    }
+
+    if (type.contains('medication') ||
+        type.contains('obat') ||
+        type.contains('pengingat')) {
+      return 'Kepatuhan Obat';
+    }
+
+    if (type.contains('recommendation') || type.contains('rekomendasi')) {
+      return 'Rekomendasi';
+    }
+
+    if (type.contains('disconnect') || type.contains('putus')) {
+      return 'Relasi Terputus';
+    }
+
+    if (type.contains('connection') ||
+        type.contains('koneksi') ||
+        type.contains('relasi')) {
+      return 'Koneksi';
+    }
+
+    return 'Informasi';
+  }
+
+  List<Map<String, dynamic>> _filteredNotifications() {
+    final keyword = searchController.text.trim().toLowerCase();
+
+    final tabFiltered = selectedTab == 0
+        ? notifications
+        : notifications.where(_isUnread).toList();
+
+    if (keyword.isEmpty) return tabFiltered;
+
+    return tabFiltered.where((item) {
+      return _title(item).toLowerCase().contains(keyword) ||
+          _message(item).toLowerCase().contains(keyword) ||
+          _formatTime(_rawTime(item)).toLowerCase().contains(keyword) ||
+          _section(item).toLowerCase().contains(keyword);
+    }).toList();
+  }
+
+  Future<void> _openNotification(Map<String, dynamic> item) async {
+    final notificationId = int.tryParse(
+      (item['notification_id'] ?? item['id'] ?? '').toString(),
+    );
+
+    if (_isUnread(item) && notificationId != null) {
+      try {
+        await ApiService.markNotificationAsRead(notificationId);
+
+        if (!mounted) return;
+
+        setState(() {
+          item['is_read'] = true;
+          item['read'] = true;
+        });
+      } catch (_) {}
+    }
+
+    if (!mounted) return;
+
+    _showNotificationDetail(item);
+  }
+
   void _showNotificationDetail(Map<String, dynamic> item) {
     final type = _type(item);
     final icon = _iconFromType(type);
@@ -248,18 +333,18 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: 48,
-                  height: 5,
+                  width: 44,
+                  height: 4,
                   decoration: BoxDecoration(
                     color: AppColors.light1,
                     borderRadius: BorderRadius.circular(20),
                   ),
                 ),
-                const SizedBox(height: 22),
+                const SizedBox(height: 24),
                 CircleAvatar(
-                  radius: 42,
+                  radius: 40,
                   backgroundColor: iconBg,
-                  child: Icon(icon, color: iconColor, size: 42),
+                  child: Icon(icon, color: iconColor, size: 38),
                 ),
                 const SizedBox(height: 18),
                 Text(
@@ -268,26 +353,34 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
                   style: const TextStyle(
                     color: AppColors.primaryBlue,
                     fontSize: 20,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  _formatTime(_rawTime(item)),
-                  style: const TextStyle(
-                    color: AppColors.dark2,
-                    fontSize: 12,
+                _smallBadge(_categoryLabel(type)),
+                const SizedBox(height: 18),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.veryLightBlue,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    _message(item),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: AppColors.dark1,
+                      fontSize: 13,
+                      height: 1.45,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
-                Text(
-                  _message(item),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: AppColors.dark1,
-                    fontSize: 13,
-                    height: 1.45,
-                  ),
+                _detailRow(
+                  icon: Icons.access_time,
+                  label: 'Waktu',
+                  value: _formatTime(_rawTime(item)),
                 ),
                 const SizedBox(height: 22),
                 SizedBox(
@@ -300,7 +393,7 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
                       foregroundColor: Colors.white,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                     ),
                     child: const Text('Mengerti'),
@@ -314,46 +407,94 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
     );
   }
 
+  Widget _smallBadge(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.lightBlue,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: AppColors.primaryBlue,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.light1),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: AppColors.primaryBlue, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.dark2,
+                fontSize: 12,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppColors.primaryBlue,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final filteredNotifications = selectedTab == 0
-        ? notifications
-        : notifications.where(_isUnread).toList();
+    final filteredNotifications = _filteredNotifications();
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Container(
-        color: AppColors.primaryBlue,
-        child: SafeArea(
-          top: false,
-          child: Column(
-            children: [
-              _header(context),
-              Expanded(
-                child: Container(
-                  color: AppColors.background,
-                  child: RefreshIndicator(
-                    onRefresh: _loadNotifications,
-                    child: _body(filteredNotifications),
-                  ),
-                ),
+      backgroundColor: AppColors.primaryBlue,
+      body: SafeArea(
+        top: false,
+        child: Column(
+          children: [
+            _header(context),
+            Expanded(
+              child: Container(
+                color: AppColors.background,
+                child: isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : errorMessage != null
+                        ? _errorState()
+                        : RefreshIndicator(
+                            onRefresh: _loadNotifications,
+                            child: _body(filteredNotifications),
+                          ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
   Widget _body(List<Map<String, dynamic>> data) {
-    if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (errorMessage != null) {
-      return _errorState();
-    }
-
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: EdgeInsets.zero,
@@ -362,25 +503,42 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
         if (data.isEmpty)
           _emptyNotification()
         else ...[
-          _sectionHeader(selectedTab == 0 ? 'Semua Notifikasi' : 'Belum Dibaca'),
-          ...data.map((item) {
-            final type = _type(item);
-
-            return _FamilyNotificationItem(
-              icon: _iconFromType(type),
-              iconBg: _iconBgFromType(type),
-              iconColor: _iconColorFromType(type),
-              title: _title(item),
-              message: _message(item),
-              time: _formatTime(_rawTime(item)),
-              unread: _isUnread(item),
-              onTap: () => _openNotification(item),
-            );
-          }),
+          ..._groupedNotifications(data),
           const SizedBox(height: 24),
         ],
       ],
     );
+  }
+
+  List<Widget> _groupedNotifications(List<Map<String, dynamic>> data) {
+    final widgets = <Widget>[];
+    String? lastSection;
+
+    for (final item in data) {
+      final section = _section(item);
+
+      if (section != lastSection) {
+        widgets.add(_sectionHeader(section));
+        lastSection = section;
+      }
+
+      final type = _type(item);
+
+      widgets.add(
+        _FamilyNotificationItem(
+          icon: _iconFromType(type),
+          iconBg: _iconBgFromType(type),
+          iconColor: _iconColorFromType(type),
+          title: _title(item),
+          message: _message(item),
+          time: _formatTime(_rawTime(item)),
+          unread: _isUnread(item),
+          onTap: () => _openNotification(item),
+        ),
+      );
+    }
+
+    return widgets;
   }
 
   Widget _header(BuildContext context) {
@@ -388,27 +546,69 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(14, topPad + 12, 20, 18),
-      color: AppColors.primaryBlue,
-      child: Row(
+      padding: EdgeInsets.fromLTRB(14, topPad + 12, 20, 22),
+      decoration: const BoxDecoration(
+        color: AppColors.primaryBlue,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(22),
+          bottomRight: Radius.circular(22),
+        ),
+      ),
+      child: Column(
         children: [
-          IconButton(
-            onPressed: () => Navigator.pop(context, true),
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-          ),
-          const Expanded(
-            child: Text(
-              'Notifikasi',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 21,
-                fontWeight: FontWeight.bold,
+          Row(
+            children: [
+              IconButton(
+                onPressed: () => Navigator.pop(context, true),
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
               ),
-            ),
+              const Expanded(
+                child: Text(
+                  'Notifikasi',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 21,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 48),
+            ],
           ),
-          const SizedBox(width: 48),
+          const SizedBox(height: 16),
+          _searchBox(),
         ],
+      ),
+    );
+  }
+
+  Widget _searchBox() {
+    final keyword = searchController.text.trim();
+
+    return TextField(
+      controller: searchController,
+      decoration: InputDecoration(
+        hintText: 'Cari notifikasi',
+        hintStyle: const TextStyle(color: AppColors.dark3, fontSize: 12),
+        prefixIcon: const Icon(
+          Icons.search,
+          color: AppColors.primaryBlue,
+          size: 18,
+        ),
+        suffixIcon: keyword.isNotEmpty
+            ? IconButton(
+                onPressed: () => searchController.clear(),
+                icon: const Icon(Icons.close, color: AppColors.dark3, size: 18),
+              )
+            : null,
+        filled: true,
+        fillColor: AppColors.white,
+        contentPadding: const EdgeInsets.symmetric(vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide.none,
+        ),
       ),
     );
   }
@@ -475,32 +675,38 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
   }
 
   Widget _emptyNotification() {
-    return const Padding(
-      padding: EdgeInsets.only(top: 120),
+    final isSearching = searchController.text.trim().isNotEmpty;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 120),
       child: Column(
         children: [
           CircleAvatar(
             radius: 36,
             backgroundColor: AppColors.lightBlue,
             child: Icon(
-              Icons.notifications_none_rounded,
+              isSearching
+                  ? Icons.search_off_rounded
+                  : Icons.notifications_none_rounded,
               color: AppColors.primaryBlue,
               size: 34,
             ),
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           Text(
-            'Tidak ada notifikasi',
-            style: TextStyle(
+            isSearching ? 'Notifikasi tidak ditemukan' : 'Tidak ada notifikasi',
+            style: const TextStyle(
               color: AppColors.dark1,
               fontSize: 15,
               fontWeight: FontWeight.w600,
             ),
           ),
-          SizedBox(height: 6),
+          const SizedBox(height: 6),
           Text(
-            'Notifikasi terbaru akan muncul di sini.',
-            style: TextStyle(color: AppColors.dark2, fontSize: 12),
+            isSearching
+                ? 'Coba gunakan kata kunci lain.'
+                : 'Notifikasi terbaru akan muncul di sini.',
+            style: const TextStyle(color: AppColors.dark2, fontSize: 12),
           ),
         ],
       ),

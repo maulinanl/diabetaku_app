@@ -396,6 +396,7 @@ class _EditDoctorProfilePageState extends State<EditDoctorProfilePage> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (sheetContext) {
         final content = Column(
           mainAxisSize: maxHeightFactor == null
@@ -424,7 +425,7 @@ class _EditDoctorProfilePageState extends State<EditDoctorProfilePage> {
               child: ListView.separated(
                 shrinkWrap: true,
                 itemCount: items.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
+                separatorBuilder: (_, __) => const SizedBox(height: 2),
                 itemBuilder: (context, index) {
                   final item = items[index];
                   final selected = isSelected(item);
@@ -445,7 +446,7 @@ class _EditDoctorProfilePageState extends State<EditDoctorProfilePage> {
                     ),
                     trailing: selected
                         ? const Icon(
-                            Icons.check_circle,
+                            Icons.check,
                             color: AppColors.primaryBlue,
                             size: 20,
                           )
@@ -464,7 +465,7 @@ class _EditDoctorProfilePageState extends State<EditDoctorProfilePage> {
         return Container(
           padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
           decoration: const BoxDecoration(
-            color: Colors.white,
+            color: AppColors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: maxHeightFactor == null
@@ -484,14 +485,23 @@ class _EditDoctorProfilePageState extends State<EditDoctorProfilePage> {
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
         return Container(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.fromLTRB(24, 14, 24, 24),
           decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            color: AppColors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.light1,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              const SizedBox(height: 22),
               const CircleAvatar(
                 radius: 34,
                 backgroundColor: Color(0xFFE7F8EF),
@@ -500,19 +510,24 @@ class _EditDoctorProfilePageState extends State<EditDoctorProfilePage> {
               const SizedBox(height: 16),
               const Text(
                 'Profil berhasil diperbarui',
+                textAlign: TextAlign.center,
                 style: TextStyle(
                   color: AppColors.primaryBlue,
                   fontWeight: FontWeight.bold,
-                  fontSize: 20,
+                  fontSize: 18,
                 ),
               ),
               const SizedBox(height: 8),
               const Text(
                 'Data profil Anda telah tersimpan.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.dark2),
+                style: TextStyle(
+                  color: AppColors.dark2,
+                  fontSize: 13,
+                  height: 1.4,
+                ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 22),
               SizedBox(
                 width: double.infinity,
                 height: 46,
@@ -525,8 +540,14 @@ class _EditDoctorProfilePageState extends State<EditDoctorProfilePage> {
                     backgroundColor: AppColors.primaryBlue,
                     foregroundColor: Colors.white,
                     elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
                   ),
-                  child: const Text('Kembali ke Profil'),
+                  child: const Text(
+                    'Kembali ke Profil',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                 ),
               ),
             ],

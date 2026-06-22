@@ -25,7 +25,7 @@ class FamilyMedicationFormPage extends StatefulWidget {
 class _FamilyMedicationFormPageState extends State<FamilyMedicationFormPage> {
   final noteCtr = TextEditingController();
 
-  String selectedSchedule = '';
+  String selectedSchedule = 'Semua';
   bool isLoading = true;
   bool isSaving = false;
   String? errorMessage;
@@ -33,16 +33,26 @@ class _FamilyMedicationFormPageState extends State<FamilyMedicationFormPage> {
   List<Map<String, dynamic>> prescriptions = [];
 
   List<String> get schedules {
-    return prescriptions
-        .map((e) => e['session']?.toString() ?? '')
+    final result = prescriptions
+        .map((e) => e['session_name']?.toString() ?? '')
         .where((e) => e.isNotEmpty)
         .toSet()
         .toList();
+
+    result.sort();
+    return ['Semua', ...result];
   }
 
-  bool get hasCheckedMedicine {
+  bool _isSameSchedule(Map<String, dynamic> item) {
+    return selectedSchedule == 'Semua' ||
+        item['session_name']?.toString() == selectedSchedule;
+  }
+
+  bool get hasUnsavedCheckedMedicine {
     return prescriptions.any((item) {
-      return item['session'] == selectedSchedule && item['checked'] == true;
+      return _isSameSchedule(item) &&
+          item['checked'] == true &&
+          item['already_saved'] != true;
     });
   }
 
@@ -59,6 +69,11 @@ class _FamilyMedicationFormPageState extends State<FamilyMedicationFormPage> {
   }
 
   Future<void> _loadPrescriptions() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
     try {
       final data = await ApiService.getActivePrescriptions(widget.patientId);
 
@@ -66,18 +81,25 @@ class _FamilyMedicationFormPageState extends State<FamilyMedicationFormPage> {
 
       setState(() {
         prescriptions = data.map((item) {
+          final logStatus =
+              item['today_status']?.toString() ??
+              item['log_status']?.toString() ??
+              '';
+
+          final alreadyLogged =
+              item['already_logged'] == true ||
+              item['log_id'] != null ||
+              logStatus.isNotEmpty;
+
           return {
             ...item,
-            'checked': false,
+            'checked': logStatus == 'Diminum' || item['checked'] == true,
+            'already_saved': alreadyLogged,
           };
         }).toList();
 
-        if (prescriptions.isNotEmpty) {
-          selectedSchedule = prescriptions.first['session'].toString();
-        }
-
+        selectedSchedule = 'Semua';
         isLoading = false;
-        errorMessage = null;
       });
     } catch (e) {
       if (!mounted) return;
@@ -90,6 +112,11 @@ class _FamilyMedicationFormPageState extends State<FamilyMedicationFormPage> {
   }
 
   void _toggleMedicine(int index, bool? value) {
+    if (prescriptions[index]['already_saved'] == true) {
+      _showSnackBar('Data obat ini sudah dicatat hari ini');
+      return;
+    }
+
     setState(() {
       prescriptions[index]['checked'] = value ?? false;
     });
@@ -97,27 +124,43 @@ class _FamilyMedicationFormPageState extends State<FamilyMedicationFormPage> {
 
   Future<void> _save() async {
     FocusScope.of(context).unfocus();
+
+    final checkedMedicines = prescriptions.where((item) {
+      return _isSameSchedule(item) &&
+          item['checked'] == true &&
+          item['already_saved'] != true;
+    }).toList();
+
+    if (checkedMedicines.isEmpty) {
+      _showSnackBar('Pilih minimal satu obat yang belum dicatat');
+      return;
+    }
+
     setState(() => isSaving = true);
 
     try {
       final now = DateTime.now();
 
-      final checkedMedicines = prescriptions.where((item) {
-        return item['session'] == selectedSchedule && item['checked'] == true;
-      }).toList();
-
       for (final item in checkedMedicines) {
-        await ApiService.storeMedication(
+        await ApiService.storeFamilyMedication(
           patientId: widget.patientId,
           prescriptionId: int.parse(item['prescription_id'].toString()),
           scheduleId: int.parse(item['schedule_id'].toString()),
           status: 'Diminum',
-          consumedAt: now,
+          logDate: now,
           note: noteCtr.text.trim().isEmpty ? null : noteCtr.text.trim(),
         );
       }
 
       if (!mounted) return;
+
+      setState(() {
+        for (final item in checkedMedicines) {
+          item['checked'] = true;
+          item['already_saved'] = true;
+          item['log_status'] = 'Diminum';
+        }
+      });
 
       _showSuccessSheet(now);
     } catch (e) {
@@ -130,11 +173,9 @@ class _FamilyMedicationFormPageState extends State<FamilyMedicationFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    final filteredPrescriptions = prescriptions
-        .asMap()
-        .entries
-        .where((entry) => entry.value['session'] == selectedSchedule)
-        .toList();
+    final filteredPrescriptions = prescriptions.asMap().entries.where((entry) {
+      return _isSameSchedule(entry.value);
+    }).toList();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -161,7 +202,7 @@ class _FamilyMedicationFormPageState extends State<FamilyMedicationFormPage> {
                                   _sectionTitle('Kepatuhan Obat'),
                                   const SizedBox(height: 6),
                                   const Text(
-                                    'Checklist obat sesuai resep aktif dari dokter. Data akan menunggu validasi pasien.',
+                                    'Checklist obat sesuai resep aktif dari dokter. Data yang ditambahkan keluarga akan menunggu validasi pasien.',
                                     style: TextStyle(
                                       color: AppColors.dark2,
                                       fontSize: 12,
@@ -169,53 +210,7 @@ class _FamilyMedicationFormPageState extends State<FamilyMedicationFormPage> {
                                     ),
                                   ),
                                   _label('Waktu minum*'),
-                                  Row(
-                                    children: schedules.map((item) {
-                                      final selected =
-                                          selectedSchedule == item;
-
-                                      return Expanded(
-                                        child: GestureDetector(
-                                          onTap: isSaving
-                                              ? null
-                                              : () {
-                                                  setState(() {
-                                                    selectedSchedule = item;
-                                                  });
-                                                },
-                                          child: Container(
-                                            height: 42,
-                                            margin: const EdgeInsets.only(
-                                              right: 8,
-                                            ),
-                                            alignment: Alignment.center,
-                                            decoration: BoxDecoration(
-                                              color: selected
-                                                  ? AppColors.primaryBlue
-                                                  : AppColors.white,
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                              border: Border.all(
-                                                color: selected
-                                                    ? AppColors.primaryBlue
-                                                    : AppColors.light1,
-                                              ),
-                                            ),
-                                            child: Text(
-                                              item,
-                                              style: TextStyle(
-                                                color: selected
-                                                    ? Colors.white
-                                                    : AppColors.primaryBlue,
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    }).toList(),
-                                  ),
+                                  _scheduleTabs(),
                                   _label('Daftar obat dari resep dokter*'),
                                   if (filteredPrescriptions.isEmpty)
                                     _emptyPrescription()
@@ -227,11 +222,15 @@ class _FamilyMedicationFormPageState extends State<FamilyMedicationFormPage> {
                                         final item = entry.value;
 
                                         return Padding(
-                                          padding:
-                                              const EdgeInsets.only(bottom: 12),
+                                          padding: const EdgeInsets.only(
+                                            bottom: 12,
+                                          ),
                                           child: _medicineCard(
                                             index: index,
                                             medicine: item['medication_name']
+                                                    ?.toString() ??
+                                                '-',
+                                            sessionName: item['session_name']
                                                     ?.toString() ??
                                                 '-',
                                             dosage:
@@ -239,14 +238,23 @@ class _FamilyMedicationFormPageState extends State<FamilyMedicationFormPage> {
                                                     '-',
                                             form:
                                                 item['form']?.toString() ?? '-',
-                                            instruction: item['instruction']
+                                            mealRule: item['meal_rule']
                                                     ?.toString() ??
                                                 '-',
+                                            notes:
+                                                item['notes']?.toString() ?? '-',
                                             dosePerSession:
                                                 item['dose_per_session']
                                                         ?.toString() ??
                                                     '-',
-                                            checked: item['checked'] as bool,
+                                            reminderTime: _formatTime(
+                                              item['reminder_time'] ??
+                                                  item[
+                                                      'default_reminder_time'],
+                                            ),
+                                            checked: item['checked'] == true,
+                                            alreadySaved:
+                                                item['already_saved'] == true,
                                           ),
                                         );
                                       }).toList(),
@@ -254,18 +262,17 @@ class _FamilyMedicationFormPageState extends State<FamilyMedicationFormPage> {
                                   _label('Catatan (opsional)'),
                                   _input(
                                     controller: noteCtr,
-                                    hint:
-                                        'Contoh: obat diminum setelah makan',
+                                    hint: 'Contoh: obat diminum setelah makan',
                                   ),
                                   const SizedBox(height: 26),
                                   SizedBox(
                                     width: double.infinity,
                                     height: 48,
                                     child: ElevatedButton(
-                                      onPressed:
-                                          hasCheckedMedicine && !isSaving
-                                              ? _save
-                                              : null,
+                                      onPressed: hasUnsavedCheckedMedicine &&
+                                              !isSaving
+                                          ? _save
+                                          : null,
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor:
                                             AppColors.primaryBlue,
@@ -282,7 +289,8 @@ class _FamilyMedicationFormPageState extends State<FamilyMedicationFormPage> {
                                           ? const SizedBox(
                                               width: 22,
                                               height: 22,
-                                              child: CircularProgressIndicator(
+                                              child:
+                                                  CircularProgressIndicator(
                                                 color: Colors.white,
                                                 strokeWidth: 2,
                                               ),
@@ -315,6 +323,46 @@ class _FamilyMedicationFormPageState extends State<FamilyMedicationFormPage> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _scheduleTabs() {
+    if (schedules.isEmpty) return _emptyPrescription();
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: schedules.map((item) {
+        final selected = selectedSchedule == item;
+
+        return GestureDetector(
+          onTap: isSaving
+              ? null
+              : () {
+                  setState(() {
+                    selectedSchedule = item;
+                  });
+                },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+            decoration: BoxDecoration(
+              color: selected ? AppColors.primaryBlue : AppColors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: selected ? AppColors.primaryBlue : AppColors.light1,
+              ),
+            ),
+            child: Text(
+              item,
+              style: TextStyle(
+                color: selected ? Colors.white : AppColors.primaryBlue,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -368,22 +416,34 @@ class _FamilyMedicationFormPageState extends State<FamilyMedicationFormPage> {
   Widget _medicineCard({
     required int index,
     required String medicine,
+    required String sessionName,
     required String dosage,
     required String form,
-    required String instruction,
+    required String mealRule,
+    required String notes,
     required String dosePerSession,
+    required String reminderTime,
     required bool checked,
+    required bool alreadySaved,
   }) {
     return InkWell(
-      onTap: isSaving ? null : () => _toggleMedicine(index, !checked),
+      onTap: isSaving || alreadySaved
+          ? null
+          : () => _toggleMedicine(index, !checked),
       borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: alreadySaved
+              ? const Color(0xFFEAFBF3)
+              : checked
+                  ? AppColors.veryLightBlue
+                  : AppColors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: checked ? AppColors.primaryBlue : AppColors.light1,
+            color: alreadySaved || checked
+                ? AppColors.primaryBlue
+                : AppColors.light1,
           ),
           boxShadow: [
             BoxShadow(
@@ -394,43 +454,95 @@ class _FamilyMedicationFormPageState extends State<FamilyMedicationFormPage> {
           ],
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Checkbox(
-              value: checked,
-              activeColor: AppColors.primaryBlue,
-              onChanged:
-                  isSaving ? null : (value) => _toggleMedicine(index, value),
-            ),
-            const SizedBox(width: 6),
+            alreadySaved
+                ? const Icon(
+                    Icons.check_circle,
+                    color: Color(0xFF10C878),
+                    size: 24,
+                  )
+                : Checkbox(
+                    value: checked,
+                    activeColor: AppColors.primaryBlue,
+                    onChanged: isSaving
+                        ? null
+                        : (value) => _toggleMedicine(index, value),
+                  ),
+            const SizedBox(width: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    medicine,
-                    style: const TextStyle(
-                      color: AppColors.dark1,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          medicine,
+                          style: const TextStyle(
+                            color: AppColors.dark1,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      if (alreadySaved)
+                        const Text(
+                          'Sudah dicatat',
+                          style: TextStyle(
+                            color: Color(0xFF10C878),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 5),
                   Text(
                     '$dosage • $form • $dosePerSession',
                     style: const TextStyle(
                       color: AppColors.primaryBlue,
                       fontSize: 12,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 5),
                   Text(
-                    instruction,
+                    'Jadwal: $sessionName',
                     style: const TextStyle(
                       color: AppColors.dark2,
                       fontSize: 11,
                     ),
                   ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Aturan: $mealRule',
+                    style: const TextStyle(
+                      color: AppColors.dark2,
+                      fontSize: 11,
+                    ),
+                  ),
+                  if (reminderTime != '-') ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Pengingat: $reminderTime',
+                      style: const TextStyle(
+                        color: AppColors.dark2,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                  if (notes != '-') ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      notes,
+                      style: const TextStyle(
+                        color: AppColors.dark3,
+                        fontSize: 11,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -585,6 +697,7 @@ class _FamilyMedicationFormPageState extends State<FamilyMedicationFormPage> {
     return TextField(
       controller: controller,
       enabled: !isSaving,
+      maxLines: 3,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(color: AppColors.dark4, fontSize: 13),
@@ -625,15 +738,6 @@ class _FamilyMedicationFormPageState extends State<FamilyMedicationFormPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 44,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.light1,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ),
-              const SizedBox(height: 24),
               const CircleAvatar(
                 radius: 36,
                 backgroundColor: Color(0xFFEAFBF3),
@@ -650,7 +754,9 @@ class _FamilyMedicationFormPageState extends State<FamilyMedicationFormPage> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Data obat pasien pada jadwal $selectedSchedule berhasil dicatat dan menunggu validasi pasien.',
+                selectedSchedule == 'Semua'
+                    ? 'Data obat yang dipilih berhasil dicatat dan menunggu validasi pasien.'
+                    : 'Data obat pada jadwal $selectedSchedule berhasil dicatat dan menunggu validasi pasien.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: AppColors.dark2,
@@ -691,16 +797,19 @@ class _FamilyMedicationFormPageState extends State<FamilyMedicationFormPage> {
         backgroundColor: AppColors.red,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        content: Row(
-          children: [
-            const Icon(Icons.info_outline, color: Colors.white),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(message, style: const TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
+        content: Text(message),
       ),
     );
+  }
+
+  String _formatTime(dynamic value) {
+    if (value == null) return '-';
+
+    final text = value.toString();
+    if (text.isEmpty) return '-';
+
+    if (text.length >= 5) return text.substring(0, 5);
+
+    return text;
   }
 }

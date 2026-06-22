@@ -22,7 +22,7 @@ class _PatientGlucoseFormPageState extends State<PatientGlucoseFormPage> {
 
   bool isSaving = false;
 
-  final types = ['Puasa', 'Postprandial', 'Sewaktu', 'HbA1c'];
+  final types = ['Puasa', 'Dua Jam Setelah Makan', 'Sewaktu'];
 
   bool get isValid {
     return double.tryParse(glucoseCtr.text.trim()) != null;

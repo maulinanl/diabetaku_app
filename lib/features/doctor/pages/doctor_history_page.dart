@@ -49,7 +49,7 @@ class _DoctorHistoryPageState extends State<DoctorHistoryPage> {
           final matchesFilter = selectedFilter == 0
               ? true
               : selectedFilter == 1
-              ? recommendationCount == 0
+              ? true
               : recommendationCount > 0;
 
           final matchesDate = _isInSelectedRange(item['created_at']);
@@ -174,9 +174,8 @@ class _DoctorHistoryPageState extends State<DoctorHistoryPage> {
                                             '-',
                                         age:
                                             '${_calculateAge(item['date_of_birth']?.toString())} tahun • ${item['gender'] ?? '-'}',
-                                        type: recommendationCount > 0
-                                            ? 'Rekomendasi'
-                                            : 'Catatan Klinis',
+                                        hasRecommendation:
+                                            recommendationCount > 0,
                                         status:
                                             item['patient_condition']
                                                 ?.toString() ??
@@ -612,7 +611,7 @@ class _HistoryCard extends StatelessWidget {
   final String initial;
   final String name;
   final String age;
-  final String type;
+  final bool hasRecommendation;
   final String status;
   final String description;
   final String followUp;
@@ -621,7 +620,7 @@ class _HistoryCard extends StatelessWidget {
     required this.initial,
     required this.name,
     required this.age,
-    required this.type,
+    required this.hasRecommendation,
     required this.status,
     required this.description,
     required this.followUp,
@@ -629,8 +628,6 @@ class _HistoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isRecommendation = type == 'Rekomendasi';
-
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -682,19 +679,14 @@ class _HistoryCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                decoration: BoxDecoration(
-                  color: AppColors.veryLightBlue,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  isRecommendation ? '+ Rekomendasi' : 'Catatan Klinis',
-                  style: const TextStyle(
-                    color: AppColors.primaryBlue,
-                    fontSize: 10,
-                  ),
-                ),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                alignment: WrapAlignment.end,
+                children: [
+                  _smallBadge('Catatan Klinis'),
+                  if (hasRecommendation) _smallBadge('+ Rekomendasi'),
+                ],
               ),
             ],
           ),
@@ -761,6 +753,24 @@ class _HistoryCard extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _smallBadge(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.veryLightBlue,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: AppColors.primaryBlue,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }

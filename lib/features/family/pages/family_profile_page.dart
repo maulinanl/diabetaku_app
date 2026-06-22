@@ -18,8 +18,8 @@ class _FamilyProfilePageState extends State<FamilyProfilePage> {
   String? errorMessage;
 
   Map<String, dynamic>? profile;
-  int totalInputs = 0;
   int totalPatients = 0;
+  int totalMedicationChecklists = 0;
 
   @override
   void initState() {
@@ -47,9 +47,10 @@ class _FamilyProfilePageState extends State<FamilyProfilePage> {
 
       setState(() {
         profile = data;
-        totalInputs = int.tryParse(data['total_inputs']?.toString() ?? '0') ?? 0;
         totalPatients =
             int.tryParse(data['total_patients']?.toString() ?? '0') ?? 0;
+        totalMedicationChecklists =
+            int.tryParse(data['total_medication_checklists']?.toString() ?? '0') ?? 0;
         isLoading = false;
       });
     } catch (e) {
@@ -62,39 +63,20 @@ class _FamilyProfilePageState extends State<FamilyProfilePage> {
     }
   }
 
-  String get fullName =>
-      profile?['full_name']?.toString() ??
-      profile?['user']?['full_name']?.toString() ??
-      '-';
-
-  String get email =>
-      profile?['email']?.toString() ??
-      profile?['user']?['email']?.toString() ??
-      '-';
-
-  String get phone =>
-      profile?['phone_number']?.toString() ??
-      profile?['user']?['phone_number']?.toString() ??
-      '-';
-
-  String get gender =>
-      profile?['gender']?.toString() ??
-      profile?['user']?['gender']?.toString() ??
-      '-';
+  String get fullName => profile?['full_name']?.toString() ?? '-';
+  String get email => profile?['email']?.toString() ?? '-';
+  String get phone => profile?['phone_number']?.toString() ?? '-';
+  String get gender => profile?['gender']?.toString() ?? '-';
 
   String get emailBadge {
-    final verified = profile?['email_verified_at'] ??
-        profile?['user']?['email_verified_at'];
-
+    final verified = profile?['email_verified_at'];
     return verified == null ? 'Belum Verifikasi' : 'Terverifikasi';
   }
 
   String _initial(String name) {
     final parts = name.trim().split(' ').where((e) => e.isNotEmpty).toList();
-
     if (parts.isEmpty) return '-';
     if (parts.length == 1) return parts.first[0].toUpperCase();
-
     return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
   }
 
@@ -129,15 +111,15 @@ class _FamilyProfilePageState extends State<FamilyProfilePage> {
                           children: [
                             Expanded(
                               child: _statCard(
-                                totalInputs.toString(),
-                                'Data Input',
+                                totalPatients.toString(),
+                                'Pasien Didampingi',
                               ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: _statCard(
-                                totalPatients.toString(),
-                                'Pasien didampingi',
+                                totalMedicationChecklists.toString(),
+                                'Checklist Obat',
                               ),
                             ),
                           ],
@@ -292,11 +274,7 @@ class _FamilyProfilePageState extends State<FamilyProfilePage> {
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.person_outline,
-                color: AppColors.primaryBlue,
-                size: 16,
-              ),
+              const Icon(Icons.person_outline, color: AppColors.primaryBlue, size: 16),
               const SizedBox(width: 6),
               const Expanded(
                 child: Text(
@@ -315,16 +293,12 @@ class _FamilyProfilePageState extends State<FamilyProfilePage> {
                       builder: (_) => const FamilyEditProfilePage(),
                     ),
                   );
-
                   _loadProfile();
                 },
                 icon: const Icon(Icons.edit, size: 16),
                 label: const Text('Ubah'),
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -337,12 +311,7 @@ class _FamilyProfilePageState extends State<FamilyProfilePage> {
           ),
           const SizedBox(height: 14),
           _profileItem(Icons.person_outline, 'Nama Lengkap', fullName),
-          _profileItem(
-            Icons.email_outlined,
-            'Email',
-            email,
-            badge: emailBadge,
-          ),
+          _profileItem(Icons.email_outlined, 'Email', email, badge: emailBadge),
           _profileItem(Icons.phone_outlined, 'Nomor Telepon', phone),
           _profileItem(Icons.wc_outlined, 'Jenis Kelamin', gender),
         ],
@@ -350,12 +319,7 @@ class _FamilyProfilePageState extends State<FamilyProfilePage> {
     );
   }
 
-  Widget _profileItem(
-    IconData icon,
-    String label,
-    String value, {
-    String? badge,
-  }) {
+  Widget _profileItem(IconData icon, String label, String value, {String? badge}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 13),
       child: Row(
@@ -374,23 +338,14 @@ class _FamilyProfilePageState extends State<FamilyProfilePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: AppColors.primaryBlue,
-                    fontSize: 11,
-                  ),
-                ),
+                Text(label, style: const TextStyle(color: AppColors.primaryBlue, fontSize: 11)),
                 const SizedBox(height: 2),
                 Row(
                   children: [
                     Flexible(
                       child: Text(
                         value,
-                        style: const TextStyle(
-                          color: AppColors.dark1,
-                          fontSize: 13,
-                        ),
+                        style: const TextStyle(color: AppColors.dark1, fontSize: 13),
                       ),
                     ),
                     if (badge != null) ...[
@@ -431,11 +386,7 @@ class _FamilyProfilePageState extends State<FamilyProfilePage> {
       decoration: _cardDecoration(),
       child: Column(
         children: [
-          _menuTile(
-            Icons.lock_outline,
-            'Ubah kata sandi',
-            'Perbarui keamanan akun',
-          ),
+          _menuTile(Icons.lock_outline, 'Ubah kata sandi', 'Perbarui keamanan akun'),
           const Divider(height: 1),
           _menuTile(Icons.info_outline, 'Tentang aplikasi', 'Versi 1.0.0'),
         ],
@@ -454,14 +405,8 @@ class _FamilyProfilePageState extends State<FamilyProfilePage> {
         ),
         child: Icon(icon, color: AppColors.primaryBlue, size: 18),
       ),
-      title: Text(
-        title,
-        style: const TextStyle(color: AppColors.dark1, fontSize: 13),
-      ),
-      subtitle: Text(
-        subtitle,
-        style: const TextStyle(color: AppColors.dark3, fontSize: 11),
-      ),
+      title: Text(title, style: const TextStyle(color: AppColors.dark1, fontSize: 13)),
+      subtitle: Text(subtitle, style: const TextStyle(color: AppColors.dark3, fontSize: 11)),
       trailing: const Icon(Icons.chevron_right, color: AppColors.dark3),
       onTap: () {},
     );
@@ -480,14 +425,8 @@ class _FamilyProfilePageState extends State<FamilyProfilePage> {
           ),
           child: const Icon(Icons.logout, color: AppColors.red, size: 18),
         ),
-        title: const Text(
-          'Keluar',
-          style: TextStyle(color: AppColors.red, fontSize: 13),
-        ),
-        subtitle: const Text(
-          'Akhiri sesi login',
-          style: TextStyle(color: AppColors.dark3, fontSize: 11),
-        ),
+        title: const Text('Keluar', style: TextStyle(color: AppColors.red, fontSize: 13)),
+        subtitle: const Text('Akhiri sesi login', style: TextStyle(color: AppColors.dark3, fontSize: 11)),
         trailing: const Icon(Icons.chevron_right, color: AppColors.dark3),
         onTap: () => _showLogoutSheet(context),
       ),
@@ -508,14 +447,7 @@ class _FamilyProfilePageState extends State<FamilyProfilePage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 44,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.light1,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ),
+              Container(width: 44, height: 4, decoration: BoxDecoration(color: AppColors.light1, borderRadius: BorderRadius.circular(20))),
               const SizedBox(height: 24),
               const CircleAvatar(
                 radius: 36,
@@ -525,11 +457,7 @@ class _FamilyProfilePageState extends State<FamilyProfilePage> {
               const SizedBox(height: 18),
               const Text(
                 'Yakin ingin keluar?',
-                style: TextStyle(
-                  color: AppColors.primaryBlue,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(color: AppColors.primaryBlue, fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               const Text(
@@ -547,9 +475,7 @@ class _FamilyProfilePageState extends State<FamilyProfilePage> {
                     backgroundColor: AppColors.red,
                     foregroundColor: Colors.white,
                     elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                   ),
                   child: const Text('Batal'),
                 ),
@@ -557,19 +483,14 @@ class _FamilyProfilePageState extends State<FamilyProfilePage> {
               TextButton(
                 onPressed: () async {
                   await ApiService.logout();
-
                   if (!context.mounted) return;
-
                   Navigator.pop(sheetContext);
                   Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (_) => const LoginPage()),
                     (route) => false,
                   );
                 },
-                child: const Text(
-                  'Ya, Keluar',
-                  style: TextStyle(color: AppColors.primaryBlue),
-                ),
+                child: const Text('Ya, Keluar', style: TextStyle(color: AppColors.primaryBlue)),
               ),
             ],
           ),

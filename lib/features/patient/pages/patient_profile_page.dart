@@ -18,6 +18,9 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
   bool isLoading = true;
   String? errorMessage;
 
+  int activePrescriptionCount = 0;
+  int activeDoctorCount = 0;
+
   @override
   void initState() {
     super.initState();
@@ -25,6 +28,8 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
   }
 
   Future<void> _loadProfile() async {
+    if (!mounted) return;
+
     setState(() {
       isLoading = true;
       errorMessage = null;
@@ -38,12 +43,19 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
         throw Exception('Patient ID tidak ditemukan. Coba login ulang.');
       }
 
-      final data = await ApiService.getPatientProfile(patientId);
+      final results = await Future.wait([
+        ApiService.getPatientProfile(patientId),
+        ApiService.getActivePrescriptions(patientId),
+        ApiService.getConnectedDoctors(patientId),
+      ]);
 
       if (!mounted) return;
 
       setState(() {
-        profile = data;
+        profile = results[0] as Map<String, dynamic>;
+        activePrescriptionCount =
+            (results[1] as List<Map<String, dynamic>>).length;
+        activeDoctorCount = (results[2] as List<Map<String, dynamic>>).length;
         isLoading = false;
       });
     } catch (e) {
@@ -134,9 +146,19 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
                       children: [
                         Row(
                           children: [
-                            Expanded(child: _statCard('0', 'Resep Aktif')),
+                            Expanded(
+                              child: _statCard(
+                                activePrescriptionCount.toString(),
+                                'Resep Aktif',
+                              ),
+                            ),
                             const SizedBox(width: 12),
-                            Expanded(child: _statCard('0', 'Dokter Aktif')),
+                            Expanded(
+                              child: _statCard(
+                                activeDoctorCount.toString(),
+                                'Dokter Aktif',
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 18),

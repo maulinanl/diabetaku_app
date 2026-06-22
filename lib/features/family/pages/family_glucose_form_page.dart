@@ -32,7 +32,7 @@ class _FamilyGlucoseFormPageState extends State<FamilyGlucoseFormPage> {
   DateTime selectedDate = DateTime.now();
   TimeOfDay selectedTime = TimeOfDay.now();
 
-  final types = ['Puasa', 'Postprandial', 'Sewaktu'];
+  final types = ['Puasa', 'Dua Jam Setelah Makan', 'Sewaktu'];
 
   bool get isValid {
     final value = double.tryParse(glucoseCtr.text.trim());

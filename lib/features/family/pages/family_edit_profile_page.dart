@@ -14,43 +14,77 @@ class FamilyEditProfilePage extends StatefulWidget {
 
 class _FamilyEditProfilePageState extends State<FamilyEditProfilePage> {
   final nameCtr = TextEditingController();
+  final emailCtr = TextEditingController();
   final phoneCtr = TextEditingController();
 
   String? gender;
+  String? emailVerifiedAt;
 
   bool isLoading = true;
   bool isSaving = false;
   String? errorMessage;
+  bool canSaveProfile = false;
 
   int? familyId;
 
-  bool get isValid {
-    final phone = phoneCtr.text.trim();
+  String originalName = '';
+  String originalPhone = '';
+  String originalGender = '';
 
-    return nameCtr.text.trim().isNotEmpty &&
-        phone.isNotEmpty &&
-        phone.length >= 10 &&
-        gender != null;
+  String get emailBadge {
+    return emailVerifiedAt == null ? 'Belum Verifikasi' : 'Terverifikasi';
   }
 
   @override
   void initState() {
     super.initState();
-
-    nameCtr.addListener(() => setState(() {}));
-    phoneCtr.addListener(() => setState(() {}));
-
+    nameCtr.addListener(_checkFormChanged);
+    phoneCtr.addListener(_checkFormChanged);
     _loadProfile();
   }
 
   @override
   void dispose() {
+    nameCtr.removeListener(_checkFormChanged);
+    phoneCtr.removeListener(_checkFormChanged);
     nameCtr.dispose();
+    emailCtr.dispose();
     phoneCtr.dispose();
     super.dispose();
   }
 
+  bool _isValidForm() {
+    final name = nameCtr.text.trim();
+    final phone = phoneCtr.text.trim();
+    final selectedGender = gender?.trim() ?? '';
+
+    return name.isNotEmpty &&
+        phone.length >= 10 &&
+        phone.length <= 15 &&
+        selectedGender.isNotEmpty;
+  }
+
+  bool _isChanged() {
+    return nameCtr.text.trim() != originalName ||
+        phoneCtr.text.trim() != originalPhone ||
+        (gender ?? '').trim() != originalGender;
+  }
+
+  void _checkFormChanged() {
+    if (!mounted) return;
+
+    setState(() {
+      canSaveProfile = _isValidForm() && _isChanged();
+    });
+  }
+
   Future<void> _loadProfile() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+      canSaveProfile = false;
+    });
+
     try {
       final prefs = await SharedPreferences.getInstance();
       final storedFamilyId = prefs.getInt('family_id');
@@ -63,24 +97,27 @@ class _FamilyEditProfilePageState extends State<FamilyEditProfilePage> {
 
       if (!mounted) return;
 
+      final loadedName = data['full_name']?.toString() ?? '';
+      final loadedEmail = data['email']?.toString() ?? '';
+      final loadedPhone = data['phone_number']?.toString() ?? '';
+      final loadedGender = data['gender']?.toString() ?? '';
+
       setState(() {
         familyId = storedFamilyId;
-        nameCtr.text =
-            data['full_name']?.toString() ??
-            data['user']?['full_name']?.toString() ??
-            '';
 
-        phoneCtr.text =
-            data['phone_number']?.toString() ??
-            data['user']?['phone_number']?.toString() ??
-            '';
+        originalName = loadedName.trim();
+        originalPhone = loadedPhone.trim();
+        originalGender = loadedGender.trim();
 
-        gender =
-            data['gender']?.toString() ??
-            data['user']?['gender']?.toString();
+        nameCtr.text = originalName;
+        emailCtr.text = loadedEmail.trim();
+        phoneCtr.text = originalPhone;
+        gender = originalGender.isEmpty ? null : originalGender;
 
+        emailVerifiedAt = data['email_verified_at']?.toString();
+
+        canSaveProfile = false;
         isLoading = false;
-        errorMessage = null;
       });
     } catch (e) {
       if (!mounted) return;
@@ -95,7 +132,7 @@ class _FamilyEditProfilePageState extends State<FamilyEditProfilePage> {
   Future<void> _saveProfile() async {
     FocusScope.of(context).unfocus();
 
-    if (!isValid || familyId == null) return;
+    if (!canSaveProfile || familyId == null) return;
 
     setState(() => isSaving = true);
 
@@ -104,27 +141,18 @@ class _FamilyEditProfilePageState extends State<FamilyEditProfilePage> {
         familyId: familyId!,
         fullName: nameCtr.text.trim(),
         phoneNumber: phoneCtr.text.trim(),
-        gender: gender!,
+        gender: gender!.trim(),
       );
 
       if (!mounted) return;
-
-      _showSnackBar(
-        message: 'Profil berhasil diperbarui',
-        isError: false,
-      );
 
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
 
-      _showSnackBar(
-        message: e.toString().replaceFirst('Exception: ', ''),
-      );
+      _showSnackBar(message: e.toString().replaceFirst('Exception: ', ''));
     } finally {
-      if (mounted) {
-        setState(() => isSaving = false);
-      }
+      if (mounted) setState(() => isSaving = false);
     }
   }
 
@@ -155,7 +183,7 @@ class _FamilyEditProfilePageState extends State<FamilyEditProfilePage> {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(16, topPad + 14, 16, 18),
+      padding: EdgeInsets.fromLTRB(12, topPad + 12, 20, 18),
       color: AppColors.primaryBlue,
       child: Row(
         children: [
@@ -169,8 +197,8 @@ class _FamilyEditProfilePageState extends State<FamilyEditProfilePage> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 22,
                 fontWeight: FontWeight.bold,
+                fontSize: 18,
               ),
             ),
           ),
@@ -182,32 +210,22 @@ class _FamilyEditProfilePageState extends State<FamilyEditProfilePage> {
 
   Widget _formContent() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
-            children: [
-              Icon(Icons.person, color: AppColors.primaryBlue, size: 18),
-              SizedBox(width: 6),
-              Text(
-                'Data Diri',
-                style: TextStyle(
-                  color: AppColors.primaryBlue,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
+          _sectionTitle(Icons.person, 'Data Diri'),
 
           _label('Nama Lengkap'),
-          _input(
-            controller: nameCtr,
-            hint: 'Masukkan nama lengkap',
-          ),
+          _input(controller: nameCtr, hint: 'Masukkan nama lengkap'),
 
-          const SizedBox(height: 18),
+          _label('Email'),
+          _input(
+            controller: emailCtr,
+            hint: 'Email',
+            enabled: false,
+            suffix: _miniBadge(emailBadge),
+          ),
 
           _label('Nomor Telepon'),
           _input(
@@ -217,26 +235,28 @@ class _FamilyEditProfilePageState extends State<FamilyEditProfilePage> {
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           ),
 
-          const SizedBox(height: 18),
-
+          _label('Jenis Kelamin'),
           _selectField(
-            label: 'Jenis Kelamin',
             hint: 'Pilih jenis kelamin',
             value: gender,
             items: const ['Laki-laki', 'Perempuan'],
-            onSelected: (value) => setState(() => gender = value),
+            onSelected: (value) {
+              setState(() => gender = value);
+              _checkFormChanged();
+            },
           ),
 
-          const SizedBox(height: 30),
+          const SizedBox(height: 26),
 
           SizedBox(
             width: double.infinity,
-            height: 46,
+            height: 48,
             child: ElevatedButton(
-              onPressed: isValid && !isSaving ? _saveProfile : null,
+              onPressed: canSaveProfile && !isSaving ? _saveProfile : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryBlue,
                 disabledBackgroundColor: const Color(0xFFAFCBEA),
+                disabledForegroundColor: Colors.white,
                 foregroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
@@ -252,16 +272,17 @@ class _FamilyEditProfilePageState extends State<FamilyEditProfilePage> {
                         strokeWidth: 2,
                       ),
                     )
-                  : const Text('Simpan Perubahan'),
+                  : const Text(
+                      'Simpan Perubahan',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
             ),
           ),
 
-          const SizedBox(height: 12),
-
-          Center(
-            child: TextButton(
-              onPressed: isSaving ? null : () => Navigator.pop(context),
-              child: const Text(
+          TextButton(
+            onPressed: isSaving ? null : () => Navigator.pop(context),
+            child: const Center(
+              child: Text(
                 'Batal',
                 style: TextStyle(color: AppColors.primaryBlue),
               ),
@@ -272,14 +293,34 @@ class _FamilyEditProfilePageState extends State<FamilyEditProfilePage> {
     );
   }
 
+  Widget _sectionTitle(IconData icon, String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10, top: 4),
+      child: Row(
+        children: [
+          Icon(icon, color: AppColors.primaryBlue, size: 16),
+          const SizedBox(width: 6),
+          Text(
+            title,
+            style: const TextStyle(
+              color: AppColors.primaryBlue,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _label(String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(top: 12, bottom: 8),
       child: Text(
         text,
         style: const TextStyle(
           color: AppColors.dark2,
-          fontSize: 13,
+          fontSize: 12,
           fontWeight: FontWeight.w500,
         ),
       ),
@@ -291,93 +332,85 @@ class _FamilyEditProfilePageState extends State<FamilyEditProfilePage> {
     required String hint,
     TextInputType keyboardType = TextInputType.text,
     List<TextInputFormatter>? inputFormatters,
+    bool enabled = true,
+    Widget? suffix,
   }) {
     return TextFormField(
       controller: controller,
-      enabled: !isSaving,
+      enabled: enabled && !isSaving,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.dark4, fontSize: 13),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 16,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: const BorderSide(color: AppColors.light1),
-        ),
-        disabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: const BorderSide(color: AppColors.light1),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: const BorderSide(
-            color: AppColors.primaryBlue,
-            width: 1.4,
-          ),
-        ),
+      decoration: _inputDecoration(
+        hint: hint,
+        suffixIcon: suffix == null
+            ? null
+            : Padding(
+                padding: const EdgeInsets.only(right: 10),
+                child: Center(widthFactor: 1, child: suffix),
+              ),
       ),
     );
   }
 
   Widget _selectField({
-    required String label,
     required String hint,
     required String? value,
     required List<String> items,
     required ValueChanged<String> onSelected,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _label(label),
-        InkWell(
-          onTap: isSaving
-              ? null
-              : () => _showOptionSheet(
-                    title: label,
-                    items: items,
-                    selectedValue: value,
-                    onSelected: onSelected,
-                  ),
-          child: InputDecorator(
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 16,
+    return InkWell(
+      onTap: isSaving
+          ? null
+          : () => _showOptionSheet(
+                title: 'Jenis Kelamin',
+                items: items,
+                selectedValue: value,
+                onSelected: onSelected,
               ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: const BorderSide(color: AppColors.light1),
+      borderRadius: BorderRadius.circular(6),
+      child: InputDecorator(
+        decoration: _inputDecoration(),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                value ?? hint,
+                style: TextStyle(
+                  color: value == null ? AppColors.dark4 : AppColors.dark1,
+                  fontSize: 13,
+                ),
               ),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    value ?? hint,
-                    style: TextStyle(
-                      color: value == null ? AppColors.dark4 : AppColors.dark1,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-                const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: AppColors.dark3,
-                ),
-              ],
+            const Icon(
+              Icons.keyboard_arrow_down_rounded,
+              color: AppColors.primaryBlue,
             ),
-          ),
+          ],
         ),
-      ],
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration({String? hint, Widget? suffixIcon}) {
+    return InputDecoration(
+      hintText: hint,
+      suffixIcon: suffixIcon,
+      hintStyle: const TextStyle(color: AppColors.dark4, fontSize: 13),
+      filled: true,
+      fillColor: AppColors.white,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(6),
+        borderSide: const BorderSide(color: AppColors.light1),
+      ),
+      disabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(6),
+        borderSide: const BorderSide(color: AppColors.light1),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(6),
+        borderSide: const BorderSide(color: AppColors.primaryBlue, width: 1.4),
+      ),
     );
   }
 
@@ -392,57 +425,119 @@ class _FamilyEditProfilePageState extends State<FamilyEditProfilePage> {
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
         return Container(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+          padding: const EdgeInsets.all(24),
           decoration: const BoxDecoration(
             color: AppColors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 42,
+                width: 44,
                 height: 4,
                 decoration: BoxDecoration(
                   color: AppColors.light1,
                   borderRadius: BorderRadius.circular(20),
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 22),
+              CircleAvatar(
+                radius: 34,
+                backgroundColor: AppColors.lightBlue,
+                child: Icon(
+                  title == 'Jenis Kelamin'
+                      ? Icons.wc_outlined
+                      : Icons.check_circle_outline,
+                  color: AppColors.primaryBlue,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 16),
               Text(
                 'Pilih $title',
                 style: const TextStyle(
                   color: AppColors.primaryBlue,
-                  fontSize: 16,
+                  fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               ...items.map((item) {
                 final selected = item == selectedValue;
 
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(
-                    item,
-                    style: TextStyle(
-                      color: selected ? AppColors.primaryBlue : AppColors.dark1,
-                      fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                    ),
-                  ),
-                  trailing: selected
-                      ? const Icon(Icons.check, color: AppColors.primaryBlue)
-                      : null,
+                return InkWell(
                   onTap: () {
                     onSelected(item);
                     Navigator.pop(sheetContext);
                   },
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 13,
+                    ),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? AppColors.veryLightBlue
+                          : AppColors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: selected
+                            ? AppColors.lightBlue
+                            : AppColors.light1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            item,
+                            style: TextStyle(
+                              color: selected
+                                  ? AppColors.primaryBlue
+                                  : AppColors.dark1,
+                              fontSize: 13,
+                              fontWeight:
+                                  selected ? FontWeight.w600 : FontWeight.w400,
+                            ),
+                          ),
+                        ),
+                        if (selected)
+                          const Icon(
+                            Icons.check_circle,
+                            color: AppColors.primaryBlue,
+                            size: 18,
+                          ),
+                      ],
+                    ),
+                  ),
                 );
               }),
             ],
           ),
         );
       },
+    );
+  }
+
+  Widget _miniBadge(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.veryLightBlue,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.lightBlue),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: AppColors.primaryBlue,
+          fontSize: 9,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 
