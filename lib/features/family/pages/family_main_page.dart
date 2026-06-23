@@ -12,6 +12,7 @@ import 'family_connection_page.dart';
 import 'family_history_page.dart';
 import 'family_notification_page.dart';
 import 'family_profile_page.dart';
+import 'family_recommendation_detail_page.dart';
 
 class FamilyMainPage extends StatefulWidget {
   const FamilyMainPage({super.key});
@@ -219,8 +220,6 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
                       children: [
                         _recommendationCard(),
                         const SizedBox(height: 12),
-                        _validationCard(),
-                        const SizedBox(height: 14),
                         _summaryCards(),
                         const SizedBox(height: 14),
                         _dailyChecklistCard(),
@@ -235,21 +234,6 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _validationCard() {
-    final count = pendingValidations.length;
-
-    return _smallInfoCard(
-      icon: Icons.assignment_outlined,
-      title: count == 0
-          ? 'Tidak ada validasi menunggu'
-          : '$count data menunggu validasi',
-      subtitle: count == 0
-          ? 'Semua data yang kamu input sudah diproses pasien'
-          : 'Data yang kamu input masih menunggu konfirmasi pasien',
-      onTap: () {},
     );
   }
 
@@ -677,24 +661,33 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
   }
 
   Widget _recommendationCard() {
-    if (recommendations.isEmpty) {
-      return _smallInfoCard(
-        icon: Icons.description_outlined,
-        title: 'Belum ada rekomendasi',
-        subtitle: 'Dokter belum memberikan rekomendasi',
-        onTap: () {},
-      );
-    }
-
-    final latest = recommendations.first;
-
+  if (recommendations.isEmpty) {
     return _smallInfoCard(
       icon: Icons.description_outlined,
-      title: latest['category']?.toString() ?? 'Rekomendasi',
-      subtitle: latest['recommendation_text']?.toString() ?? '-',
+      title: 'Belum ada rekomendasi',
+      subtitle: 'Dokter belum memberikan rekomendasi',
       onTap: () {},
     );
   }
+
+  final latest = recommendations.first;
+
+  return _smallInfoCard(
+    icon: Icons.description_outlined,
+    title: latest['category']?.toString() ?? 'Rekomendasi',
+    subtitle: latest['recommendation_text']?.toString() ?? '-',
+    onTap: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => FamilyRecommendationDetailPage(
+            item: latest,
+          ),
+        ),
+      );
+    },
+  );
+}
 
   Widget _summaryCards() {
     final latestGlucose =

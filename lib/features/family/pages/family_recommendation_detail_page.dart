@@ -29,12 +29,10 @@ class FamilyRecommendationDetailPage extends StatelessWidget {
       item['description']?.toString() ??
       '-';
 
-  String get initial {
-    final parts = doctorName.trim().split(' ').where((e) => e.isNotEmpty).toList();
-    if (parts.isEmpty) return 'DR';
-    if (parts.length == 1) return parts.first[0].toUpperCase();
-    return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-  }
+  String get targetPatient =>
+      item['patient_name']?.toString() ??
+      item['full_name']?.toString() ??
+      'Pasien';
 
   @override
   Widget build(BuildContext context) {
@@ -47,14 +45,13 @@ class FamilyRecommendationDetailPage extends StatelessWidget {
             _header(context),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
                 child: Column(
                   children: [
-                    _doctorCard(),
+                    _infoCard(),
                     const SizedBox(height: 14),
                     _recommendationCard(),
                     const SizedBox(height: 14),
-                    _familyTaskCard(),
                   ],
                 ),
               ),
@@ -70,66 +67,84 @@ class FamilyRecommendationDetailPage extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(16, topPad + 12, 16, 24),
-      color: AppColors.primaryBlue,
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-          ),
-          const Expanded(
-            child: Text(
-              'Rekomendasi Dokter',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          const SizedBox(width: 48),
-        ],
+      padding: EdgeInsets.fromLTRB(16, topPad + 16, 16, 24),
+      decoration: const BoxDecoration(
+        color: AppColors.primaryBlue,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(22),
+          bottomRight: Radius.circular(22),
+        ),
       ),
-    );
-  }
-
-  Widget _doctorCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: _cardDecoration(),
-      child: Row(
+      child: Column(
         children: [
-          CircleAvatar(
-            radius: 24,
-            backgroundColor: AppColors.lightBlue,
-            child: Text(
-              initial,
-              style: const TextStyle(
-                color: AppColors.primaryBlue,
-                fontWeight: FontWeight.bold,
+          Row(
+            children: [
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
               ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  doctorName,
-                  style: const TextStyle(
-                    color: AppColors.dark1,
-                    fontWeight: FontWeight.w700,
+              const Expanded(
+                child: Text(
+                  'Detail Rekomendasi',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 21,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  date,
-                  style: const TextStyle(
-                    color: AppColors.dark2,
-                    fontSize: 12,
+              ),
+              const SizedBox(width: 48),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                const CircleAvatar(
+                  radius: 28,
+                  backgroundColor: AppColors.lightBlue,
+                  child: Icon(
+                    Icons.send_outlined,
+                    color: AppColors.primaryBlue,
+                    size: 26,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        doctorName,
+                        style: const TextStyle(
+                          color: AppColors.dark1,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        date,
+                        style: const TextStyle(
+                          color: AppColors.dark2,
+                          fontSize: 11,
+                        ),
+                      ),
+                      const SizedBox(height: 7),
+                      _smallBadge(
+                        text: category,
+                        bg: AppColors.veryLightBlue,
+                        color: AppColors.primaryBlue,
+                        icon: _categoryIcon(category),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -140,28 +155,88 @@ class FamilyRecommendationDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _recommendationCard() {
+  Widget _infoCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: _cardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            category,
-            style: const TextStyle(
-              color: AppColors.primaryBlue,
-              fontWeight: FontWeight.w700,
-            ),
+          const Row(
+            children: [
+              Icon(Icons.info_outline, color: AppColors.primaryBlue, size: 17),
+              SizedBox(width: 8),
+              Text(
+                'Informasi Rekomendasi',
+                style: TextStyle(
+                  color: AppColors.primaryBlue,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
-          Text(
-            recommendationText,
-            style: const TextStyle(
-              color: AppColors.dark1,
-              fontSize: 13,
-              height: 1.45,
+          _infoRow('Dokter', doctorName),
+          _infoRow('Tanggal', date),
+          _infoRow('Kategori', category),
+          _infoRow('Untuk Pasien', targetPatient),
+        ],
+      ),
+    );
+  }
+
+  Widget _recommendationCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: _cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.send_outlined, color: AppColors.primaryBlue, size: 17),
+              SizedBox(width: 8),
+              Text(
+                'Rekomendasi untuk Keluarga',
+                style: TextStyle(
+                  color: AppColors.primaryBlue,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.veryLightBlue.withValues(alpha: 0.55),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.light1),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _smallBadge(
+                  text: category,
+                  bg: AppColors.lightBlue,
+                  color: AppColors.primaryBlue,
+                  icon: _categoryIcon(category),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  recommendationText,
+                  style: const TextStyle(
+                    color: AppColors.dark1,
+                    fontSize: 13,
+                    height: 1.35,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -169,43 +244,75 @@ class FamilyRecommendationDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _familyTaskCard() {
-    final tasks = [
-      'Pantau konsumsi obat pasien',
-      'Pantau pola makan harian',
-      'Pastikan aktivitas fisik rutin',
-    ];
+  IconData _categoryIcon(String category) {
+    switch (category) {
+      case 'Obat':
+        return Icons.medication_outlined;
+      case 'Pola Makan':
+        return Icons.restaurant_outlined;
+      case 'Aktivitas Fisik':
+      case 'Gaya Hidup':
+        return Icons.directions_run;
+      default:
+        return Icons.assignment_outlined;
+    }
+  }
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: _cardDecoration(),
-      child: Column(
+  Widget _infoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 9),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Tugas Pendamping',
-            style: TextStyle(
-              color: AppColors.primaryBlue,
-              fontWeight: FontWeight.w700,
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(color: AppColors.dark2, fontSize: 12),
             ),
           ),
-          const SizedBox(height: 12),
-          ...tasks.map(
-            (task) => ListTile(
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(
-                Icons.check_circle_outline,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: const TextStyle(
                 color: AppColors.primaryBlue,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
               ),
-              title: Text(
-                task,
-                style: const TextStyle(
-                  color: AppColors.dark1,
-                  fontSize: 13,
-                ),
-              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _smallBadge({
+    required String text,
+    required Color bg,
+    required Color color,
+    IconData? icon,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, color: color, size: 12),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            text,
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -218,6 +325,13 @@ class FamilyRecommendationDetailPage extends StatelessWidget {
       color: AppColors.white,
       borderRadius: BorderRadius.circular(12),
       border: Border.all(color: AppColors.light1),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.08),
+          blurRadius: 8,
+          offset: const Offset(0, 3),
+        ),
+      ],
     );
   }
 }
