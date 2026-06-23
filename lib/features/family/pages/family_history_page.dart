@@ -72,12 +72,18 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
         familyPatients.first['patient_id'].toString(),
       );
 
-      final loadedHistories = await ApiService.getFamilyPatientHistories(
-        patientId,
+      final results = await Future.wait([
+        ApiService.getFamilyPatientHistories(patientId),
+        ApiService.getFamilyPatientRecommendations(patientId),
+      ]);
+
+      final loadedHistories = _mapHealthHistories(
+        results[0] as Map<String, dynamic>,
       );
 
-      final loadedRecommendations =
-          await ApiService.getFamilyPatientRecommendations(patientId);
+      final loadedRecommendations = List<Map<String, dynamic>>.from(
+        results[1] as List,
+      );
 
       if (!mounted) return;
 
@@ -88,7 +94,6 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
         selectedPatientIndex = 0;
         selectedFilter = 0;
         isLoading = false;
-        errorMessage = null;
       });
     } catch (e) {
       if (!mounted) return;
@@ -109,12 +114,18 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
 
       final patientId = int.parse(patients[index]['patient_id'].toString());
 
-      final loadedHistories = await ApiService.getFamilyPatientHistories(
-        patientId,
+      final results = await Future.wait([
+        ApiService.getFamilyPatientHistories(patientId),
+        ApiService.getFamilyPatientRecommendations(patientId),
+      ]);
+
+      final loadedHistories = _mapHealthHistories(
+        results[0] as Map<String, dynamic>,
       );
 
-      final loadedRecommendations =
-          await ApiService.getFamilyPatientRecommendations(patientId);
+      final loadedRecommendations = List<Map<String, dynamic>>.from(
+        results[1] as List,
+      );
 
       if (!mounted) return;
 
@@ -133,6 +144,132 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
         isLoading = false;
       });
     }
+  }
+
+  List<Map<String, dynamic>> _mapHealthHistories(Map<String, dynamic> data) {
+    final List<Map<String, dynamic>> result = [];
+
+    for (final item in List<Map<String, dynamic>>.from(data['glucose'] ?? [])) {
+      result.add({
+        'type': 'Glukosa',
+        'title': 'Glukosa ${item['measurement_type'] ?? '-'}',
+        'time': _formatDateTime(item['measured_at']),
+        'date_raw': item['measured_at'],
+        'value': '${item['glucose_value'] ?? '-'}',
+        'unit': 'mg/dL',
+        'badge': item['validation_status']?.toString() ?? 'Valid',
+        'icon': Icons.opacity,
+        'color': AppColors.red,
+        'input_by_role': item['input_by_role']?.toString() ?? 'Pasien',
+        'input_by_name': item['input_by_name']?.toString() ?? '-',
+        'raw': item,
+      });
+    }
+
+    for (final item in List<Map<String, dynamic>>.from(
+      data['physiological'] ?? [],
+    )) {
+      result.add({
+        'type': 'Fisiologis',
+        'title': 'Data Fisiologis',
+        'time': _formatDateTime(item['measured_at']),
+        'date_raw': item['measured_at'],
+        'value': '${item['systolic'] ?? '-'}/${item['diastolic'] ?? '-'}',
+        'unit': 'mmHg',
+        'badge': item['validation_status']?.toString() ?? 'Valid',
+        'icon': Icons.bar_chart_rounded,
+        'color': Colors.orange,
+        'input_by_role': item['input_by_role']?.toString() ?? 'Pasien',
+        'input_by_name': item['input_by_name']?.toString() ?? '-',
+        'raw': item,
+      });
+    }
+
+    for (final item in List<Map<String, dynamic>>.from(
+      data['activity'] ?? [],
+    )) {
+      result.add({
+        'type': 'Aktivitas',
+        'title': item['activity_name']?.toString() ?? 'Aktivitas Fisik',
+        'time': _formatDateTime(item['activity_date']),
+        'date_raw': item['activity_date'],
+        'value': '${item['duration_minutes'] ?? '-'}',
+        'unit': 'menit',
+        'badge': item['validation_status']?.toString() ?? 'Valid',
+        'icon': Icons.directions_run,
+        'color': AppColors.primaryBlue,
+        'input_by_role': item['input_by_role']?.toString() ?? 'Pasien',
+        'input_by_name': item['input_by_name']?.toString() ?? '-',
+        'raw': item,
+      });
+    }
+
+    for (final item in List<Map<String, dynamic>>.from(data['meal'] ?? [])) {
+      final hasCarb = item['carbohydrate_estimate'] != null;
+
+      result.add({
+        'type': 'Makan',
+        'title': item['meal_type_name']?.toString() ?? 'Pola Makan',
+        'time': _formatDateTime(item['meal_date']),
+        'date_raw': item['meal_date'],
+        'value': '${item['carbohydrate_estimate'] ?? item['calories'] ?? '-'}',
+        'unit': hasCarb ? 'gram' : 'kkal',
+        'badge': item['validation_status']?.toString() ?? 'Valid',
+        'icon': Icons.restaurant_outlined,
+        'color': AppColors.primaryBlue,
+        'input_by_role': item['input_by_role']?.toString() ?? 'Pasien',
+        'input_by_name': item['input_by_name']?.toString() ?? '-',
+        'raw': item,
+      });
+    }
+
+    for (final item in List<Map<String, dynamic>>.from(
+      data['medication'] ?? [],
+    )) {
+      final consumptionStatus = item['status']?.toString() ?? '-';
+      final validationStatus = item['validation_status']?.toString() ?? 'Valid';
+
+      result.add({
+        'type': 'Obat',
+        'title': item['medication_name']?.toString() ?? 'Obat',
+        'time': _formatDateTime(item['log_date']),
+        'date_raw': item['log_date'],
+        'value': consumptionStatus,
+        'unit': '',
+        'badge': validationStatus,
+
+        'doctor': item['doctor_name']?.toString() ?? '-',
+        'prescriptionStatus': 'Resep aktif',
+        'icon': Icons.medication_outlined,
+        'color':
+            consumptionStatus == 'Terlewat' ||
+                consumptionStatus == 'Tidak Diminum'
+            ? AppColors.red
+            : AppColors.primaryBlue,
+        'input_by_role': item['input_by_role']?.toString() ?? 'Pasien',
+        'input_by_name': item['input_by_name']?.toString() ?? '-',
+        'raw': item,
+      });
+    }
+
+    result.sort((a, b) {
+      final dateA = DateTime.tryParse(a['date_raw']?.toString() ?? '');
+      final dateB = DateTime.tryParse(b['date_raw']?.toString() ?? '');
+
+      if (dateA == null || dateB == null) return 0;
+      return dateB.compareTo(dateA);
+    });
+
+    return result;
+  }
+
+  String _formatDateTime(dynamic value) {
+    if (value == null) return '-';
+
+    final date = DateTime.tryParse(value.toString());
+    if (date == null) return value.toString();
+
+    return '${date.day}/${date.month}/${date.year} • ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 
   String _initial(String name) {
@@ -161,26 +298,15 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
     return '$relation • $dm';
   }
 
-  IconData _iconByType(String type) {
-    switch (type) {
-      case 'Glukosa':
-        return Icons.opacity;
-      case 'Fisiologis':
-        return Icons.bar_chart_rounded;
-      case 'Aktivitas':
-        return Icons.directions_run;
-      case 'Makan':
-        return Icons.restaurant_outlined;
-      case 'Obat':
-        return Icons.medication_outlined;
-      default:
-        return Icons.description_outlined;
+  Color _badgeColor(String badge) {
+    if (badge == 'Ditolak' || badge == 'Terlewat' || badge == 'Tidak Diminum') {
+      return AppColors.red;
     }
-  }
 
-  Color _colorByStatus(String status) {
-    if (status == 'Ditolak') return AppColors.red;
-    if (status == 'Menunggu') return Colors.orange;
+    if (badge == 'Menunggu' || badge == 'Terlambat') {
+      return Colors.orange;
+    }
+
     return const Color(0xFF10C878);
   }
 
@@ -201,24 +327,13 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
     final selectedPatient = patients[selectedPatientIndex];
 
     final healthData = histories.where((item) {
-  final type = item['type']?.toString() ?? '';
+      final type = item['type']?.toString() ?? '';
 
-  final allowedHealthTypes = [
-    'Glukosa',
-    'Fisiologis',
-    'Aktivitas',
-    'Makan',
-    'Obat',
-  ];
+      if (!filters.contains(type)) return false;
+      if (selectedFilter == 0) return true;
 
-  if (!allowedHealthTypes.contains(type)) {
-    return false;
-  }
-
-  if (selectedFilter == 0) return true;
-
-  return type == filters[selectedFilter];
-}).toList();
+      return type == filters[selectedFilter];
+    }).toList();
 
     return Container(
       color: AppColors.primaryBlue,
@@ -523,13 +638,29 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
                 )
               else
                 ...data.map((item) {
-                  final type = item['type']?.toString() ?? '-';
-                  final status = item['status']?.toString() ?? '-';
+                  final badge = item['badge']?.toString() ?? '-';
 
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(12),
+                    child: _HistoryCard(
+                      type: item['type']?.toString() ?? '-',
+                      title: item['title']?.toString() ?? '-',
+                      time: item['time']?.toString() ?? '-',
+                      value: item['value']?.toString() ?? '',
+                      unit: item['unit']?.toString() ?? '',
+                      badge: badge,
+                      doctor: item['doctor']?.toString(),
+                      prescriptionStatus: item['prescriptionStatus']
+                          ?.toString(),
+                      icon: item['icon'] is IconData
+                          ? item['icon'] as IconData
+                          : Icons.description_outlined,
+                      color: item['color'] is Color
+                          ? item['color'] as Color
+                          : _badgeColor(badge),
+                      inputByRole:
+                          item['input_by_role']?.toString() ?? 'Pasien',
+                      inputByName: item['input_by_name']?.toString() ?? '-',
                       onTap: () {
                         Navigator.push(
                           context,
@@ -539,21 +670,6 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
                           ),
                         );
                       },
-                      child: _HistoryCard(
-                        title: item['title']?.toString() ?? '-',
-                        time:
-                            item['time']?.toString() ??
-                            item['recorded_at']?.toString() ??
-                            '-',
-                        value: item['value']?.toString() ?? '',
-                        unit: item['unit']?.toString() ?? '',
-                        status: status,
-                        icon: _iconByType(type),
-                        color: _colorByStatus(status),
-                        inputByRole:
-                            item['input_by_role']?.toString() ?? 'Pasien',
-                        inputByName: item['input_by_name']?.toString() ?? '-',
-                      ),
                     ),
                   );
                 }),
@@ -721,102 +837,180 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
 }
 
 class _HistoryCard extends StatelessWidget {
+  final String type;
   final String title;
   final String time;
   final String value;
   final String unit;
-  final String status;
+  final String badge;
+  final String? doctor;
+  final String? prescriptionStatus;
   final IconData icon;
   final Color color;
   final String inputByRole;
   final String inputByName;
+  final VoidCallback onTap;
 
   const _HistoryCard({
+    required this.type,
     required this.title,
     required this.time,
     required this.value,
     required this.unit,
-    required this.status,
+    required this.badge,
+    this.doctor,
+    this.prescriptionStatus,
     required this.icon,
     required this.color,
     required this.inputByRole,
     required this.inputByName,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final hasValue = value.isNotEmpty;
+    final isMedication = type == 'Obat';
+    final hasDoctor = doctor != null && doctor != '-';
+    final isInactivePrescription = prescriptionStatus == 'Tidak berlaku';
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: _cardDecoration(),
-      child: Row(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: AppColors.veryLightBlue,
-              borderRadius: BorderRadius.circular(8),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 104),
+        padding: const EdgeInsets.all(12),
+        decoration: _cardDecoration(),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: AppColors.veryLightBlue,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: AppColors.primaryBlue, size: 20),
             ),
-            child: Icon(icon, color: AppColors.primaryBlue, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: AppColors.dark1,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.dark1,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  time,
-                  style: const TextStyle(color: AppColors.dark2, fontSize: 12),
-                ),
-                const SizedBox(height: 6),
-                _statusBadge(status),
-                const SizedBox(height: 6),
-                _inputBadge(inputByRole, inputByName),
-              ],
-            ),
-          ),
-          if (hasValue)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  value,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                  const SizedBox(height: 3),
+                  Text(
+                    time,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.dark2,
+                      fontSize: 12,
+                    ),
                   ),
-                ),
-                Text(
-                  unit,
-                  style: const TextStyle(color: AppColors.dark2, fontSize: 10),
-                ),
-              ],
+                  if (isMedication && hasDoctor) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Resep dari $doctor',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.primaryBlue,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                  if (isMedication &&
+                      prescriptionStatus != null &&
+                      prescriptionStatus!.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      prescriptionStatus!,
+                      style: TextStyle(
+                        color: isInactivePrescription
+                            ? AppColors.red
+                            : const Color(0xFF10C878),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 7),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      _statusBadge(badge),
+                      _inputBadge(inputByRole, inputByName),
+                    ],
+                  ),
+                ],
+              ),
             ),
-        ],
+            const SizedBox(width: 8),
+            if (hasValue)
+              SizedBox(
+                width: isMedication ? 92 : 72,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    if (isMedication)
+                      _medicationStatusBadge(value)
+                    else ...[
+                      Text(
+                        value,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                        style: TextStyle(
+                          color: color,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        unit,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(
+                          color: AppColors.dark2,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _statusBadge(String status) {
+  Widget _statusBadge(String text) {
     Color bg;
     Color textColor;
 
-    if (status == 'Disetujui' || status == 'Valid') {
+    if (text == 'Disetujui' || text == 'Valid' || text == 'Diminum') {
       bg = const Color(0xFFEAFBF3);
       textColor = const Color(0xFF10C878);
-    } else if (status == 'Ditolak') {
+    } else if (text == 'Ditolak' ||
+        text == 'Terlewat' ||
+        text == 'Tidak Diminum') {
       bg = AppColors.lightRed;
       textColor = AppColors.red;
     } else {
@@ -829,9 +1023,10 @@ class _HistoryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: textColor.withValues(alpha: 0.18)),
       ),
       child: Text(
-        status,
+        text,
         style: TextStyle(
           color: textColor,
           fontSize: 10,
@@ -843,8 +1038,10 @@ class _HistoryCard extends StatelessWidget {
 
   Widget _inputBadge(String role, String name) {
     final isFamily = role == 'Keluarga';
+    final text = isFamily && name != '-' ? '$role • $name' : role;
 
     return Container(
+      constraints: const BoxConstraints(maxWidth: 170),
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
         color: isFamily ? const Color(0xFFFFF4DA) : AppColors.veryLightBlue,
@@ -864,15 +1061,45 @@ class _HistoryCard extends StatelessWidget {
             color: isFamily ? Colors.orange : AppColors.primaryBlue,
           ),
           const SizedBox(width: 4),
-          Text(
-            'Diinput $role',
-            style: TextStyle(
-              color: isFamily ? Colors.orange : AppColors.primaryBlue,
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
+          Flexible(
+            child: Text(
+              text,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: isFamily ? Colors.orange : AppColors.primaryBlue,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _medicationStatusBadge(String text) {
+    final isBad = text == 'Terlewat' || text == 'Tidak Diminum';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: isBad ? AppColors.lightRed : AppColors.veryLightBlue,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isBad
+              ? AppColors.red.withValues(alpha: 0.18)
+              : AppColors.primaryBlue.withValues(alpha: 0.18),
+        ),
+      ),
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: isBad ? AppColors.red : AppColors.primaryBlue,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }

@@ -52,31 +52,19 @@ class _FamilyEditProfilePageState extends State<FamilyEditProfilePage> {
     phoneCtr.dispose();
     super.dispose();
   }
-
-  bool _isValidForm() {
-    final name = nameCtr.text.trim();
-    final phone = phoneCtr.text.trim();
-    final selectedGender = gender?.trim() ?? '';
-
-    return name.isNotEmpty &&
-        phone.length >= 10 &&
-        phone.length <= 15 &&
-        selectedGender.isNotEmpty;
-  }
-
   bool _isChanged() {
-    return nameCtr.text.trim() != originalName ||
-        phoneCtr.text.trim() != originalPhone ||
-        (gender ?? '').trim() != originalGender;
-  }
+  return nameCtr.text.trim() != originalName ||
+      phoneCtr.text.trim() != originalPhone ||
+      (gender ?? '').trim() != originalGender;
+}
 
-  void _checkFormChanged() {
-    if (!mounted) return;
+void _checkFormChanged() {
+  if (!mounted) return;
 
-    setState(() {
-      canSaveProfile = _isValidForm() && _isChanged();
-    });
-  }
+  setState(() {
+    canSaveProfile = _isChanged();
+  });
+}
 
   Future<void> _loadProfile() async {
     setState(() {
@@ -119,6 +107,8 @@ class _FamilyEditProfilePageState extends State<FamilyEditProfilePage> {
         canSaveProfile = false;
         isLoading = false;
       });
+
+      _checkFormChanged();
     } catch (e) {
       if (!mounted) return;
 
@@ -130,31 +120,43 @@ class _FamilyEditProfilePageState extends State<FamilyEditProfilePage> {
   }
 
   Future<void> _saveProfile() async {
-    FocusScope.of(context).unfocus();
+  FocusScope.of(context).unfocus();
 
-    if (!canSaveProfile || familyId == null) return;
+  if (!_isChanged() || familyId == null) return;
 
-    setState(() => isSaving = true);
+  final phone = phoneCtr.text.trim();
 
-    try {
-      await ApiService.updateFamilyProfile(
-        familyId: familyId!,
-        fullName: nameCtr.text.trim(),
-        phoneNumber: phoneCtr.text.trim(),
-        gender: gender!.trim(),
-      );
+  if (phone.isNotEmpty && (phone.length < 10 || phone.length > 15)) {
+    _showSnackBar(
+      message: 'Nomor telepon harus 10-15 digit',
+    );
+    return;
+  }
 
-      if (!mounted) return;
+  setState(() => isSaving = true);
 
-      Navigator.pop(context, true);
-    } catch (e) {
-      if (!mounted) return;
+  try {
+    await ApiService.updateFamilyProfile(
+      familyId: familyId!,
+      fullName: nameCtr.text.trim(),
+      phoneNumber: phone,
+      gender: gender?.trim() ?? '',
+    );
 
-      _showSnackBar(message: e.toString().replaceFirst('Exception: ', ''));
-    } finally {
-      if (mounted) setState(() => isSaving = false);
+    if (!mounted) return;
+    Navigator.pop(context, true);
+  } catch (e) {
+    if (!mounted) return;
+
+    _showSnackBar(
+      message: e.toString().replaceFirst('Exception: ', ''),
+    );
+  } finally {
+    if (mounted) {
+      setState(() => isSaving = false);
     }
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -241,7 +243,7 @@ class _FamilyEditProfilePageState extends State<FamilyEditProfilePage> {
             value: gender,
             items: const ['Laki-laki', 'Perempuan'],
             onSelected: (value) {
-              setState(() => gender = value);
+              gender = value;
               _checkFormChanged();
             },
           ),
@@ -340,6 +342,7 @@ class _FamilyEditProfilePageState extends State<FamilyEditProfilePage> {
       enabled: enabled && !isSaving,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
+      onChanged: (_) => _checkFormChanged(),
       decoration: _inputDecoration(
         hint: hint,
         suffixIcon: suffix == null

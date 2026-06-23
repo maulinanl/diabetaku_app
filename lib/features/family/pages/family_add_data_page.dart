@@ -31,6 +31,16 @@ class _FamilyAddDataPageState extends State<FamilyAddDataPage> {
 
   List<Map<String, dynamic>> patients = [];
 
+  /// patientId -> category -> status
+  /// contoh:
+  /// {
+  ///   1: {
+  ///     'glucose': 'Valid',
+  ///     'physiological': 'Belum Ada Data',
+  ///   }
+  /// }
+  Map<int, Map<String, String>> healthStatus = {};
+
   final items = const [
     {
       'title': 'Glukosa Darah',
@@ -86,10 +96,39 @@ class _FamilyAddDataPageState extends State<FamilyAddDataPage> {
         return status == 'Diterima' || status == 'Terhubung';
       }).toList();
 
+      final Map<int, Map<String, String>> loadedStatus = {};
+
+      for (final patient in acceptedPatients) {
+        final patientId = int.parse(patient['patient_id'].toString());
+
+        try {
+          final histories = await ApiService.getFamilyPatientHistories(
+            patientId,
+          );
+
+          loadedStatus[patientId] = {
+            'glucose': _getCategoryStatus(histories['glucose']),
+            'physiological': _getCategoryStatus(histories['physiological']),
+            'activity': _getCategoryStatus(histories['activity']),
+            'meal': _getCategoryStatus(histories['meal']),
+            'medication': _getCategoryStatus(histories['medication']),
+          };
+        } catch (_) {
+          loadedStatus[patientId] = {
+            'glucose': 'Belum Ada Data',
+            'physiological': 'Belum Ada Data',
+            'activity': 'Belum Ada Data',
+            'meal': 'Belum Ada Data',
+            'medication': 'Belum Ada Data',
+          };
+        }
+      }
+
       if (!mounted) return;
 
       setState(() {
         patients = acceptedPatients;
+        healthStatus = loadedStatus;
         selectedPatientIndex = 0;
         isLoading = false;
       });
@@ -101,6 +140,91 @@ class _FamilyAddDataPageState extends State<FamilyAddDataPage> {
         isLoading = false;
       });
     }
+  }
+
+  String _getCategoryStatus(dynamic records) {
+    if (records == null || records is! List || records.isEmpty) {
+      return 'Belum Ada Data';
+    }
+
+    final todayRecords = records.where((item) {
+      if (item is! Map) return false;
+
+      final dateValue =
+          item['measured_at'] ??
+          item['activity_date'] ??
+          item['meal_date'] ??
+          item['log_date'];
+
+      return _isToday(dateValue);
+    }).toList();
+
+    if (todayRecords.isEmpty) {
+      return 'Belum Ada Data';
+    }
+
+    final hasWaiting = todayRecords.any((item) {
+      if (item is! Map) return false;
+      return item['validation_status']?.toString() == 'Menunggu';
+    });
+
+    if (hasWaiting) return 'Menunggu Validasi';
+
+    final hasValid = todayRecords.any((item) {
+      if (item is! Map) return false;
+      return item['validation_status']?.toString() == 'Valid';
+    });
+
+    if (hasValid) return 'Valid';
+
+    return 'Belum Ada Data';
+  }
+
+  bool _isToday(dynamic value) {
+    if (value == null) return false;
+
+    final date = DateTime.tryParse(value.toString());
+    if (date == null) return false;
+
+    final now = DateTime.now();
+
+    return date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
+  }
+
+  String _statusForCard(int index) {
+    if (patients.isEmpty) return 'Belum Ada Data';
+
+    final patientId = _patientId(patients[selectedPatientIndex]);
+    final status = healthStatus[patientId] ?? {};
+
+    switch (index) {
+      case 0:
+        return status['glucose'] ?? 'Belum Ada Data';
+      case 1:
+        return status['physiological'] ?? 'Belum Ada Data';
+      case 2:
+        return status['activity'] ?? 'Belum Ada Data';
+      case 3:
+        return status['meal'] ?? 'Belum Ada Data';
+      case 4:
+        return status['medication'] ?? 'Belum Ada Data';
+      default:
+        return 'Belum Ada Data';
+    }
+  }
+
+  Color _statusBgColor(String status) {
+    if (status == 'Valid') return const Color(0xFFEAFBF3);
+    if (status == 'Menunggu Validasi') return const Color(0xFFFFF4C7);
+    return AppColors.veryLightBlue;
+  }
+
+  Color _statusTextColor(String status) {
+    if (status == 'Valid') return const Color(0xFF10C878);
+    if (status == 'Menunggu Validasi') return Colors.orange;
+    return AppColors.primaryBlue;
   }
 
   String _initial(String name) {
@@ -134,7 +258,7 @@ class _FamilyAddDataPageState extends State<FamilyAddDataPage> {
     return int.parse(patient['patient_id'].toString());
   }
 
-  void _openForm(int index) {
+  Future<void> _openForm(int index) async {
     final patient = patients[selectedPatientIndex];
     final patientId = _patientId(patient);
     final patientName = _patientName(patient);
@@ -180,7 +304,11 @@ class _FamilyAddDataPageState extends State<FamilyAddDataPage> {
       );
     }
 
-    Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+
+    if (mounted) {
+      await _loadPatients();
+    }
   }
 
   @override
@@ -212,81 +340,85 @@ class _FamilyAddDataPageState extends State<FamilyAddDataPage> {
       children: [
         _patientInfoCard(patient),
         Expanded(
-          child: GridView.builder(
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 120),
-            itemCount: items.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 14,
-              crossAxisSpacing: 14,
-              childAspectRatio: 1.22,
-            ),
-            itemBuilder: (context, index) {
-              final item = items[index];
+          child: RefreshIndicator(
+            onRefresh: _loadPatients,
+            child: GridView.builder(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 120),
+              itemCount: items.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 14,
+                crossAxisSpacing: 14,
+                childAspectRatio: 1.22,
+              ),
+              itemBuilder: (context, index) {
+                final item = items[index];
+                final status = _statusForCard(index);
 
-              return InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: () => _openForm(index),
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: _cardDecoration(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 34,
-                        height: 34,
-                        decoration: BoxDecoration(
-                          color: AppColors.veryLightBlue,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          item['icon'] as IconData,
-                          color: AppColors.primaryBlue,
-                          size: 18,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        item['title'] as String,
-                        style: const TextStyle(
-                          color: AppColors.dark1,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        item['subtitle'] as String,
-                        style: const TextStyle(
-                          color: AppColors.dark2,
-                          fontSize: 10,
-                        ),
-                      ),
-                      const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.veryLightBlue,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Text(
-                          'Menunggu validasi',
-                          style: TextStyle(
+                return InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () => _openForm(index),
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: _cardDecoration(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            color: AppColors.veryLightBlue,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            item['icon'] as IconData,
                             color: AppColors.primaryBlue,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w600,
+                            size: 18,
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 12),
+                        Text(
+                          item['title'] as String,
+                          style: const TextStyle(
+                            color: AppColors.dark1,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          item['subtitle'] as String,
+                          style: const TextStyle(
+                            color: AppColors.dark2,
+                            fontSize: 10,
+                          ),
+                        ),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _statusBgColor(status),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            status,
+                            style: TextStyle(
+                              color: _statusTextColor(status),
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
       ],
@@ -298,8 +430,14 @@ class _FamilyAddDataPageState extends State<FamilyAddDataPage> {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(16, topPad + 14, 16, 18),
-      color: AppColors.primaryBlue,
+      padding: EdgeInsets.fromLTRB(20, topPad + 18, 20, 20),
+      decoration: const BoxDecoration(
+        color: AppColors.primaryBlue,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(22),
+          bottomRight: Radius.circular(22),
+        ),
+      ),
       child: Row(
         children: [
           widget.showBackButton
@@ -308,6 +446,7 @@ class _FamilyAddDataPageState extends State<FamilyAddDataPage> {
                   icon: const Icon(Icons.arrow_back, color: Colors.white),
                 )
               : const SizedBox(width: 48),
+
           const Expanded(
             child: Text(
               'Tambah Data',
@@ -319,6 +458,7 @@ class _FamilyAddDataPageState extends State<FamilyAddDataPage> {
               ),
             ),
           ),
+
           const SizedBox(width: 48),
         ],
       ),
@@ -553,7 +693,8 @@ class _FamilyAddDataPageState extends State<FamilyAddDataPage> {
               width: double.infinity,
               height: 46,
               child: ElevatedButton.icon(
-                onPressed: widget.onGoConnection ?? () => Navigator.pop(context),
+                onPressed:
+                    widget.onGoConnection ?? () => Navigator.pop(context),
                 icon: const Icon(Icons.people_alt_outlined, size: 18),
                 label: const Text('Ke Menu Koneksi'),
                 style: ElevatedButton.styleFrom(

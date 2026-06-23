@@ -202,9 +202,9 @@ class _PatientConnectionPageState extends State<PatientConnectionPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.primaryBlue,
-      child: SafeArea(
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
         top: false,
         child: Column(
           children: [
@@ -261,8 +261,14 @@ class _PatientConnectionPageState extends State<PatientConnectionPage> {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(20, topPad + 14, 20, 18),
-      color: AppColors.primaryBlue,
+      padding: EdgeInsets.fromLTRB(20, topPad + 18, 20, 20),
+      decoration: const BoxDecoration(
+        color: AppColors.primaryBlue,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(22),
+          bottomRight: Radius.circular(22),
+        ),
+      ),
       child: const Center(
         child: Text(
           'Koneksi',
@@ -413,7 +419,7 @@ class _PatientConnectionPageState extends State<PatientConnectionPage> {
                             date: date,
                           )
                         : PatientFamilyDetailPage(
-                          familyId: int.parse(item['family_id'].toString()),
+                            familyId: int.parse(item['family_id'].toString()),
                             initial: initial,
                             name: name,
                             relation: info,

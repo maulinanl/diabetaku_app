@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
+import 'family_patient_detail_page.dart';
 
 class FamilyConnectionPage extends StatefulWidget {
   const FamilyConnectionPage({super.key});
@@ -145,13 +146,13 @@ class _FamilyConnectionPageState extends State<FamilyConnectionPage> {
   }
 
   String _connectionStatus(Map<String, dynamic> patient) {
-  final status = patient['status']?.toString();
+    final status = patient['status']?.toString();
 
-  if (status == 'Diterima') return 'Terhubung';
-  if (status == 'Menunggu') return 'Menunggu';
+    if (status == 'Diterima') return 'Terhubung';
+    if (status == 'Menunggu') return 'Menunggu';
 
-  return 'Belum Terhubung';
-}
+    return 'Belum Terhubung';
+  }
 
   String _initial(String name) {
     final parts = name.trim().split(' ').where((e) => e.isNotEmpty).toList();
@@ -228,8 +229,14 @@ class _FamilyConnectionPageState extends State<FamilyConnectionPage> {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(20, topPad + 18, 20, 22),
-      color: AppColors.primaryBlue,
+      padding: EdgeInsets.fromLTRB(20, topPad + 18, 20, 20),
+      decoration: const BoxDecoration(
+        color: AppColors.primaryBlue,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(22),
+          bottomRight: Radius.circular(22),
+        ),
+      ),
       child: const Center(
         child: Text(
           'Koneksi',
@@ -320,7 +327,27 @@ class _FamilyConnectionPageState extends State<FamilyConnectionPage> {
                       item['connected_since']?.toString(),
                 ),
                 showVerified: false,
-                onTap: () {},
+                onTap: () async {
+                  final changed = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => FamilyPatientDetailPage(
+                        patientId: int.parse(item['patient_id'].toString()),
+                        initial: _initial(name),
+                        name: name,
+                        relation: _patientRelation(item),
+                        date: _formatDate(
+                          item['connected_at']?.toString() ??
+                              item['connected_since']?.toString(),
+                        ),
+                      ),
+                    ),
+                  );
+
+                  if (changed == true) {
+                    await _loadInitialData();
+                  }
+                },
               ),
             );
           }),

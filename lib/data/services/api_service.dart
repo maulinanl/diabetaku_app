@@ -1635,7 +1635,7 @@ class ApiService {
     }
   }
 
-  static Future<List<Map<String, dynamic>>> getFamilyPatientHistories(
+  static Future<Map<String, dynamic>> getFamilyPatientHistories(
     int patientId,
   ) async {
     final response = await http.get(
@@ -1646,7 +1646,7 @@ class ApiService {
     final data = jsonDecode(response.body);
 
     if (response.statusCode == 200) {
-      return List<Map<String, dynamic>>.from(data['data'] ?? []);
+      return Map<String, dynamic>.from(data['data'] ?? {});
     }
 
     throw Exception(data['message'] ?? 'Gagal mengambil riwayat pasien');
@@ -1773,10 +1773,18 @@ class ApiService {
   static Future<List<Map<String, dynamic>>> getDoctorPatientActivePrescriptions(
     int patientId,
   ) async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/doctor/patients/$patientId/prescriptions/active'),
-      headers: await _authHeaders(),
-    );
+    final prefs = await SharedPreferences.getInstance();
+    final doctorId = prefs.getInt('doctor_id');
+
+    if (doctorId == null) {
+      throw Exception('Doctor ID tidak ditemukan. Coba login ulang.');
+    }
+
+    final uri = Uri.parse(
+      '$baseUrl/doctor/patients/$patientId/prescriptions/active',
+    ).replace(queryParameters: {'doctor_id': doctorId.toString()});
+
+    final response = await http.get(uri, headers: await _authHeaders());
 
     final data = jsonDecode(response.body);
 
@@ -1790,10 +1798,18 @@ class ApiService {
   static Future<List<Map<String, dynamic>>> getDoctorPatientPrescriptionHistory(
     int patientId,
   ) async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/doctor/patients/$patientId/prescriptions/history'),
-      headers: await _authHeaders(),
-    );
+    final prefs = await SharedPreferences.getInstance();
+    final doctorId = prefs.getInt('doctor_id');
+
+    if (doctorId == null) {
+      throw Exception('Doctor ID tidak ditemukan. Coba login ulang.');
+    }
+
+    final uri = Uri.parse(
+      '$baseUrl/doctor/patients/$patientId/prescriptions/history',
+    ).replace(queryParameters: {'doctor_id': doctorId.toString()});
+
+    final response = await http.get(uri, headers: await _authHeaders());
 
     final data = jsonDecode(response.body);
 
@@ -1941,7 +1957,7 @@ class ApiService {
 
   static Future<List<String>> getPrescriptionMealRules() async {
     final response = await http.get(
-      Uri.parse('$baseUrl/doctor/prescription-meal-rules'),
+      Uri.parse('$baseUrl/master/prescription-meal-rules'),
       headers: await _authHeaders(),
     );
 
@@ -1953,4 +1969,46 @@ class ApiService {
 
     throw Exception(data['message'] ?? 'Gagal mengambil aturan minum');
   }
+
+  static Future<Map<String, dynamic>> getFamilyPatientDetail(
+  int patientId,
+) async {
+  final response = await http.get(
+    Uri.parse('$baseUrl/family/patient-detail/$patientId'),
+    headers: await _authHeaders(),
+  );
+
+  final data = jsonDecode(response.body);
+
+  if (response.statusCode == 200) {
+    return Map<String, dynamic>.from(data['data'] ?? {});
+  }
+
+  throw Exception(data['message'] ?? 'Gagal mengambil detail pasien');
+}
+
+  static Future<void> disconnectFamilyPatient({
+  required int patientId,
+}) async {
+  final prefs = await SharedPreferences.getInstance();
+  final familyId = prefs.getInt('family_id');
+
+  if (familyId == null) {
+    throw Exception('Family ID tidak ditemukan. Coba login ulang.');
+  }
+
+  final response = await http.delete(
+    Uri.parse('$baseUrl/family/patients/$patientId/disconnect'),
+    headers: await _authHeaders(),
+    body: jsonEncode({
+      'family_id': familyId,
+    }),
+  );
+
+  final data = jsonDecode(response.body);
+
+  if (response.statusCode != 200) {
+    throw Exception(data['message'] ?? 'Gagal memutus relasi pasien');
+  }
+}
 }

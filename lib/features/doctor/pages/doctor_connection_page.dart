@@ -116,11 +116,11 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
     final data = selectedTab == 0
         ? pendingRequests
         : selectedTab == 1
-            ? acceptedRequests
-            : rejectedRequests;
+        ? acceptedRequests
+        : rejectedRequests;
 
     return Scaffold(
-      backgroundColor: AppColors.primaryBlue,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         top: false,
         child: Column(
@@ -132,98 +132,94 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
                 child: isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : errorMessage != null
-                        ? Center(child: Text(errorMessage!))
-                        : Column(
-                            children: [
-                              _buildTabs(),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 18,
-                                ),
-                                child: Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Text(
-                                    selectedTab == 0
-                                        ? 'KONEKSI MENUNGGU - ${data.length}'
-                                        : selectedTab == 1
-                                            ? 'KONEKSI DITERIMA - ${data.length}'
-                                            : 'KONEKSI DITOLAK - ${data.length}',
-                                    style: const TextStyle(
-                                      color: AppColors.primaryBlue,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
+                    ? Center(child: Text(errorMessage!))
+                    : Column(
+                        children: [
+                          _buildTabs(),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 18),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                selectedTab == 0
+                                    ? 'KONEKSI MENUNGGU - ${data.length}'
+                                    : selectedTab == 1
+                                    ? 'KONEKSI DITERIMA - ${data.length}'
+                                    : 'KONEKSI DITOLAK - ${data.length}',
+                                style: const TextStyle(
+                                  color: AppColors.primaryBlue,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              const SizedBox(height: 10),
-                              Expanded(
-                                child: data.isEmpty
-                                    ? _emptyState()
-                                    : RefreshIndicator(
-                                        onRefresh: _loadData,
-                                        child: ListView.separated(
-                                          padding: const EdgeInsets.fromLTRB(
-                                            18,
-                                            0,
-                                            18,
-                                            120,
-                                          ),
-                                          itemCount: data.length,
-                                          separatorBuilder: (_, __) =>
-                                              const SizedBox(height: 14),
-                                          itemBuilder: (context, index) {
-                                            final item = data[index];
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Expanded(
+                            child: data.isEmpty
+                                ? _emptyState()
+                                : RefreshIndicator(
+                                    onRefresh: _loadData,
+                                    child: ListView.separated(
+                                      padding: const EdgeInsets.fromLTRB(
+                                        18,
+                                        0,
+                                        18,
+                                        120,
+                                      ),
+                                      itemCount: data.length,
+                                      separatorBuilder: (_, __) =>
+                                          const SizedBox(height: 14),
+                                      itemBuilder: (context, index) {
+                                        final item = data[index];
 
-                                            final patientId = int.parse(
-                                              item['patient_id'].toString(),
-                                            );
+                                        final patientId = int.parse(
+                                          item['patient_id'].toString(),
+                                        );
 
-                                            final name =
-                                                item['full_name']?.toString() ??
-                                                    '-';
-                                            final gender =
-                                                item['gender']?.toString() ??
-                                                    '-';
-                                            final age = _calculateAge(
-                                              item['date_of_birth']?.toString(),
-                                            );
-                                            final type = _formatDiabetesType(
-                                              item['diabetes_type'],
-                                            );
+                                        final name =
+                                            item['full_name']?.toString() ??
+                                            '-';
+                                        final gender =
+                                            item['gender']?.toString() ?? '-';
+                                        final age = _calculateAge(
+                                          item['date_of_birth']?.toString(),
+                                        );
+                                        final type = _formatDiabetesType(
+                                          item['diabetes_type'],
+                                        );
 
-                                            final diagnosis = selectedTab == 0
-                                                ? 'Menunggu persetujuan dokter'
-                                                : selectedTab == 1
-                                                    ? 'Koneksi diterima'
-                                                    : 'Koneksi ditolak';
+                                        final diagnosis = selectedTab == 0
+                                            ? 'Menunggu persetujuan dokter'
+                                            : selectedTab == 1
+                                            ? 'Koneksi diterima'
+                                            : 'Koneksi ditolak';
 
-                                            return _RequestCard(
-                                              initial: _getInitials(name),
-                                              name: name,
-                                              info:
-                                                  'DM $type • $age tahun • $gender',
-                                              diagnosis: diagnosis,
-                                              status: selectedTab,
-                                              onDetail: () async {
-                                                if (selectedTab == 1) {
-                                                  await Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (_) =>
-                                                          PatientDetailPage(
+                                        return _RequestCard(
+                                          initial: _getInitials(name),
+                                          name: name,
+                                          info:
+                                              'DM $type • $age tahun • $gender',
+                                          diagnosis: diagnosis,
+                                          status: selectedTab,
+                                          onDetail: () async {
+                                            if (selectedTab == 1) {
+                                              await Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      PatientDetailPage(
                                                         patientId: patientId,
                                                         isConnected: true,
                                                       ),
-                                                    ),
-                                                  );
-                                                } else {
-                                                  final result =
-                                                      await Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (_) =>
-                                                          RequestDetailPage(
+                                                ),
+                                              );
+                                            } else {
+                                              final result = await Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      RequestDetailPage(
                                                         patientId: patientId,
                                                         status: selectedTab,
                                                         name: name,
@@ -233,36 +229,36 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
                                                             'DM $type',
                                                         connectionStatus:
                                                             diagnosis,
-                                                        onAccept: selectedTab ==
-                                                                0
+                                                        onAccept:
+                                                            selectedTab == 0
                                                             ? () =>
-                                                                _acceptRequest(
-                                                                  patientId,
-                                                                )
+                                                                  _acceptRequest(
+                                                                    patientId,
+                                                                  )
                                                             : null,
-                                                        onReject: selectedTab ==
-                                                                0
+                                                        onReject:
+                                                            selectedTab == 0
                                                             ? () =>
-                                                                _rejectRequest(
-                                                                  patientId,
-                                                                )
+                                                                  _rejectRequest(
+                                                                    patientId,
+                                                                  )
                                                             : null,
                                                       ),
-                                                    ),
-                                                  );
+                                                ),
+                                              );
 
-                                                  if (result == true) {
-                                                    await _loadData();
-                                                  }
-                                                }
-                                              },
-                                            );
+                                              if (result == true) {
+                                                await _loadData();
+                                              }
+                                            }
                                           },
-                                        ),
-                                      ),
-                              ),
-                            ],
+                                        );
+                                      },
+                                    ),
+                                  ),
                           ),
+                        ],
+                      ),
               ),
             ),
           ],
@@ -272,67 +268,73 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    final topPad = MediaQuery.of(context).padding.top;
+  final topPad = MediaQuery.of(context).padding.top;
 
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.fromLTRB(20, topPad + 22, 20, 26),
-      decoration: const BoxDecoration(
-        color: AppColors.primaryBlue,
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(22),
-          bottomRight: Radius.circular(22),
+  return Container(
+    width: double.infinity,
+    padding: EdgeInsets.fromLTRB(20, topPad + 18, 20, 20),
+    decoration: const BoxDecoration(
+      color: AppColors.primaryBlue,
+      borderRadius: BorderRadius.only(
+        bottomLeft: Radius.circular(22),
+        bottomRight: Radius.circular(22),
+      ),
+    ),
+    child: const Center(
+      child: Text(
+        'Permintaan Koneksi',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 21,
+          fontWeight: FontWeight.bold,
         ),
       ),
-      child: const Center(
-        child: Text(
-          'Permintaan Koneksi',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildTabs() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
-      child: Row(
-        children: List.generate(tabs.length, (index) {
-          final selected = selectedTab == index;
+  return Container(
+    padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
+    child: Row(
+      children: List.generate(tabs.length, (index) {
+        final selected = selectedTab == index;
 
-          return Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => selectedTab = index),
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 5),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: selected ? AppColors.primaryBlue : AppColors.white,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color: selected ? AppColors.primaryBlue : AppColors.light1,
-                  ),
+        return Expanded(
+          child: GestureDetector(
+            onTap: () => setState(() => selectedTab = index),
+            child: Container(
+              height: 34,
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: selected
+                    ? AppColors.primaryBlue
+                    : AppColors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: selected
+                      ? AppColors.primaryBlue
+                      : AppColors.light1,
                 ),
-                child: Text(
-                  tabs[index],
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: selected ? Colors.white : AppColors.primaryBlue,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
+              ),
+              child: Text(
+                tabs[index],
+                style: TextStyle(
+                  color: selected
+                      ? Colors.white
+                      : AppColors.primaryBlue,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
-          );
-        }),
-      ),
-    );
-  }
+          ),
+        );
+      }),
+    ),
+  );
+}
 
   Widget _emptyState() {
     return const Center(
@@ -396,8 +398,9 @@ class _RequestCard extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 25,
-                  backgroundColor:
-                      isRejected ? AppColors.lightRed : AppColors.lightBlue,
+                  backgroundColor: isRejected
+                      ? AppColors.lightRed
+                      : AppColors.lightBlue,
                   child: Text(
                     initial,
                     style: TextStyle(
@@ -451,8 +454,8 @@ class _RequestCard extends StatelessWidget {
                     isAccepted
                         ? Icons.check_circle_outline
                         : isRejected
-                            ? Icons.cancel_outlined
-                            : Icons.hourglass_bottom_rounded,
+                        ? Icons.cancel_outlined
+                        : Icons.hourglass_bottom_rounded,
                     size: 13,
                     color: statusColor,
                   ),
@@ -758,8 +761,9 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
                 const SizedBox(height: 24),
                 CircleAvatar(
                   radius: 42,
-                  backgroundColor:
-                      isReject ? AppColors.lightRed : AppColors.veryLightBlue,
+                  backgroundColor: isReject
+                      ? AppColors.lightRed
+                      : AppColors.veryLightBlue,
                   child: Icon(
                     icon,
                     color: isReject ? AppColors.red : AppColors.primaryBlue,
@@ -793,8 +797,9 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
                   child: ElevatedButton(
                     onPressed: onPrimaryTap,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          isReject ? AppColors.red : AppColors.primaryBlue,
+                      backgroundColor: isReject
+                          ? AppColors.red
+                          : AppColors.primaryBlue,
                       foregroundColor: Colors.white,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
@@ -976,8 +981,8 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
                   isAccepted
                       ? 'Koneksi Aktif'
                       : isRejected
-                          ? 'Koneksi Ditolak'
-                          : 'Permintaan Koneksi',
+                      ? 'Koneksi Ditolak'
+                      : 'Permintaan Koneksi',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: Colors.white,
@@ -1000,14 +1005,15 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
             child: Row(
               children: [
                 CircleAvatar(
-                  backgroundColor:
-                      isRejected ? AppColors.lightRed : AppColors.lightBlue,
+                  backgroundColor: isRejected
+                      ? AppColors.lightRed
+                      : AppColors.lightBlue,
                   child: Icon(
                     isAccepted
                         ? Icons.check_circle_outline
                         : isRejected
-                            ? Icons.cancel_outlined
-                            : Icons.person_add_alt_1,
+                        ? Icons.cancel_outlined
+                        : Icons.person_add_alt_1,
                     color: isRejected ? AppColors.red : AppColors.primaryBlue,
                   ),
                 ),
@@ -1017,8 +1023,8 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
                     isAccepted
                         ? 'Permintaan koneksi diterima\n${widget.time}'
                         : isRejected
-                            ? 'Permintaan koneksi ditolak\n${widget.time}'
-                            : 'Permintaan koneksi baru\n${widget.time}',
+                        ? 'Permintaan koneksi ditolak\n${widget.time}'
+                        : 'Permintaan koneksi baru\n${widget.time}',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 12,

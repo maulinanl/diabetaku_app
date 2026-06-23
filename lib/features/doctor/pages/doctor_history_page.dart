@@ -49,7 +49,7 @@ class _DoctorHistoryPageState extends State<DoctorHistoryPage> {
           final matchesFilter = selectedFilter == 0
               ? true
               : selectedFilter == 1
-              ? true
+              ? recommendationCount == 0
               : recommendationCount > 0;
 
           final matchesDate = _isInSelectedRange(item['created_at']);
@@ -679,15 +679,13 @@ class _HistoryCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                alignment: WrapAlignment.end,
-                children: [
-                  _smallBadge('Catatan Klinis'),
-                  if (hasRecommendation) _smallBadge('+ Rekomendasi'),
-                ],
-              ),
+              if (hasRecommendation)
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  alignment: WrapAlignment.end,
+                  children: [_smallBadge('+ Rekomendasi')],
+                ),
             ],
           ),
           const SizedBox(height: 12),

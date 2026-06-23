@@ -387,7 +387,6 @@ class _FamilyProfilePageState extends State<FamilyProfilePage> {
       child: Column(
         children: [
           _menuTile(Icons.lock_outline, 'Ubah kata sandi', 'Perbarui keamanan akun'),
-          const Divider(height: 1),
           _menuTile(Icons.info_outline, 'Tentang aplikasi', 'Versi 1.0.0'),
         ],
       ),

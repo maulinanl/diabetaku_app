@@ -1469,98 +1469,125 @@ class PatientHealthDetailPage extends StatelessWidget {
   }
 
   Widget _header(BuildContext context, Map<String, dynamic> data) {
-    final topPad = MediaQuery.of(context).padding.top;
-    final isBad = data['status'] == 'Abnormal';
+  final topPad = MediaQuery.of(context).padding.top;
+  final isBad = data['status'] == 'Abnormal';
 
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.fromLTRB(16, topPad + 12, 16, 28),
+  return Container(
+    width: double.infinity,
+    padding: EdgeInsets.fromLTRB(16, topPad + 16, 16, 24),
+    decoration: const BoxDecoration(
       color: AppColors.primaryBlue,
-      child: Column(
-        children: [
-          Row(
-            children: [
-              IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
-              ),
-              const Expanded(
-                child: Text(
-                  'Detail Riwayat',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
-                  ),
+      borderRadius: BorderRadius.only(
+        bottomLeft: Radius.circular(22),
+        bottomRight: Radius.circular(22),
+      ),
+    ),
+    child: Column(
+      children: [
+        Row(
+          children: [
+            IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+            ),
+
+            const Expanded(
+              child: Text(
+                'Detail Riwayat',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 21,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(width: 48),
+            ),
+
+            const SizedBox(width: 48),
+          ],
+        ),
+
+        const SizedBox(height: 18),
+
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 28,
+                backgroundColor: AppColors.lightBlue,
+                child: Icon(
+                  data['icon'] as IconData,
+                  color: AppColors.primaryBlue,
+                  size: 26,
+                ),
+              ),
+
+              const SizedBox(width: 14),
+
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      data['value'].toString(),
+                      style: const TextStyle(
+                        color: AppColors.dark1,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+
+                    const SizedBox(height: 4),
+
+                    Text(
+                      '${data['unit']} • ${data['date']}',
+                      style: const TextStyle(
+                        color: AppColors.dark2,
+                        fontSize: 11,
+                      ),
+                    ),
+
+                    const SizedBox(height: 7),
+
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.veryLightBlue,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: AppColors.primaryBlue.withValues(alpha: .15),
+                        ),
+                      ),
+                      child: Text(
+                        data['status'].toString(),
+                        style: TextStyle(
+                          color: isBad
+                              ? AppColors.red
+                              : AppColors.primaryBlue,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 14),
-          CircleAvatar(
-            radius: 30,
-            backgroundColor: AppColors.lightBlue,
-            child: Icon(
-              data['icon'] as IconData,
-              color: AppColors.primaryBlue,
-              size: 30,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Center(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
-                  data['value'].toString(),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  data['unit'].toString(),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white, fontSize: 13),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  data['date'].toString(),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white, fontSize: 11),
-                ),
-              ],
-            ),
-          ),
-          if (data['status'].toString().isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                data['status'].toString(),
-                style: TextStyle(
-                  color: isBad ? AppColors.red : AppColors.primaryBlue,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _detailSection(Map<String, dynamic> data) {
     final sections = data['sections'] as List<List<String>>;
