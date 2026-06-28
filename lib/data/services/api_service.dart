@@ -3,8 +3,8 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://127.0.0.1:8000/api';
-
+  static const String baseUrl = 'http://192.168.8.225:8000/api';
+  
   static Future<void> registerDoctor({
     required String fullName,
     required String email,
@@ -265,6 +265,23 @@ class ApiService {
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
+  }
+
+  static Future<void> saveFcmToken(String fcmToken) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/notifications/fcm-token'),
+      headers: await _authHeaders(),
+      body: jsonEncode({'fcm_token': fcmToken}),
+    );
+
+    final data = response.body.isNotEmpty ? jsonDecode(response.body) : {};
+
+    print('SAVE FCM TOKEN STATUS: ${response.statusCode}');
+    print('SAVE FCM TOKEN BODY: ${response.body}');
+
+    if (response.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Gagal menyimpan FCM token');
+    }
   }
 
   static Future<List<Map<String, dynamic>>> getDoctorPatients(
@@ -1971,44 +1988,40 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> getFamilyPatientDetail(
-  int patientId,
-) async {
-  final response = await http.get(
-    Uri.parse('$baseUrl/family/patient-detail/$patientId'),
-    headers: await _authHeaders(),
-  );
+    int patientId,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/family/patient-detail/$patientId'),
+      headers: await _authHeaders(),
+    );
 
-  final data = jsonDecode(response.body);
+    final data = jsonDecode(response.body);
 
-  if (response.statusCode == 200) {
-    return Map<String, dynamic>.from(data['data'] ?? {});
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(data['data'] ?? {});
+    }
+
+    throw Exception(data['message'] ?? 'Gagal mengambil detail pasien');
   }
 
-  throw Exception(data['message'] ?? 'Gagal mengambil detail pasien');
-}
+  static Future<void> disconnectFamilyPatient({required int patientId}) async {
+    final prefs = await SharedPreferences.getInstance();
+    final familyId = prefs.getInt('family_id');
 
-  static Future<void> disconnectFamilyPatient({
-  required int patientId,
-}) async {
-  final prefs = await SharedPreferences.getInstance();
-  final familyId = prefs.getInt('family_id');
+    if (familyId == null) {
+      throw Exception('Family ID tidak ditemukan. Coba login ulang.');
+    }
 
-  if (familyId == null) {
-    throw Exception('Family ID tidak ditemukan. Coba login ulang.');
+    final response = await http.delete(
+      Uri.parse('$baseUrl/family/patients/$patientId/disconnect'),
+      headers: await _authHeaders(),
+      body: jsonEncode({'family_id': familyId}),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Gagal memutus relasi pasien');
+    }
   }
-
-  final response = await http.delete(
-    Uri.parse('$baseUrl/family/patients/$patientId/disconnect'),
-    headers: await _authHeaders(),
-    body: jsonEncode({
-      'family_id': familyId,
-    }),
-  );
-
-  final data = jsonDecode(response.body);
-
-  if (response.statusCode != 200) {
-    throw Exception(data['message'] ?? 'Gagal memutus relasi pasien');
-  }
-}
 }

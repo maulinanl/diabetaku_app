@@ -86,23 +86,31 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
   }
 
   Future<void> _fetchDashboard() async {
+    if (!mounted) return;
+
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
     try {
-      final dashboard = await ApiService.getPatientDashboard(widget.patientId);
-      final glucose = await ApiService.getPatientGlucoseRecords(
-        widget.patientId,
-      );
-      final physiological = await ApiService.getPatientPhysiologicalRecords(
-        widget.patientId,
-      );
-      final behavioral = await ApiService.getPatientBehavioralRecords(
-        widget.patientId,
-      );
-      final medication = await ApiService.getPatientMedicationRecords(
-        widget.patientId,
-      );
-      final thresholds = await ApiService.getPatientThresholds(
-        widget.patientId,
-      );
+      final results = await Future.wait([
+        ApiService.getPatientDashboard(widget.patientId),
+        ApiService.getPatientGlucoseRecords(widget.patientId),
+        ApiService.getPatientPhysiologicalRecords(widget.patientId),
+        ApiService.getPatientBehavioralRecords(widget.patientId),
+        ApiService.getPatientMedicationRecords(widget.patientId),
+        ApiService.getPatientThresholds(widget.patientId),
+      ]);
+
+      if (!mounted) return;
+
+      final dashboard = results[0] as Map<String, dynamic>;
+      final glucose = List<Map<String, dynamic>>.from(results[1] as List);
+      final physiological = List<Map<String, dynamic>>.from(results[2] as List);
+      final behavioral = Map<String, dynamic>.from(results[3] as Map);
+      final medication = List<Map<String, dynamic>>.from(results[4] as List);
+      final thresholds = List<Map<String, dynamic>>.from(results[5] as List);
 
       setState(() {
         dashboardData = dashboard;
@@ -119,6 +127,8 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
         isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
+
       setState(() {
         errorMessage = e.toString().replaceFirst('Exception: ', '');
         isLoading = false;
@@ -333,8 +343,8 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                     width: double.infinity,
                     height: 46,
                     child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
+                      onPressed: () async {
+                        await Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (_) => ClinicalNoteFormPage(
@@ -343,6 +353,10 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                             ),
                           ),
                         );
+
+                        if (mounted) {
+                          _fetchDashboard();
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryBlue,

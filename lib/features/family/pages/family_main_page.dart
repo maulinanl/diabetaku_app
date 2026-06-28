@@ -64,111 +64,104 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
   }
 
   Future<void> _loadFamilyHome() async {
-    setState(() {
-      isLoading = true;
-      errorMessage = null;
-    });
+  setState(() {
+    isLoading = true;
+    errorMessage = null;
+  });
 
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final storedFamilyId = prefs.getInt('family_id');
-      final storedUserId = prefs.getInt('user_id');
-      final storedName = prefs.getString('full_name') ?? '-';
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final storedFamilyId = prefs.getInt('family_id');
+    final storedUserId = prefs.getInt('user_id');
+    final storedName = prefs.getString('full_name') ?? '-';
 
-      if (storedFamilyId == null) {
-        throw Exception('Family ID tidak ditemukan. Coba login ulang.');
-      }
-
-      final profile = await ApiService.getFamilyProfile(storedFamilyId);
-      final rawPatients = await ApiService.getFamilyPatients(storedFamilyId);
-      final acceptedPatients = _acceptedPatientsOnly(rawPatients);
-
-      Map<String, dynamic>? loadedDashboard;
-      List<Map<String, dynamic>> loadedRecommendations = [];
-      Map<String, dynamic> loadedHealthHistories = {};
-      List<Map<String, dynamic>> loadedPendingValidations = [];
-      List<Map<String, dynamic>> loadedNotifications = [];
-
-      if (acceptedPatients.isNotEmpty) {
-        final firstPatientId = int.parse(
-          acceptedPatients.first['patient_id'].toString(),
-        );
-
-        loadedDashboard = await ApiService.getFamilyPatientDashboard(
-          firstPatientId,
-        );
-
-        loadedRecommendations =
-            await ApiService.getFamilyPatientRecommendations(firstPatientId);
-
-        loadedHealthHistories = await ApiService.getPatientHealthHistory(
-          firstPatientId,
-        );
-
-        loadedPendingValidations =
-            await ApiService.getPatientPendingValidations(firstPatientId);
-      }
-
-      if (storedUserId != null) {
-        loadedNotifications = await ApiService.getNotifications(storedUserId);
-      }
-
-      if (!mounted) return;
-
-      setState(() {
-        familyId = storedFamilyId;
-        familyName = profile['full_name']?.toString() ?? storedName;
-        patients = acceptedPatients;
-        dashboardData = loadedDashboard;
-        recommendations = loadedRecommendations;
-        healthHistories = loadedHealthHistories;
-        pendingValidations = loadedPendingValidations;
-        selectedPatientIndex = 0;
-
-        hasUnreadNotification = loadedNotifications.any((n) {
-          final isRead = n['is_read'];
-          return isRead == false || isRead == 0 || isRead?.toString() == '0';
-        });
-
-        isLoading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-
-      setState(() {
-        errorMessage = e.toString().replaceFirst('Exception: ', '');
-        isLoading = false;
-      });
+    if (storedFamilyId == null) {
+      throw Exception('Family ID tidak ditemukan. Coba login ulang.');
     }
-  }
 
-  Future<void> _loadSelectedPatientDashboard(int index) async {
-    final patientId = int.parse(patients[index]['patient_id'].toString());
+    final baseResults = await Future.wait([
+      ApiService.getFamilyProfile(storedFamilyId),
+      ApiService.getFamilyPatients(storedFamilyId),
+      if (storedUserId != null) ApiService.getNotifications(storedUserId),
+    ]);
 
-    final loadedDashboard = await ApiService.getFamilyPatientDashboard(
-      patientId,
-    );
+    final profile = baseResults[0] as Map<String, dynamic>;
+    final rawPatients = List<Map<String, dynamic>>.from(baseResults[1] as List);
+    final acceptedPatients = _acceptedPatientsOnly(rawPatients);
 
-    final loadedRecommendations =
-        await ApiService.getFamilyPatientRecommendations(patientId);
+    Map<String, dynamic>? loadedDashboard;
+    List<Map<String, dynamic>> loadedRecommendations = [];
+    Map<String, dynamic> loadedHealthHistories = {};
+    List<Map<String, dynamic>> loadedNotifications = storedUserId != null
+        ? List<Map<String, dynamic>>.from(baseResults[2] as List)
+        : [];
 
-    final loadedHealthHistories = await ApiService.getPatientHealthHistory(
-      patientId,
-    );
+    if (acceptedPatients.isNotEmpty) {
+      final firstPatientId = int.parse(
+        acceptedPatients.first['patient_id'].toString(),
+      );
 
-    final loadedPendingValidations =
-        await ApiService.getPatientPendingValidations(patientId);
+      final patientResults = await Future.wait([
+        ApiService.getFamilyPatientDashboard(firstPatientId),
+        ApiService.getFamilyPatientRecommendations(firstPatientId),
+        ApiService.getPatientHealthHistory(firstPatientId),
+      ]);
+
+      loadedDashboard = patientResults[0] as Map<String, dynamic>;
+      loadedRecommendations = List<Map<String, dynamic>>.from(
+        patientResults[1] as List,
+      );
+      loadedHealthHistories = Map<String, dynamic>.from(
+        patientResults[2] as Map,
+      );
+    }
 
     if (!mounted) return;
 
     setState(() {
-      selectedPatientIndex = index;
+      familyId = storedFamilyId;
+      familyName = profile['full_name']?.toString() ?? storedName;
+      patients = acceptedPatients;
       dashboardData = loadedDashboard;
       recommendations = loadedRecommendations;
       healthHistories = loadedHealthHistories;
-      pendingValidations = loadedPendingValidations;
+      selectedPatientIndex = 0;
+
+      hasUnreadNotification = loadedNotifications.any((n) {
+        final isRead = n['is_read'];
+        return isRead == false || isRead == 0 || isRead?.toString() == '0';
+      });
+
+      isLoading = false;
+    });
+  } catch (e) {
+    if (!mounted) return;
+
+    setState(() {
+      errorMessage = e.toString().replaceFirst('Exception: ', '');
+      isLoading = false;
     });
   }
+}
+
+Future<void> _loadSelectedPatientDashboard(int index) async {
+  final patientId = int.parse(patients[index]['patient_id'].toString());
+
+  final patientResults = await Future.wait([
+    ApiService.getFamilyPatientDashboard(patientId),
+    ApiService.getFamilyPatientRecommendations(patientId),
+    ApiService.getPatientHealthHistory(patientId),
+  ]);
+
+  if (!mounted) return;
+
+  setState(() {
+    selectedPatientIndex = index;
+    dashboardData = patientResults[0] as Map<String, dynamic>;
+    recommendations = List<Map<String, dynamic>>.from(patientResults[1] as List);
+    healthHistories = Map<String, dynamic>.from(patientResults[2] as Map);
+  });
+}
 
   @override
   Widget build(BuildContext context) {

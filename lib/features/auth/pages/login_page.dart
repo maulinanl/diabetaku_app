@@ -8,6 +8,7 @@ import 'forgot_password_page.dart';
 import '../../../data/services/api_service.dart';
 import 'email_verification_page.dart';
 import 'admin_verification_waiting_page.dart';
+import '../../../data/services/push_notification_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -44,6 +45,12 @@ class _LoginPageState extends State<LoginPage> {
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
+
+      try {
+        await PushNotificationService.registerTokenToBackend();
+      } catch (e) {
+        print('GAGAL REGISTER FCM TOKEN: $e');
+      }
 
       final roleId = result['user']['role_id'];
 

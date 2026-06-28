@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "470744751718",
+    "project_id": "diabetakuapp-24967",
+    "storage_bucket": "diabetakuapp-24967.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:470744751718:android:266a9b9e5ea9a46c5d57a7",
+        "android_client_info": {
+          "package_name": "com.example.diabetaku_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDjbransv91dLjfuQzkND1SeJ5o0_z6GDo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
