@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://192.168.8.225:8000/api';
+  static const String baseUrl = 'http://192.168.100.25:8000/api';
 
   static Future<void> registerDoctor({
     required String fullName,
@@ -828,7 +828,7 @@ class ApiService {
 
     throw Exception(data['message'] ?? 'Gagal mengambil riwayat dokter');
   }
-
+  
   static Future<Map<String, dynamic>> getDoctorProfile(int doctorId) async {
     final response = await http.get(
       Uri.parse('$baseUrl/doctor/profile/$doctorId'),
@@ -1251,6 +1251,23 @@ class ApiService {
     }
 
     throw Exception(data['message'] ?? 'Gagal mengambil resep aktif');
+  }
+
+  static Future<List<Map<String, dynamic>>> getActivePrescriptionSchedules(
+    int patientId,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/patient/prescriptions/$patientId/active'),
+      headers: await _authHeaders(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(data['data'] ?? []);
+    }
+
+    throw Exception(data['message'] ?? 'Gagal mengambil jadwal resep aktif');
   }
 
   static Future<List<Map<String, dynamic>>> getConnectedDoctors(

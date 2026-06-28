@@ -9,6 +9,7 @@ import '../../../data/services/api_service.dart';
 import 'email_verification_page.dart';
 import 'admin_verification_waiting_page.dart';
 import '../../../data/services/push_notification_service.dart';
+import '../../../data/services/medication_reminder_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -53,6 +54,14 @@ class _LoginPageState extends State<LoginPage> {
       }
 
       final roleId = result['user']['role_id'];
+
+      if (roleId == 3) {
+        try {
+          await MedicationReminderService.syncMedicationReminders();
+        } catch (e) {
+          debugPrint('SYNC MEDICATION REMINDER SAAT LOGIN ERROR: $e');
+        }
+      }
 
       if (!mounted) return;
 

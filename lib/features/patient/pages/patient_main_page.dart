@@ -6,10 +6,10 @@ import '../widgets/patient_bottom_nav.dart';
 import 'patient_add_data_page.dart';
 import 'patient_history_page.dart';
 import 'patient_profile_page.dart';
-import 'patient_recommendation_detail_page.dart';
 import 'patient_validation_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../data/services/api_service.dart';
+import '../../../data/services/medication_reminder_service.dart';
 
 class PatientMainPage extends StatefulWidget {
   const PatientMainPage({super.key});
@@ -21,6 +21,20 @@ class PatientMainPage extends StatefulWidget {
 class _PatientMainPageState extends State<PatientMainPage> {
   int currentIndex = 0;
   bool isAddPage = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncMedicationRemindersSafely();
+  }
+
+  Future<void> _syncMedicationRemindersSafely() async {
+    try {
+      await MedicationReminderService.syncMedicationReminders();
+    } catch (e) {
+      debugPrint('SYNC MEDICATION REMINDER SAAT MAIN PASIEN ERROR: $e');
+    }
+  }
 
   final pages = const [
     PatientHomePage(),
@@ -71,7 +85,6 @@ class _PatientHomePageState extends State<PatientHomePage> {
   Map<String, dynamic>? profileData;
   Map<String, dynamic>? dashboardData;
   Map<String, dynamic>? homeSummary;
-  Map<String, dynamic>? latestRecommendation;
   Map<String, dynamic> healthHistories = {};
 
   List<Map<String, dynamic>> notifications = [];
@@ -213,7 +226,6 @@ class _PatientHomePageState extends State<PatientHomePage> {
         dashboardData = loadedDashboard;
         homeSummary = loadedHomeSummary;
         healthHistories = loadedHealthHistories;
-        latestRecommendation = loadedHomeSummary['latest_recommendation'];
         notifications = loadedNotifications;
 
         hasPendingValidation =
@@ -319,12 +331,10 @@ class _PatientHomePageState extends State<PatientHomePage> {
                   padding: const EdgeInsets.fromLTRB(20, 18, 20, 120),
                   child: Column(
                     children: [
-                      _doctorNoteCard(),
                       if (hasPendingValidation) ...[
-                        const SizedBox(height: 14),
                         _validationCard(),
+                        const SizedBox(height: 14),
                       ],
-                      const SizedBox(height: 14),
                       _dailyChecklistCard(),
                       const SizedBox(height: 14),
                       _calendarCard(),
@@ -452,101 +462,6 @@ class _PatientHomePageState extends State<PatientHomePage> {
             ],
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _doctorNoteCard() {
-    if (latestRecommendation == null) {
-      return Container(
-        padding: const EdgeInsets.all(14),
-        decoration: _cardDecoration(),
-        child: const Row(
-          children: [
-            Icon(Icons.description_outlined, color: AppColors.primaryBlue),
-            SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Belum ada rekomendasi dari dokter',
-                style: TextStyle(color: AppColors.dark2, fontSize: 13),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    final doctorName = latestRecommendation?['doctor_name']?.toString() ?? '-';
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => PatientRecommendationDetailPage(
-              item: {
-                'doctor':
-                    latestRecommendation?['doctor_name']?.toString() ??
-                    'Dokter',
-                'date': latestRecommendation?['created_at']?.toString() ?? '-',
-                'status':
-                    latestRecommendation?['category']?.toString() ??
-                    'Rekomendasi',
-                'description':
-                    latestRecommendation?['recommendation_text']?.toString() ??
-                    latestRecommendation?['content']?.toString() ??
-                    '-',
-              },
-            ),
-          ),
-        );
-      },
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: _cardDecoration(),
-        child: Row(
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: AppColors.veryLightBlue,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.description_outlined,
-                color: AppColors.primaryBlue,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Rekomendasi baru dari dokter',
-                    style: TextStyle(
-                      color: AppColors.primaryBlue,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    doctorName,
-                    style: const TextStyle(
-                      color: AppColors.dark2,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.chevron_right, color: AppColors.dark3),
-          ],
-        ),
       ),
     );
   }

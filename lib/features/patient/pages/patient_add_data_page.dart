@@ -226,7 +226,7 @@ class _PatientAddDataPageState extends State<PatientAddDataPage> {
           crossAxisCount: 2,
           mainAxisSpacing: 14,
           crossAxisSpacing: 14,
-          childAspectRatio: 1.18,
+          childAspectRatio: 0.88,
         ),
         itemBuilder: (context, index) {
           final item = items[index];
@@ -234,7 +234,7 @@ class _PatientAddDataPageState extends State<PatientAddDataPage> {
           final status = todayStatus[key] ?? 'Belum Ada Data';
 
           return InkWell(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
             onTap: () => _openForm(item['page'] as Widget),
             child: Container(
               padding: const EdgeInsets.all(14),
@@ -258,18 +258,22 @@ class _PatientAddDataPageState extends State<PatientAddDataPage> {
                   const SizedBox(height: 12),
                   Text(
                     item['title'].toString(),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: AppColors.dark1,
-                      fontSize: 13,
+                      fontSize: 14,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 5),
                   Text(
                     item['subtitle'].toString(),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: AppColors.dark2,
-                      fontSize: 10,
+                      fontSize: 12,
                       height: 1.3,
                     ),
                   ),
@@ -296,7 +300,7 @@ class _PatientAddDataPageState extends State<PatientAddDataPage> {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: _statusTextColor(status),
-                              fontSize: 9,
+                              fontSize: 10,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -306,7 +310,7 @@ class _PatientAddDataPageState extends State<PatientAddDataPage> {
                       const Icon(
                         Icons.chevron_right,
                         color: AppColors.dark3,
-                        size: 20,
+                        size: 18,
                       ),
                     ],
                   ),
@@ -340,6 +344,9 @@ class _PatientAddDataPageState extends State<PatientAddDataPage> {
                 backgroundColor: AppColors.primaryBlue,
                 foregroundColor: Colors.white,
                 elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               child: const Text('Coba lagi'),
             ),
@@ -354,21 +361,22 @@ class _PatientAddDataPageState extends State<PatientAddDataPage> {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(20, topPad + 18, 20, 20),
+      padding: EdgeInsets.fromLTRB(20, topPad + 12, 20, 24),
       decoration: const BoxDecoration(
         color: AppColors.primaryBlue,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(22),
-          bottomRight: Radius.circular(22),
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
         ),
       ),
       child: const Center(
         child: Text(
           'Tambah Data',
+          textAlign: TextAlign.center,
           style: TextStyle(
             color: Colors.white,
-            fontSize: 21,
-            fontWeight: FontWeight.bold,
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ),
@@ -378,7 +386,7 @@ class _PatientAddDataPageState extends State<PatientAddDataPage> {
   BoxDecoration _cardDecoration() {
     return BoxDecoration(
       color: AppColors.white,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(14),
       border: Border.all(color: AppColors.light1),
       boxShadow: [
         BoxShadow(

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 
 class PatientRecommendationDetailPage extends StatelessWidget {
-  final Map<String, String> item;
+  final Map<String, dynamic> item;
 
   const PatientRecommendationDetailPage({
     super.key,
@@ -11,10 +11,19 @@ class PatientRecommendationDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final doctor = item['doctor'] ?? 'Dokter';
-    final date = item['date'] ?? '-';
-    final category = item['status'] ?? 'Rekomendasi';
-    final description = item['description'] ?? '-';
+    final doctor = _text(
+      item['doctor'] ?? item['doctor_name'] ?? item['sender_name'],
+      fallback: 'Dokter',
+    );
+    final date = _text(
+      item['date'] ?? item['created_at'] ?? item['time'],
+      fallback: '-',
+      formatDate: true,
+    );
+    final recommendations = _recommendations();
+    final category = recommendations.length == 1
+        ? _text(recommendations.first['category'], fallback: 'Rekomendasi')
+        : _text(item['category'] ?? item['status'], fallback: 'Rekomendasi');
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -30,7 +39,7 @@ class PatientRecommendationDetailPage extends StatelessWidget {
                   children: [
                     _infoCard(doctor, date, category),
                     const SizedBox(height: 14),
-                    _recommendationCard(category, description),
+                    _recommendationSection(recommendations),
                   ],
                 ),
               ),
@@ -39,6 +48,43 @@ class PatientRecommendationDetailPage extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _text(
+    dynamic value, {
+    String fallback = '-',
+    bool formatDate = false,
+  }) {
+    if (value == null || value.toString().trim().isEmpty) return fallback;
+
+    if (!formatDate) return value.toString();
+
+    final date = DateTime.tryParse(value.toString());
+    if (date == null) return value.toString();
+
+    return '${date.day}/${date.month}/${date.year} • ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
+  List<Map<String, dynamic>> _recommendations() {
+    final raw = item['recommendations'];
+
+    if (raw is List && raw.isNotEmpty) {
+      return raw
+          .whereType<Map>()
+          .map((entry) => Map<String, dynamic>.from(entry))
+          .toList();
+    }
+
+    return [
+      {
+        'category': item['category'] ?? item['status'] ?? 'Rekomendasi',
+        'recommendation_text': item['recommendation_text'] ??
+            item['description'] ??
+            item['content'] ??
+            item['message'] ??
+            '-',
+      },
+    ];
   }
 
   Widget _header(
@@ -51,12 +97,12 @@ class PatientRecommendationDetailPage extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(16, topPad + 16, 16, 24),
+      padding: EdgeInsets.fromLTRB(20, topPad + 12, 20, 24),
       decoration: const BoxDecoration(
         color: AppColors.primaryBlue,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(22),
-          bottomRight: Radius.circular(22),
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
         ),
       ),
       child: Column(
@@ -73,21 +119,28 @@ class PatientRecommendationDetailPage extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 21,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
               const SizedBox(width: 48),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 12),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               color: AppColors.white,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Row(
               children: [
@@ -170,7 +223,7 @@ class PatientRecommendationDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _recommendationCard(String category, String description) {
+  Widget _recommendationSection(List<Map<String, dynamic>> recommendations) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -193,33 +246,55 @@ class PatientRecommendationDetailPage extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.veryLightBlue.withValues(alpha: 0.55),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.light1),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _smallBadge(
-                  text: category,
-                  bg: AppColors.lightBlue,
-                  color: AppColors.primaryBlue,
-                  icon: _categoryIcon(category),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  description,
-                  style: const TextStyle(
-                    color: AppColors.dark1,
-                    fontSize: 13,
-                    height: 1.35,
-                  ),
-                ),
-              ],
+          ...recommendations.asMap().entries.map((entry) {
+            final recommendation = entry.value;
+            final category = _text(
+              recommendation['category'],
+              fallback: 'Rekomendasi',
+            );
+            final description = _text(
+              recommendation['recommendation_text'] ??
+                  recommendation['description'] ??
+                  recommendation['content'],
+            );
+
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: entry.key == recommendations.length - 1 ? 0 : 10,
+              ),
+              child: _recommendationItem(category, description),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _recommendationItem(String category, String description) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.veryLightBlue.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.light1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _smallBadge(
+            text: category,
+            bg: AppColors.lightBlue,
+            color: AppColors.primaryBlue,
+            icon: _categoryIcon(category),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            description,
+            style: const TextStyle(
+              color: AppColors.dark1,
+              fontSize: 13,
+              height: 1.35,
             ),
           ),
         ],
@@ -228,17 +303,17 @@ class PatientRecommendationDetailPage extends StatelessWidget {
   }
 
   IconData _categoryIcon(String category) {
-    switch (category) {
-      case 'Obat':
-        return Icons.medication_outlined;
-      case 'Pola Makan':
-        return Icons.restaurant_outlined;
-      case 'Aktivitas Fisik':
-      case 'Gaya Hidup':
-        return Icons.directions_run;
-      default:
-        return Icons.assignment_outlined;
+    final normalized = category.toLowerCase().replaceAll('_', ' ').trim();
+
+    if (normalized.contains('obat')) return Icons.medication_outlined;
+    if (normalized.contains('makan')) return Icons.restaurant_outlined;
+    if (normalized.contains('aktivitas') ||
+        normalized.contains('gaya hidup') ||
+        normalized.contains('olahraga')) {
+      return Icons.directions_run;
     }
+
+    return Icons.assignment_outlined;
   }
 
   Widget _infoRow(String label, String value) {
@@ -290,12 +365,16 @@ class PatientRecommendationDetailPage extends StatelessWidget {
             Icon(icon, color: color, size: 12),
             const SizedBox(width: 4),
           ],
-          Text(
-            text,
-            style: TextStyle(
-              color: color,
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
+          Flexible(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: color,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -306,11 +385,11 @@ class PatientRecommendationDetailPage extends StatelessWidget {
   BoxDecoration _cardDecoration() {
     return BoxDecoration(
       color: AppColors.white,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(14),
       border: Border.all(color: AppColors.light1),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withValues(alpha: 0.08),
+          color: Colors.black.withValues(alpha: 0.05),
           blurRadius: 8,
           offset: const Offset(0, 3),
         ),

@@ -7,6 +7,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'core/theme/app_colors.dart';
 import 'firebase_options.dart';
 import 'data/services/push_notification_service.dart';
+import 'data/services/medication_reminder_service.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -27,6 +28,7 @@ Future<void> main() async {
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
   await PushNotificationService.init();
+  await MedicationReminderService.init();
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(

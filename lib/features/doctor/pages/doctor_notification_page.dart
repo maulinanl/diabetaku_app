@@ -126,7 +126,7 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
         isMarkingAll = false;
       });
 
-      _showSnackBar('Semua notifikasi sudah ditandai dibaca');
+      _showSnackBar('Semua notifikasi sudah ditandai dibaca', isError: false);
     } catch (e) {
       if (!mounted) return;
 
@@ -363,10 +363,35 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
     }
   }
 
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+  void _showSnackBar(String message, {bool isError = true}) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          backgroundColor: isError ? AppColors.red : AppColors.primaryBlue,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          content: Row(
+            children: [
+              Icon(
+                isError ? Icons.error_outline : Icons.check_circle_outline,
+                color: Colors.white,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  message,
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
   }
 
   List<Map<String, dynamic>> _filteredNotifications() {
@@ -471,8 +496,8 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 21,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -886,6 +911,8 @@ class AbnormalNotificationDetailPage extends StatelessWidget {
     return _NotificationDetailScaffold(
       title: 'Notifikasi Abnormal',
       icon: Icons.warning_amber_rounded,
+      iconBg: AppColors.lightRed,
+      iconColor: AppColors.red,
       headerText: '$title\n$date',
       children: [
         _whiteCard(
@@ -936,6 +963,8 @@ class DisconnectedNotificationDetailPage extends StatelessWidget {
     return _NotificationDetailScaffold(
       title: 'Relasi Terputus',
       icon: Icons.link_off_rounded,
+      iconBg: AppColors.lightRed,
+      iconColor: AppColors.red,
       headerText: '$title\n$date',
       children: [
         _whiteCard(
@@ -986,15 +1015,85 @@ String _formatTime(dynamic value) {
       '${local.minute.toString().padLeft(2, '0')}';
 }
 
+
+class _HeaderInfoText extends StatelessWidget {
+  final String text;
+
+  const _HeaderInfoText({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final lines = text
+        .split('\n')
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
+
+    if (lines.isEmpty) {
+      return const Text(
+        '-',
+        style: TextStyle(
+          color: AppColors.dark2,
+          fontSize: 12,
+          height: 1.35,
+        ),
+      );
+    }
+
+    final title = lines.first;
+    final subtitles = lines.skip(1).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: AppColors.dark1,
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            height: 1.25,
+          ),
+        ),
+        if (subtitles.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          ...subtitles.map(
+            (subtitle) => Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.dark2,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                  height: 1.3,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 class _NotificationDetailScaffold extends StatelessWidget {
   final String title;
   final IconData icon;
+  final Color iconBg;
+  final Color iconColor;
   final String headerText;
   final List<Widget> children;
 
   const _NotificationDetailScaffold({
     required this.title,
     required this.icon,
+    this.iconBg = AppColors.lightBlue,
+    this.iconColor = AppColors.primaryBlue,
     required this.headerText,
     required this.children,
   });
@@ -1010,7 +1109,7 @@ class _NotificationDetailScaffold extends StatelessWidget {
         child: Column(
           children: [
             Container(
-              padding: EdgeInsets.fromLTRB(12, topPad + 12, 18, 24),
+              padding: EdgeInsets.fromLTRB(14, topPad + 12, 18, 24),
               decoration: const BoxDecoration(
                 color: AppColors.primaryBlue,
                 borderRadius: BorderRadius.only(
@@ -1032,8 +1131,8 @@ class _NotificationDetailScaffold extends StatelessWidget {
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
@@ -1045,25 +1144,25 @@ class _NotificationDetailScaffold extends StatelessWidget {
                     width: double.infinity,
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(12),
+                      color: AppColors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.08),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
                     child: Row(
                       children: [
                         CircleAvatar(
-                          backgroundColor: AppColors.lightBlue,
-                          child: Icon(icon, color: AppColors.primaryBlue),
+                          backgroundColor: iconBg,
+                          child: Icon(icon, color: iconColor),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: Text(
-                            headerText,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              height: 1.4,
-                            ),
-                          ),
+                          child: _HeaderInfoText(text: headerText),
                         ),
                       ],
                     ),
@@ -1093,7 +1192,7 @@ Widget _whiteCard({required String title, required List<Widget> children}) {
     padding: const EdgeInsets.all(14),
     decoration: BoxDecoration(
       color: AppColors.white,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(14),
       border: Border.all(color: AppColors.light1),
       boxShadow: [
         BoxShadow(
@@ -1110,7 +1209,7 @@ Widget _whiteCard({required String title, required List<Widget> children}) {
           title,
           style: const TextStyle(
             color: AppColors.primaryBlue,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w700,
             fontSize: 13,
           ),
         ),

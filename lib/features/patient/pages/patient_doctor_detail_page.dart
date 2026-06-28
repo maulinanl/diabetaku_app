@@ -29,21 +29,97 @@ class PatientDoctorDetailPage extends StatefulWidget {
 
 class _PatientDoctorDetailPageState extends State<PatientDoctorDetailPage> {
   late String currentStatus;
+  late String currentDate;
   bool isProcessing = false;
+  bool isRefreshingStatus = true;
   bool hasChanged = false;
 
-  bool get isConnected =>
-      currentStatus == 'Terhubung' || currentStatus == 'Diterima';
+  bool get isConnected => currentStatus == 'Terhubung';
 
-  bool get isWaiting =>
-      currentStatus == 'Menunggu' ||
-      currentStatus == 'Menunggu Persetujuan' ||
-      currentStatus == 'Menunggu persetujuan dokter';
+  bool get isWaiting => currentStatus == 'Menunggu';
 
   @override
   void initState() {
     super.initState();
-    currentStatus = widget.status == 'Diterima' ? 'Terhubung' : widget.status;
+    currentStatus = _normalizeConnectionStatus(widget.status);
+    currentDate = widget.date;
+    _syncLatestConnectionStatus();
+  }
+
+  String _normalizeConnectionStatus(dynamic value) {
+    final normalized = value?.toString().toLowerCase().trim() ?? '';
+
+    if (normalized == 'diterima' || normalized == 'terhubung') {
+      return 'Terhubung';
+    }
+
+    if (normalized == 'menunggu' ||
+        normalized == 'menunggu persetujuan' ||
+        normalized == 'menunggu persetujuan dokter') {
+      return 'Menunggu';
+    }
+
+    return 'Belum Terhubung';
+  }
+
+  String _formatDate(dynamic value) {
+    if (value == null || value.toString().trim().isEmpty) return '-';
+
+    final date = DateTime.tryParse(value.toString());
+    if (date == null) return value.toString();
+
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
+  Map<String, dynamic>? _findDoctorById(List<Map<String, dynamic>> doctors) {
+    for (final doctor in doctors) {
+      final id = int.tryParse(doctor['doctor_id']?.toString() ?? '');
+      if (id == widget.doctorId) return doctor;
+    }
+
+    return null;
+  }
+
+  Future<void> _syncLatestConnectionStatus() async {
+    try {
+      final patientId = await _getPatientId();
+      final keyword = widget.name.trim().isEmpty ? '' : widget.name.trim();
+
+      var doctors = await ApiService.searchDoctors(
+        patientId: patientId,
+        keyword: keyword,
+      );
+
+      var doctor = _findDoctorById(doctors);
+
+      if (doctor == null && keyword.isNotEmpty) {
+        doctors = await ApiService.searchDoctors(
+          patientId: patientId,
+          keyword: '',
+        );
+        doctor = _findDoctorById(doctors);
+      }
+
+      if (doctor == null || !mounted) {
+        setState(() => isRefreshingStatus = false);
+        return;
+      }
+
+      final latestStatus = _normalizeConnectionStatus(
+        doctor['connection_status'] ?? doctor['status'],
+      );
+
+      setState(() {
+        currentStatus = latestStatus;
+        currentDate = _formatDate(
+          doctor?['connected_since'] ?? doctor?['connected_at'] ?? widget.date,
+        );
+        isRefreshingStatus = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => isRefreshingStatus = false);
+    }
   }
 
   Future<int> _getPatientId() async {
@@ -103,11 +179,16 @@ class _PatientDoctorDetailPageState extends State<PatientDoctorDetailPage> {
 
       setState(() {
         currentStatus = 'Belum Terhubung';
+        currentDate = '';
         isProcessing = false;
         hasChanged = true;
       });
 
-      Navigator.pop(context, true);
+      _showSuccessSheet(
+        title: 'Relasi Terputus',
+        message:
+            'Relasi dengan dokter berhasil diputus. Kamu dapat mengajukan permintaan koneksi lagi jika diperlukan.',
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() => isProcessing = false);
@@ -172,8 +253,8 @@ class _PatientDoctorDetailPageState extends State<PatientDoctorDetailPage> {
       decoration: const BoxDecoration(
         color: AppColors.primaryBlue,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(22),
-          bottomRight: Radius.circular(22),
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
         ),
       ),
       child: Column(
@@ -194,8 +275,8 @@ class _PatientDoctorDetailPageState extends State<PatientDoctorDetailPage> {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 21,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -269,7 +350,7 @@ class _PatientDoctorDetailPageState extends State<PatientDoctorDetailPage> {
           _InfoRow(
             icon: Icons.calendar_today_outlined,
             label: isConnected ? 'Terhubung sejak' : 'Status koneksi',
-            value: isConnected ? widget.date : currentStatus,
+            value: isConnected ? (currentDate.isEmpty ? '-' : currentDate) : currentStatus,
           ),
         ],
       ),
@@ -289,6 +370,7 @@ class _PatientDoctorDetailPageState extends State<PatientDoctorDetailPage> {
   }
 
   Widget _actionButton(BuildContext context) {
+
     if (isConnected) {
       return _redButton(
         text: isProcessing ? 'Memproses...' : 'Putus Relasi',
