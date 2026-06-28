@@ -1,11 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
+import '../widgets/diabetes_type_badge.dart';
 import '../../../data/services/api_service.dart';
 import 'patient_detail_page.dart';
 
 class DoctorConnectionPage extends StatefulWidget {
-  const DoctorConnectionPage({super.key});
+  final int initialTab;
+  final int? initialPatientId;
+  final VoidCallback? onInitialPatientHandled;
+
+  const DoctorConnectionPage({
+    super.key,
+    this.initialTab = 0,
+    this.initialPatientId,
+    this.onInitialPatientHandled,
+  });
 
   @override
   State<DoctorConnectionPage> createState() => _DoctorConnectionPageState();
@@ -13,6 +23,7 @@ class DoctorConnectionPage extends StatefulWidget {
 
 class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
   int selectedTab = 0;
+  bool hasOpenedInitialPatient = false;
   final tabs = ['Menunggu', 'Diterima', 'Ditolak'];
 
   bool isLoading = true;
@@ -26,6 +37,7 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
   @override
   void initState() {
     super.initState();
+    selectedTab = widget.initialTab;
     _loadData();
   }
 
@@ -53,10 +65,7 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
   }
 
   String _formatDiabetesType(dynamic value) {
-    final type = value?.toString() ?? '-';
-    if (type.contains('1')) return 'Tipe 1';
-    if (type.contains('2')) return 'Tipe 2';
-    return type.replaceAll('_', ' ');
+    return formatDiabetesType(value);
   }
 
   Future<void> _loadData() async {
@@ -83,6 +92,8 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
         rejectedRequests = rejected;
         isLoading = false;
       });
+
+      _openInitialPatientIfNeeded();
     } catch (e) {
       if (!mounted) return;
 
@@ -109,6 +120,107 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
     );
 
     await _loadData();
+  }
+
+  void _openInitialPatientIfNeeded() {
+    final initialPatientId = widget.initialPatientId;
+
+    if (initialPatientId == null || hasOpenedInitialPatient) return;
+
+    hasOpenedInitialPatient = true;
+    widget.onInitialPatientHandled?.call();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _openConnectionItemByPatientId(initialPatientId);
+    });
+  }
+
+  Map<String, dynamic>? _findConnectionItem(
+    int patientId,
+    List<Map<String, dynamic>> source,
+  ) {
+    for (final item in source) {
+      final itemPatientId = int.tryParse(item['patient_id'].toString());
+      if (itemPatientId == patientId) return item;
+    }
+    return null;
+  }
+
+  Future<void> _openConnectionItemByPatientId(int patientId) async {
+    final pendingItem = _findConnectionItem(patientId, pendingRequests);
+    if (pendingItem != null) {
+      setState(() => selectedTab = 0);
+      await _openConnectionItemDetail(pendingItem, 0);
+      return;
+    }
+
+    final acceptedItem = _findConnectionItem(patientId, acceptedRequests);
+    if (acceptedItem != null) {
+      setState(() => selectedTab = 1);
+      await _openConnectionItemDetail(acceptedItem, 1);
+      return;
+    }
+
+    final rejectedItem = _findConnectionItem(patientId, rejectedRequests);
+    if (rejectedItem != null) {
+      setState(() => selectedTab = 2);
+      await _openConnectionItemDetail(rejectedItem, 2);
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Permintaan koneksi tidak ditemukan')),
+    );
+  }
+
+  Future<void> _openConnectionItemDetail(
+    Map<String, dynamic> item,
+    int tabStatus,
+  ) async {
+    final patientId = int.parse(item['patient_id'].toString());
+    final name = item['full_name']?.toString() ?? '-';
+    final gender = item['gender']?.toString() ?? '-';
+    final age = _calculateAge(item['date_of_birth']?.toString());
+    final type = _formatDiabetesType(item['diabetes_type']);
+
+    final diagnosis = tabStatus == 0
+        ? 'Menunggu persetujuan dokter'
+        : tabStatus == 1
+        ? 'Koneksi diterima'
+        : 'Koneksi ditolak';
+
+    if (tabStatus == 1) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              PatientDetailPage(patientId: patientId, isConnected: true),
+        ),
+      );
+      return;
+    }
+
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RequestDetailPage(
+          patientId: patientId,
+          status: tabStatus,
+          name: name,
+          age: age,
+          gender: gender,
+          diabetesType: type,
+          connectionStatus: diagnosis,
+          onAccept: tabStatus == 0 ? () => _acceptRequest(patientId) : null,
+          onReject: tabStatus == 0 ? () => _rejectRequest(patientId) : null,
+        ),
+      ),
+    );
+
+    if (result == true) {
+      await _loadData();
+    }
   }
 
   @override
@@ -173,10 +285,6 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
                                       itemBuilder: (context, index) {
                                         final item = data[index];
 
-                                        final patientId = int.parse(
-                                          item['patient_id'].toString(),
-                                        );
-
                                         final name =
                                             item['full_name']?.toString() ??
                                             '-';
@@ -198,60 +306,14 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
                                         return _RequestCard(
                                           initial: _getInitials(name),
                                           name: name,
-                                          info:
-                                              'DM $type • $age tahun • $gender',
+                                          info: '$type • $age tahun • $gender',
                                           diagnosis: diagnosis,
                                           status: selectedTab,
-                                          onDetail: () async {
-                                            if (selectedTab == 1) {
-                                              await Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (_) =>
-                                                      PatientDetailPage(
-                                                        patientId: patientId,
-                                                        isConnected: true,
-                                                      ),
-                                                ),
-                                              );
-                                            } else {
-                                              final result = await Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (_) =>
-                                                      RequestDetailPage(
-                                                        patientId: patientId,
-                                                        status: selectedTab,
-                                                        name: name,
-                                                        age: age,
-                                                        gender: gender,
-                                                        diabetesType:
-                                                            'DM $type',
-                                                        connectionStatus:
-                                                            diagnosis,
-                                                        onAccept:
-                                                            selectedTab == 0
-                                                            ? () =>
-                                                                  _acceptRequest(
-                                                                    patientId,
-                                                                  )
-                                                            : null,
-                                                        onReject:
-                                                            selectedTab == 0
-                                                            ? () =>
-                                                                  _rejectRequest(
-                                                                    patientId,
-                                                                  )
-                                                            : null,
-                                                      ),
-                                                ),
-                                              );
-
-                                              if (result == true) {
-                                                await _loadData();
-                                              }
-                                            }
-                                          },
+                                          onDetail: () =>
+                                              _openConnectionItemDetail(
+                                                item,
+                                                selectedTab,
+                                              ),
                                         );
                                       },
                                     ),
@@ -268,73 +330,66 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
   }
 
   Widget _buildHeader(BuildContext context) {
-  final topPad = MediaQuery.of(context).padding.top;
+    final topPad = MediaQuery.of(context).padding.top;
 
-  return Container(
-    width: double.infinity,
-    padding: EdgeInsets.fromLTRB(20, topPad + 18, 20, 20),
-    decoration: const BoxDecoration(
-      color: AppColors.primaryBlue,
-      borderRadius: BorderRadius.only(
-        bottomLeft: Radius.circular(22),
-        bottomRight: Radius.circular(22),
-      ),
-    ),
-    child: const Center(
-      child: Text(
-        'Permintaan Koneksi',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 21,
-          fontWeight: FontWeight.bold,
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(20, topPad + 24, 20, 24),
+      decoration: const BoxDecoration(
+        color: AppColors.primaryBlue,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
         ),
       ),
-    ),
-  );
-}
+      child: const Text(
+        'Permintaan Koneksi',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
 
   Widget _buildTabs() {
-  return Container(
-    padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
-    child: Row(
-      children: List.generate(tabs.length, (index) {
-        final selected = selectedTab == index;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
+      child: Row(
+        children: List.generate(tabs.length, (index) {
+          final selected = selectedTab == index;
 
-        return Expanded(
-          child: GestureDetector(
-            onTap: () => setState(() => selectedTab = index),
-            child: Container(
-              height: 34,
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: selected
-                    ? AppColors.primaryBlue
-                    : AppColors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: selected
-                      ? AppColors.primaryBlue
-                      : AppColors.light1,
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => selectedTab = index),
+              child: Container(
+                height: 34,
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: selected ? AppColors.primaryBlue : AppColors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: selected ? AppColors.primaryBlue : AppColors.light1,
+                  ),
                 ),
-              ),
-              child: Text(
-                tabs[index],
-                style: TextStyle(
-                  color: selected
-                      ? Colors.white
-                      : AppColors.primaryBlue,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
+                child: Text(
+                  tabs[index],
+                  style: TextStyle(
+                    color: selected ? Colors.white : AppColors.primaryBlue,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
-          ),
-        );
-      }),
-    ),
-  );
-}
+          );
+        }),
+      ),
+    );
+  }
 
   Widget _emptyState() {
     return const Center(
@@ -840,7 +895,7 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
     final isRejected = currentStatus == 2;
 
     return Scaffold(
-      backgroundColor: AppColors.primaryBlue,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         top: false,
         child: Column(
@@ -959,13 +1014,35 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
   Widget _buildHeader(BuildContext context, bool isAccepted, bool isRejected) {
     final topPad = MediaQuery.of(context).padding.top;
 
+    final title = isAccepted
+        ? 'Koneksi Aktif'
+        : isRejected
+            ? 'Koneksi Ditolak'
+            : 'Permintaan Koneksi';
+
+    final description = isAccepted
+        ? 'Permintaan koneksi diterima'
+        : isRejected
+            ? 'Permintaan koneksi ditolak'
+            : 'Permintaan koneksi baru';
+
+    final icon = isAccepted
+        ? Icons.check_circle_outline
+        : isRejected
+            ? Icons.cancel_outlined
+            : Icons.person_add_alt_1;
+
+    final iconColor = isRejected ? AppColors.red : AppColors.primaryBlue;
+    final iconBg = isRejected ? AppColors.lightRed : AppColors.lightBlue;
+
     return Container(
-      padding: EdgeInsets.fromLTRB(16, topPad + 12, 16, 24),
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(16, topPad + 14, 16, 24),
       decoration: const BoxDecoration(
         color: AppColors.primaryBlue,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(22),
-          bottomRight: Radius.circular(22),
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
         ),
       ),
       child: Column(
@@ -978,15 +1055,11 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
               ),
               Expanded(
                 child: Text(
-                  isAccepted
-                      ? 'Koneksi Aktif'
-                      : isRejected
-                      ? 'Koneksi Ditolak'
-                      : 'Permintaan Koneksi',
+                  title,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 18,
+                    fontSize: 20,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -994,42 +1067,50 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
               const SizedBox(width: 48),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(12),
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: isRejected
-                      ? AppColors.lightRed
-                      : AppColors.lightBlue,
-                  child: Icon(
-                    isAccepted
-                        ? Icons.check_circle_outline
-                        : isRejected
-                        ? Icons.cancel_outlined
-                        : Icons.person_add_alt_1,
-                    color: isRejected ? AppColors.red : AppColors.primaryBlue,
-                  ),
+                  radius: 22,
+                  backgroundColor: iconBg,
+                  child: Icon(icon, color: iconColor, size: 22),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    isAccepted
-                        ? 'Permintaan koneksi diterima\n${widget.time}'
-                        : isRejected
-                        ? 'Permintaan koneksi ditolak\n${widget.time}'
-                        : 'Permintaan koneksi baru\n${widget.time}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      height: 1.4,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        description,
+                        style: const TextStyle(
+                          color: AppColors.dark1,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.time,
+                        style: const TextStyle(
+                          color: AppColors.dark2,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],

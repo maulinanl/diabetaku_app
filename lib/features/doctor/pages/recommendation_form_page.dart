@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../widgets/diabetes_type_badge.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../data/services/api_service.dart';
 
@@ -92,7 +93,7 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
     final isValid = addedRecommendations.isNotEmpty;
 
     return Scaffold(
-      backgroundColor: AppColors.primaryBlue,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         top: false,
         child: Column(
@@ -147,12 +148,12 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(20, topPad + 14, 20, 24),
+      padding: EdgeInsets.fromLTRB(20, topPad + 12, 20, 24),
       decoration: const BoxDecoration(
         color: AppColors.primaryBlue,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(26),
-          bottomRight: Radius.circular(26),
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
         ),
       ),
       child: Column(
@@ -170,7 +171,7 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -189,10 +190,8 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
 
     final gender = widget.patientProfile['gender']?.toString() ?? '-';
 
-    String diabetesType =
+    final diabetesType =
         widget.patientProfile['diabetes_type']?.toString() ?? '-';
-
-    diabetesType = diabetesType.replaceAll('_', ' ').toUpperCase();
 
     final age = _calculateAge(
       widget.patientProfile['date_of_birth']?.toString(),
@@ -205,12 +204,12 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
           BoxShadow(
-            color: Colors.black12,
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 10,
-            offset: Offset(0, 6),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -247,14 +246,7 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
                   style: const TextStyle(color: AppColors.dark2, fontSize: 13),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  diabetesType,
-                  style: const TextStyle(
-                    color: AppColors.primaryBlue,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                DiabetesTypeBadge(value: diabetesType),
               ],
             ),
           ),

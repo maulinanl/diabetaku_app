@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../widgets/diabetes_type_badge.dart';
 import '../../../data/services/api_service.dart';
 import 'doctor_connection_page.dart';
 import 'patient_detail_page.dart';
@@ -20,6 +21,7 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
 
   List<Map<String, dynamic>> notifications = [];
   bool isLoading = true;
+  bool isMarkingAll = false;
   String? errorMessage;
 
   @override
@@ -96,6 +98,43 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
     return value == true || value == 1 || value.toString() == '1';
   }
 
+  bool get hasUnreadNotification {
+    return notifications.any((item) => !_isRead(item));
+  }
+
+  Future<void> _markAllAsRead() async {
+    if (isMarkingAll || !hasUnreadNotification) return;
+
+    setState(() => isMarkingAll = true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getInt('user_id');
+
+      if (userId == null) {
+        throw Exception('User belum login');
+      }
+
+      await ApiService.markAllNotificationsAsRead(userId);
+
+      if (!mounted) return;
+
+      setState(() {
+        for (final item in notifications) {
+          item['is_read'] = true;
+        }
+        isMarkingAll = false;
+      });
+
+      _showSnackBar('Semua notifikasi sudah ditandai dibaca');
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() => isMarkingAll = false);
+      _showSnackBar(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
   Future<void> _openNotificationDetail(Map<String, dynamic> item) async {
     final notificationId = int.tryParse(
       (item['notification_id'] ?? '').toString(),
@@ -169,47 +208,100 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
     }
   }
 
+  int _calculateAge(String? birthDate) {
+    if (birthDate == null) return 0;
+
+    final date = DateTime.tryParse(birthDate);
+    if (date == null) return 0;
+
+    final now = DateTime.now();
+    int age = now.year - date.year;
+
+    if (now.month < date.month ||
+        (now.month == date.month && now.day < date.day)) {
+      age--;
+    }
+
+    return age;
+  }
+
+  String _formatDiabetesType(dynamic value) {
+    return formatDiabetesType(value);
+  }
+
+  int _connectionStatusCode(String status) {
+    final normalized = status.toLowerCase().trim();
+
+    if (normalized == 'menunggu') return 0;
+    if (normalized == 'diterima' || normalized == 'disetujui') return 1;
+    if (normalized == 'ditolak') return 2;
+    if (normalized == 'diputus') return 3;
+
+    return 0;
+  }
+
+  String _connectionStatusLabel(String status) {
+    final normalized = status.toLowerCase().trim();
+
+    if (normalized == 'menunggu') {
+      return 'Menunggu persetujuan dokter';
+    }
+
+    if (normalized == 'diterima' || normalized == 'disetujui') {
+      return 'Permintaan koneksi disetujui';
+    }
+
+    if (normalized == 'ditolak') {
+      return 'Permintaan koneksi ditolak';
+    }
+
+    if (normalized == 'diputus') {
+      return 'Relasi sudah diputus';
+    }
+
+    return status.isEmpty ? 'Status tidak diketahui' : status;
+  }
+
   Future<void> _openConnectionRequest(
-    Map<String, dynamic> item,
+    Map<String, dynamic> notification,
     int patientId,
   ) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final doctorId = prefs.getInt('doctor_id') ?? 1;
+      final doctorId = prefs.getInt('doctor_id');
+
+      if (doctorId == null) {
+        throw Exception('Doctor ID tidak ditemukan. Coba login ulang.');
+      }
 
       final connection = await ApiService.getDoctorPatientConnectionStatus(
         patientId: patientId,
       );
 
-      final statusId = int.tryParse(connection['status_id'].toString()) ?? 0;
-
-      final statusText = statusId == 1
-          ? 'Koneksi aktif'
-          : statusId == 2
-          ? 'Koneksi ditolak'
-          : statusId == 3
-          ? 'Koneksi terputus'
-          : 'Menunggu persetujuan dokter';
-
       if (!mounted) return;
+
+      final statusText = connection['status']?.toString() ?? 'Menunggu';
+      final status = _connectionStatusCode(statusText);
+
+      final name = connection['full_name']?.toString() ?? '-';
+      final gender = connection['gender']?.toString() ?? '-';
+      final age = _calculateAge(connection['date_of_birth']?.toString());
+      final diabetesType = _formatDiabetesType(connection['diabetes_type']);
+      final time = _formatNotificationTime(notification['created_at']);
 
       final result = await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => RequestDetailPage(
             patientId: patientId,
-            status: statusId,
-            name:
-                connection['full_name']?.toString() ??
-                _extractPatientName(item['message']?.toString() ?? ''),
-            age: _calculateAge(connection['date_of_birth']?.toString()),
-            gender: connection['gender']?.toString() ?? '-',
-            diabetesType: connection['diabetes_type']?.toString() ?? '-',
-            connectionStatus: statusText,
-            time: _formatNotificationTime(item['created_at']),
-
-            // ini yang bikin tombol Terima/Tolak jalan
-            onAccept: statusId == 0
+            status: status,
+            name: name,
+            age: age,
+            gender: gender,
+            diabetesType: diabetesType,
+            connectionStatus: _connectionStatusLabel(statusText),
+            time: time,
+            onAccept: status == 0
                 ? () async {
                     await ApiService.acceptConnectionRequest(
                       doctorId: doctorId,
@@ -217,7 +309,7 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
                     );
                   }
                 : null,
-            onReject: statusId == 0
+            onReject: status == 0
                 ? () async {
                     await ApiService.rejectConnectionRequest(
                       doctorId: doctorId,
@@ -234,6 +326,7 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
       }
     } catch (e) {
       if (!mounted) return;
+
       _showSnackBar(e.toString().replaceFirst('Exception: ', ''));
     }
   }
@@ -309,41 +402,12 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
     return result;
   }
 
-  String _extractPatientName(String message) {
-    if (message.contains(' mengajukan')) {
-      return message.split(' mengajukan').first.trim();
-    }
-
-    if (message.contains(' untuk ')) {
-      return message.split(' untuk ').last.replaceAll(' berhasil dikirim.', '');
-    }
-
-    return '-';
-  }
-
-  int _calculateAge(String? birthDate) {
-    if (birthDate == null) return 0;
-
-    final date = DateTime.tryParse(birthDate);
-    if (date == null) return 0;
-
-    final now = DateTime.now();
-    int age = now.year - date.year;
-
-    if (now.month < date.month ||
-        (now.month == date.month && now.day < date.day)) {
-      age--;
-    }
-
-    return age;
-  }
-
   @override
   Widget build(BuildContext context) {
     final filtered = _filteredNotifications();
 
     return Scaffold(
-      backgroundColor: AppColors.primaryBlue,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         top: false,
         child: Column(
@@ -362,6 +426,7 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
                           padding: EdgeInsets.zero,
                           children: [
                             _buildTabs(),
+                            if (hasUnreadNotification) _markAllReadButton(),
                             if (filtered.isEmpty)
                               _emptyState()
                             else ...[
@@ -388,8 +453,8 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
       decoration: const BoxDecoration(
         color: AppColors.primaryBlue,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(22),
-          bottomRight: Radius.circular(22),
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
         ),
       ),
       child: Column(
@@ -444,7 +509,7 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
         fillColor: AppColors.white,
         contentPadding: const EdgeInsets.symmetric(vertical: 14),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
       ),
@@ -463,6 +528,40 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
         ),
         child: Row(
           children: [_tabButton('Semua', 0), _tabButton('Belum Dibaca', 1)],
+        ),
+      ),
+    );
+  }
+
+  Widget _markAllReadButton() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 0, 22, 12),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: OutlinedButton.icon(
+          onPressed: isMarkingAll ? null : _markAllAsRead,
+          icon: isMarkingAll
+              ? const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.done_all, size: 15),
+          label: Text(
+            isMarkingAll ? 'Menandai...' : 'Tandai semua dibaca',
+            style: const TextStyle(fontSize: 11),
+          ),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.primaryBlue,
+            backgroundColor: AppColors.white,
+            side: const BorderSide(color: AppColors.primaryBlue),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            minimumSize: const Size(0, 34),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
         ),
       ),
     );
@@ -659,28 +758,28 @@ class _NotificationTile extends StatelessWidget {
     final icon = isAbnormal
         ? Icons.warning_amber_rounded
         : isConnection
-            ? Icons.person_add_alt_1_rounded
-            : isRecommendation
-                ? Icons.medical_information_outlined
-                : isMedicineReminder
-                    ? Icons.medication_outlined
-                    : isVerification
-                        ? Icons.verified_user_outlined
-                        : isDisconnected
-                            ? Icons.link_off_rounded
-                            : Icons.notifications_outlined;
+        ? Icons.person_add_alt_1_rounded
+        : isRecommendation
+        ? Icons.medical_information_outlined
+        : isMedicineReminder
+        ? Icons.medication_outlined
+        : isVerification
+        ? Icons.verified_user_outlined
+        : isDisconnected
+        ? Icons.link_off_rounded
+        : Icons.notifications_outlined;
 
     final color = isAbnormal || isDisconnected
         ? AppColors.red
         : isConnection
-            ? const Color(0xFF10C878)
-            : AppColors.primaryBlue;
+        ? const Color(0xFF10C878)
+        : AppColors.primaryBlue;
 
     final bg = isAbnormal || isDisconnected
         ? AppColors.lightRed
         : isConnection
-            ? const Color(0xFFEAFBF3)
-            : AppColors.veryLightBlue;
+        ? const Color(0xFFEAFBF3)
+        : AppColors.veryLightBlue;
 
     return InkWell(
       onTap: onTap,
@@ -905,7 +1004,7 @@ class _NotificationDetailScaffold extends StatelessWidget {
     final topPad = MediaQuery.of(context).padding.top;
 
     return Scaffold(
-      backgroundColor: AppColors.primaryBlue,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         top: false,
         child: Column(
@@ -915,8 +1014,8 @@ class _NotificationDetailScaffold extends StatelessWidget {
               decoration: const BoxDecoration(
                 color: AppColors.primaryBlue,
                 borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(22),
-                  bottomRight: Radius.circular(22),
+                  bottomLeft: Radius.circular(24),
+                  bottomRight: Radius.circular(24),
                 ),
               ),
               child: Column(

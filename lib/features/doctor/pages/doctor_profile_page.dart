@@ -109,12 +109,12 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.primaryBlue,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         top: false,
         child: isLoading
             ? const Center(
-                child: CircularProgressIndicator(color: Colors.white),
+                child: CircularProgressIndicator(color: AppColors.primaryBlue),
               )
             : errorMessage != null
             ? Center(
@@ -123,7 +123,7 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
                   child: Text(
                     errorMessage!,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white),
+                    style: const TextStyle(color: AppColors.dark1),
                   ),
                 ),
               )
@@ -188,12 +188,12 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(20, topPad + 20, 20, 26),
+      padding: EdgeInsets.fromLTRB(20, topPad + 24, 20, 28),
       decoration: const BoxDecoration(
         color: AppColors.primaryBlue,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(22),
-          bottomRight: Radius.circular(22),
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
         ),
       ),
       child: Column(
@@ -216,11 +216,11 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 19,
-              fontWeight: FontWeight.bold,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 5),
           Text(
             '$specialization • $institution',
             textAlign: TextAlign.center,

@@ -227,20 +227,38 @@ class _DoctorPrescriptionPageState extends State<DoctorPrescriptionPage> {
           ...historyPrescriptions.map((item) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 14),
-              child: _PrescriptionHistoryCard(
-                medicine: item['medication_name']?.toString() ?? '-',
-                dose: item['dosage']?.toString() ?? '-',
-                form: item['form']?.toString() ?? '-',
-                schedule: _buildScheduleText(item),
-                rule: item['meal_rule']?.toString() ?? '-',
-                doctor: item['doctor_name']?.toString() ?? '-',
-                startDate: _formatDate(item['valid_from']),
-                endDate: _formatDate(item['valid_until']),
-                status: item['status']?.toString() ?? 'Selesai',
-                reason:
-                    item['reason']?.toString() ??
-                    item['stop_reason']?.toString() ??
-                    'Tidak aktif',
+              child: InkWell(
+                onTap: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => DoctorPrescriptionDetailPage(
+                        prescription: item,
+                        isConnected: widget.isConnected,
+                      ),
+                    ),
+                  );
+
+                  if (result == true) {
+                    await _loadPrescriptions();
+                  }
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: _PrescriptionHistoryCard(
+                  medicine: item['medication_name']?.toString() ?? '-',
+                  dose: item['dosage']?.toString() ?? '-',
+                  form: item['form']?.toString() ?? '-',
+                  schedule: _buildScheduleText(item),
+                  rule: item['meal_rule']?.toString() ?? '-',
+                  doctor: item['doctor_name']?.toString() ?? '-',
+                  startDate: _formatDate(item['valid_from']),
+                  endDate: _formatDate(item['valid_until']),
+                  status: item['status']?.toString() ?? 'Selesai',
+                  reason:
+                      item['reason']?.toString() ??
+                      item['stop_reason']?.toString() ??
+                      'Tidak aktif',
+                ),
               ),
             );
           }),
@@ -264,13 +282,6 @@ class _DoctorPrescriptionPageState extends State<DoctorPrescriptionPage> {
       ),
     );
   }
-
-
-
-
-
-
-
 
   String _buildScheduleText(Map<String, dynamic> prescription) {
     final schedules = List<Map<String, dynamic>>.from(
@@ -315,7 +326,7 @@ class _DoctorPrescriptionPageState extends State<DoctorPrescriptionPage> {
     return text;
   }
 
-    void _showSnackBar(String message) {
+  void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         backgroundColor: AppColors.red,

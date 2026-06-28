@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../widgets/diabetes_type_badge.dart';
 import '../../../data/services/api_service.dart';
 
 class ClinicalNoteDetailPage extends StatefulWidget {
@@ -79,7 +80,7 @@ class _ClinicalNoteDetailPageState extends State<ClinicalNoteDetailPage> {
     final initials = _getInitials(name);
 
     return Scaffold(
-      backgroundColor: AppColors.primaryBlue,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         top: false,
         child: Column(
@@ -161,6 +162,7 @@ class _ClinicalNoteDetailPageState extends State<ClinicalNoteDetailPage> {
     );
   }
 
+
   Widget _buildHeader({
     required BuildContext context,
     required String name,
@@ -172,12 +174,13 @@ class _ClinicalNoteDetailPageState extends State<ClinicalNoteDetailPage> {
     final topPad = MediaQuery.of(context).padding.top;
 
     return Container(
-      padding: EdgeInsets.fromLTRB(20, topPad + 16, 20, 22),
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(20, topPad + 12, 20, 24),
       decoration: const BoxDecoration(
         color: AppColors.primaryBlue,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(26),
-          bottomRight: Radius.circular(26),
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
         ),
       ),
       child: Column(
@@ -195,7 +198,7 @@ class _ClinicalNoteDetailPageState extends State<ClinicalNoteDetailPage> {
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -205,45 +208,59 @@ class _ClinicalNoteDetailPageState extends State<ClinicalNoteDetailPage> {
           const SizedBox(height: 12),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: AppColors.white,
-              borderRadius: BorderRadius.circular(12),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Row(
               children: [
                 CircleAvatar(
-                  radius: 26,
+                  radius: 28,
                   backgroundColor: AppColors.lightBlue,
                   child: Text(
                     initials,
                     style: const TextStyle(
                       color: AppColors.primaryBlue,
                       fontWeight: FontWeight.bold,
+                      fontSize: 18,
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(name,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold)),
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          color: AppColors.dark1,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
                       Text(
                         '$age tahun • $gender',
                         style: const TextStyle(
                           color: AppColors.dark2,
-                          fontSize: 12,
+                          fontSize: 13,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 8),
                       Wrap(
                         spacing: 6,
                         runSpacing: 6,
                         children: [
-                          _miniBadge(diabetesType),
+                          DiabetesTypeBadge(value: diabetesType),
                           if (widget.hasRecommendation)
                             _miniBadge('+ Rekomendasi'),
                         ],

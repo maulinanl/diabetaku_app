@@ -8,10 +8,14 @@ import '../../../data/services/api_service.dart';
 
 class DoctorPrescriptionFormPage extends StatefulWidget {
   final int patientId;
+  final bool isEdit;
+  final Map<String, dynamic>? initialPrescription;
 
   const DoctorPrescriptionFormPage({
     super.key,
     required this.patientId,
+    this.isEdit = false,
+    this.initialPrescription,
   });
 
   @override
@@ -56,6 +60,12 @@ class _DoctorPrescriptionFormPageState
     'Krim/Salep',
   ];
 
+  Map<String, dynamic>? get initial => widget.initialPrescription;
+
+  int get prescriptionId {
+    return int.tryParse(initial?['prescription_id']?.toString() ?? '') ?? 0;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -85,8 +95,14 @@ class _DoctorPrescriptionFormPageState
         doctorId = savedDoctorId;
         sessions = loadedSessions;
         mealRules = loadedMealRules;
-        selectedMealRule =
-            loadedMealRules.isNotEmpty ? loadedMealRules.first : null;
+
+        if (widget.isEdit && initial != null) {
+          _fillInitialPrescription(loadedMealRules);
+        } else {
+          selectedMealRule =
+              loadedMealRules.isNotEmpty ? loadedMealRules.first : null;
+        }
+
         isLoading = false;
       });
     } catch (e) {
@@ -94,6 +110,59 @@ class _DoctorPrescriptionFormPageState
 
       setState(() => isLoading = false);
       _showSnackBar(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  void _fillInitialPrescription(List<String> loadedMealRules) {
+    final item = initial!;
+
+    selectedMedicationId = int.tryParse(
+      item['medication_id']?.toString() ?? '',
+    );
+
+    medicineCtr.text = item['medication_name']?.toString() ?? '';
+    selectedMedicationDescription =
+        item['description']?.toString() ?? item['indication']?.toString() ?? '';
+
+    dosageCtr.text = item['dosage']?.toString() ?? '';
+    selectedForm = item['form']?.toString().isNotEmpty == true
+        ? item['form'].toString()
+        : selectedForm;
+
+    final rule = item['meal_rule']?.toString();
+    selectedMealRule = rule != null && rule.trim().isNotEmpty
+        ? rule
+        : loadedMealRules.isNotEmpty
+            ? loadedMealRules.first
+            : null;
+
+    notesCtr.text = item['notes']?.toString() ?? '';
+
+    validFrom = _parseDate(item['valid_from']) ?? DateTime.now();
+    validUntil = _parseDate(item['valid_until']) ??
+        DateTime.now().add(const Duration(days: 30));
+
+    selectedSessions.clear();
+
+    final existingSchedules = List<Map<String, dynamic>>.from(
+      item['schedules'] ?? [],
+    );
+
+    for (final schedule in existingSchedules) {
+      final sessionId = int.tryParse(schedule['session_id']?.toString() ?? '');
+      if (sessionId == null) continue;
+
+      selectedSessions[sessionId] = {
+        'session_id': sessionId,
+        'session_name': schedule['session_name']?.toString() ?? '-',
+        'dose_per_session':
+            schedule['dose_per_session']?.toString().trim().isNotEmpty == true
+                ? schedule['dose_per_session'].toString()
+                : '1 tablet',
+        'reminder_time': _normalizeTime(
+          schedule['reminder_time'] ?? schedule['default_reminder_time'],
+        ),
+      };
     }
   }
 
@@ -155,33 +224,63 @@ class _DoctorPrescriptionFormPageState
       return;
     }
 
+    if (widget.isEdit && prescriptionId == 0) {
+      _showSnackBar('ID resep tidak ditemukan');
+      return;
+    }
+
+    final schedulesPayload = selectedSessions.values.map((item) {
+      return {
+        'session_id': item['session_id'],
+        'dose_per_session': item['dose_per_session'],
+        'reminder_time': _normalizeTime(item['reminder_time']),
+      };
+    }).toList();
+
     setState(() => isSaving = true);
 
     try {
-      await ApiService.storeDoctorPrescription(
-        patientId: widget.patientId,
-        medicationId: selectedMedicationId!,
-        dosage: dosageCtr.text.trim(),
-        form: selectedForm,
-        indication: selectedMedicationDescription.trim().isEmpty
-            ? null
-            : selectedMedicationDescription.trim(),
-        mealRule: selectedMealRule,
-        notes: notesCtr.text.trim().isEmpty ? null : notesCtr.text.trim(),
-        validFrom: _dateOnly(validFrom),
-        validUntil: _dateOnly(validUntil),
-        schedules: selectedSessions.values.map((item) {
-          return {
-            'session_id': item['session_id'],
-            'dose_per_session': item['dose_per_session'],
-            'reminder_time': item['reminder_time'],
-          };
-        }).toList(),
-      );
+      if (widget.isEdit) {
+        await ApiService.updatePrescription(
+          prescriptionId: prescriptionId,
+          doctorId: doctorId!,
+          patientId: widget.patientId,
+          medicationId: selectedMedicationId!,
+          dosage: dosageCtr.text.trim(),
+          form: selectedForm,
+          indication: selectedMedicationDescription.trim().isEmpty
+              ? null
+              : selectedMedicationDescription.trim(),
+          mealRule: selectedMealRule,
+          notes: notesCtr.text.trim().isEmpty ? null : notesCtr.text.trim(),
+          validFrom: _dateOnly(validFrom),
+          validUntil: _dateOnly(validUntil),
+          schedules: schedulesPayload,
+        );
+      } else {
+        await ApiService.storeDoctorPrescription(
+          patientId: widget.patientId,
+          medicationId: selectedMedicationId!,
+          dosage: dosageCtr.text.trim(),
+          form: selectedForm,
+          indication: selectedMedicationDescription.trim().isEmpty
+              ? null
+              : selectedMedicationDescription.trim(),
+          mealRule: selectedMealRule,
+          notes: notesCtr.text.trim().isEmpty ? null : notesCtr.text.trim(),
+          validFrom: _dateOnly(validFrom),
+          validUntil: _dateOnly(validUntil),
+          schedules: schedulesPayload,
+        );
+      }
 
       if (!mounted) return;
 
-      await _showSuccessSheet();
+      await _showSuccessSheet(
+        widget.isEdit
+            ? 'Resep berhasil diperbarui'
+            : 'Resep berhasil ditambahkan',
+      );
 
       if (!mounted) return;
       Navigator.pop(context, true);
@@ -333,9 +432,13 @@ class _DoctorPrescriptionFormPageState
                                   strokeWidth: 2,
                                 ),
                               )
-                            : const Text(
-                                'Simpan Resep',
-                                style: TextStyle(fontWeight: FontWeight.w600),
+                            : Text(
+                                widget.isEdit
+                                    ? 'Simpan Perubahan'
+                                    : 'Simpan Resep',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                       ),
                     ),
@@ -368,11 +471,11 @@ class _DoctorPrescriptionFormPageState
             onPressed: isSaving ? null : () => Navigator.pop(context),
             icon: const Icon(Icons.arrow_back, color: Colors.white),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
-              'Tambah Resep',
+              widget.isEdit ? 'Ubah Resep' : 'Tambah Resep',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -549,23 +652,25 @@ class _DoctorPrescriptionFormPageState
         final selected =
             sessionId != null && selectedSessions.containsKey(sessionId);
 
+        final selectedItem = sessionId == null ? null : selectedSessions[sessionId];
+        final dose = selectedItem?['dose_per_session']?.toString() ?? '1 tablet';
+        final reminder = _normalizeTime(selectedItem?['reminder_time'] ?? defaultTime);
+
         return Padding(
           padding: const EdgeInsets.only(bottom: 8),
           child: InkWell(
             onTap: sessionId == null
                 ? null
                 : () {
-                    setState(() {
-                      if (selected) {
-                        selectedSessions.remove(sessionId);
-                      } else {
-                        selectedSessions[sessionId] = {
-                          'session_id': sessionId,
-                          'dose_per_session': '1 tablet',
-                          'reminder_time': defaultTime,
-                        };
-                      }
-                    });
+                    if (!selected) {
+                      _selectSession(
+                        sessionId: sessionId,
+                        sessionName: sessionName,
+                        defaultTime: defaultTime,
+                      );
+                    } else {
+                      _showScheduleEditSheet(sessionId);
+                    }
                   },
             borderRadius: BorderRadius.circular(10),
             child: Container(
@@ -580,32 +685,62 @@ class _DoctorPrescriptionFormPageState
               child: Row(
                 children: [
                   Icon(
-                    selected
-                        ? Icons.check_box
-                        : Icons.check_box_outline_blank,
+                    selected ? Icons.check_box : Icons.check_box_outline_blank,
                     color: selected ? AppColors.primaryBlue : AppColors.dark3,
                     size: 18,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      sessionName,
-                      style: TextStyle(
-                        color:
-                            selected ? AppColors.primaryBlue : AppColors.dark1,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          sessionName,
+                          style: TextStyle(
+                            color: selected
+                                ? AppColors.primaryBlue
+                                : AppColors.dark1,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          selected
+                              ? '$dose • $reminder'
+                              : 'Jam default $defaultTime',
+                          style: const TextStyle(
+                            color: AppColors.dark2,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (selected) ...[
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      onPressed: isSaving
+                          ? null
+                          : () => _showScheduleEditSheet(sessionId),
+                      icon: const Icon(
+                        Icons.edit_outlined,
+                        color: AppColors.primaryBlue,
+                        size: 17,
                       ),
                     ),
-                  ),
-                  Text(
-                    defaultTime,
-                    style: const TextStyle(
-                      color: AppColors.primaryBlue,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      onPressed: isSaving
+                          ? null
+                          : () => _removeSession(sessionId),
+                      icon: const Icon(
+                        Icons.close,
+                        color: AppColors.red,
+                        size: 17,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -613,6 +748,192 @@ class _DoctorPrescriptionFormPageState
         );
       }).toList(),
     );
+  }
+
+  void _selectSession({
+    required int sessionId,
+    required String sessionName,
+    required String defaultTime,
+  }) {
+    setState(() {
+      selectedSessions[sessionId] = {
+        'session_id': sessionId,
+        'session_name': sessionName,
+        'dose_per_session': '1 tablet',
+        'reminder_time': defaultTime,
+      };
+    });
+  }
+
+  void _removeSession(int sessionId) {
+    setState(() {
+      selectedSessions.remove(sessionId);
+    });
+  }
+
+  Future<void> _showScheduleEditSheet(int sessionId) async {
+    final item = selectedSessions[sessionId];
+    if (item == null) return;
+
+    final doseController = TextEditingController(
+      text: item['dose_per_session']?.toString() ?? '1 tablet',
+    );
+
+    String reminderTime = _normalizeTime(item['reminder_time']);
+    final sessionName = item['session_name']?.toString() ?? 'Jadwal';
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
+              ),
+              child: SafeArea(
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(26),
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 44,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: AppColors.light1,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Text(
+                        'Atur $sessionName',
+                        style: const TextStyle(
+                          color: AppColors.primaryBlue,
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _label('Dosis per sesi*'),
+                      _input(
+                        controller: doseController,
+                        hint: 'Contoh: 1 tablet',
+                      ),
+                      const SizedBox(height: 14),
+                      _label('Jam pengingat*'),
+                      InkWell(
+                        onTap: () async {
+                          final picked = await showTimePicker(
+                            context: sheetContext,
+                            initialTime: _parseTimeOfDay(reminderTime),
+                            builder: (context, child) {
+                              return Theme(
+                                data: Theme.of(context).copyWith(
+                                  colorScheme: const ColorScheme.light(
+                                    primary: AppColors.primaryBlue,
+                                  ),
+                                ),
+                                child: child!,
+                              );
+                            },
+                          );
+
+                          if (picked != null) {
+                            setSheetState(() {
+                              reminderTime = _timeOfDayToText(picked);
+                            });
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 13,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.light1),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.access_time,
+                                color: AppColors.primaryBlue,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  reminderTime,
+                                  style: const TextStyle(
+                                    color: AppColors.dark1,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              const Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                color: AppColors.primaryBlue,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 46,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            if (doseController.text.trim().isEmpty) {
+                              _showSnackBar('Dosis per sesi wajib diisi');
+                              return;
+                            }
+
+                            setState(() {
+                              selectedSessions[sessionId] = {
+                                ...item,
+                                'dose_per_session':
+                                    doseController.text.trim(),
+                                'reminder_time': reminderTime,
+                              };
+                            });
+
+                            Navigator.pop(sheetContext);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primaryBlue,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                          ),
+                          child: const Text('Simpan Jadwal'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    doseController.dispose();
   }
 
   Widget _dateBox({
@@ -781,6 +1102,10 @@ class _DoctorPrescriptionFormPageState
         borderRadius: BorderRadius.circular(10),
         borderSide: const BorderSide(color: AppColors.primaryBlue),
       ),
+      disabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: AppColors.light1),
+      ),
     );
   }
 
@@ -877,7 +1202,7 @@ class _DoctorPrescriptionFormPageState
     );
   }
 
-  Future<void> _showSuccessSheet() async {
+  Future<void> _showSuccessSheet(String message) async {
     await showModalBottomSheet(
       context: context,
       isDismissible: false,
@@ -899,10 +1224,10 @@ class _DoctorPrescriptionFormPageState
                 child: Icon(Icons.check, color: Color(0xFF10C878), size: 36),
               ),
               const SizedBox(height: 18),
-              const Text(
-                'Resep berhasil ditambahkan',
+              Text(
+                message,
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   color: AppColors.primaryBlue,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -929,6 +1254,11 @@ class _DoctorPrescriptionFormPageState
     );
   }
 
+  DateTime? _parseDate(dynamic value) {
+    if (value == null) return null;
+    return DateTime.tryParse(value.toString());
+  }
+
   String _dateOnly(DateTime date) {
     return '${date.year}-'
         '${date.month.toString().padLeft(2, '0')}-'
@@ -950,6 +1280,19 @@ class _DoctorPrescriptionFormPageState
     if (text.length >= 5) return text.substring(0, 5);
 
     return text;
+  }
+
+  TimeOfDay _parseTimeOfDay(String value) {
+    final parts = value.split(':');
+    final hour = int.tryParse(parts.isNotEmpty ? parts[0] : '') ?? 7;
+    final minute = int.tryParse(parts.length > 1 ? parts[1] : '') ?? 0;
+
+    return TimeOfDay(hour: hour, minute: minute);
+  }
+
+  String _timeOfDayToText(TimeOfDay value) {
+    return '${value.hour.toString().padLeft(2, '0')}:'
+        '${value.minute.toString().padLeft(2, '0')}';
   }
 
   void _showSnackBar(String message) {

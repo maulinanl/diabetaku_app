@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../widgets/diabetes_type_badge.dart';
 import 'doctor_connection_page.dart';
 import 'doctor_history_page.dart';
 import 'doctor_profile_page.dart';
@@ -18,16 +19,35 @@ class DoctorMainPage extends StatefulWidget {
 
 class _DoctorMainPageState extends State<DoctorMainPage> {
   int currentIndex = 0;
+  int? connectionInitialPatientId;
+  int connectionPageRefreshKey = 0;
 
-  final pages = const [
-    DoctorHomeContent(),
-    DoctorConnectionPage(),
-    DoctorHistoryPage(),
-    DoctorProfilePage(),
-  ];
+  void _openConnectionRequestFromNotification(int patientId) {
+    setState(() {
+      currentIndex = 1;
+      connectionInitialPatientId = patientId;
+      connectionPageRefreshKey++;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final pages = [
+      DoctorHomeContent(
+        onOpenConnectionRequest: _openConnectionRequestFromNotification,
+      ),
+      DoctorConnectionPage(
+        key: ValueKey('doctor_connection_$connectionPageRefreshKey'),
+        initialTab: 0,
+        initialPatientId: connectionInitialPatientId,
+        onInitialPatientHandled: () {
+          connectionInitialPatientId = null;
+        },
+      ),
+      const DoctorHistoryPage(),
+      const DoctorProfilePage(),
+    ];
+
     return Scaffold(
       backgroundColor: AppColors.background,
       extendBody: false,
@@ -45,7 +65,12 @@ class _DoctorMainPageState extends State<DoctorMainPage> {
 }
 
 class DoctorHomeContent extends StatefulWidget {
-  const DoctorHomeContent({super.key});
+  final void Function(int patientId)? onOpenConnectionRequest;
+
+  const DoctorHomeContent({
+    super.key,
+    this.onOpenConnectionRequest,
+  });
 
   @override
   State<DoctorHomeContent> createState() => _DoctorHomeContentState();
@@ -55,7 +80,7 @@ class _DoctorHomeContentState extends State<DoctorHomeContent> {
   final TextEditingController _searchController = TextEditingController();
 
   String searchQuery = '';
-  bool hasUnreadNotification = true;
+  bool hasUnreadNotification = false;
 
   List<Map<String, dynamic>> patients = [];
   bool isLoading = true;
@@ -96,12 +121,7 @@ class _DoctorHomeContentState extends State<DoctorHomeContent> {
   }
 
   String _formatDiabetesType(dynamic value) {
-    final type = value?.toString().toLowerCase() ?? '-';
-
-    if (type.contains('1')) return 'Tipe 1';
-    if (type.contains('2')) return 'Tipe 2';
-
-    return type.replaceAll('_', ' ').toUpperCase();
+    return formatDiabetesType(value);
   }
 
   bool _isPatientAbnormal(Map<String, dynamic> patient) {
@@ -123,6 +143,51 @@ class _DoctorHomeContentState extends State<DoctorHomeContent> {
     });
     _loadDoctorName();
     _fetchPatients();
+    _loadUnreadNotificationStatus();
+  }
+
+  bool _isReadNotification(Map<String, dynamic> item) {
+    final value = item['is_read'];
+    return value == true || value == 1 || value.toString() == '1';
+  }
+
+  Future<void> _loadUnreadNotificationStatus() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getInt('user_id');
+
+      if (userId == null) return;
+
+      final data = await ApiService.getNotifications(userId);
+      final hasUnread = data.any((item) => !_isReadNotification(item));
+
+      if (!mounted) return;
+
+      setState(() {
+        hasUnreadNotification = hasUnread;
+      });
+    } catch (e) {
+      debugPrint('GAGAL CEK NOTIFIKASI DOKTER: $e');
+    }
+  }
+
+  Future<void> _openNotificationPage() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const DoctorNotificationPage()),
+    );
+
+    if (!mounted) return;
+
+    await _loadUnreadNotificationStatus();
+
+    if (result is Map && result['action'] == 'open_connection_request') {
+      final patientId = int.tryParse(result['patient_id'].toString());
+
+      if (patientId != null) {
+        widget.onOpenConnectionRequest?.call(patientId);
+      }
+    }
   }
 
   Future<void> _loadDoctorName() async {
@@ -209,7 +274,7 @@ class _DoctorHomeContentState extends State<DoctorHomeContent> {
     });
 
     return Container(
-      color: AppColors.primaryBlue,
+      color: AppColors.background,
       child: SafeArea(
         top: false,
         child: Column(
@@ -307,8 +372,8 @@ class _DoctorHomeContentState extends State<DoctorHomeContent> {
       decoration: const BoxDecoration(
         color: AppColors.primaryBlue,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(22),
-          bottomRight: Radius.circular(22),
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
         ),
       ),
       child: Column(
@@ -336,16 +401,7 @@ class _DoctorHomeContentState extends State<DoctorHomeContent> {
                 ),
               ),
               GestureDetector(
-                onTap: () {
-                  setState(() => hasUnreadNotification = false);
-
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const DoctorNotificationPage(),
-                    ),
-                  );
-                },
+                onTap: _openNotificationPage,
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
@@ -413,7 +469,7 @@ class _DoctorHomeContentState extends State<DoctorHomeContent> {
               fillColor: Colors.white,
               contentPadding: const EdgeInsets.symmetric(vertical: 14),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
               ),
             ),
@@ -573,16 +629,7 @@ class _PatientCard extends StatelessWidget {
                     spacing: 6,
                     runSpacing: 6,
                     children: [
-                      _statusBadge(
-                        text: type,
-                        bg: isConnected
-                            ? AppColors.veryLightBlue
-                            : AppColors.light4,
-                        textColor: isConnected
-                            ? AppColors.primaryBlue
-                            : AppColors.dark4,
-                        icon: Icons.opacity,
-                      ),
+                      DiabetesTypeBadge(value: type, dense: true),
                       if (isConnected)
                         _statusBadge(
                           text: status,
@@ -672,4 +719,5 @@ class _PatientCard extends StatelessWidget {
       ],
     );
   }
+
 }

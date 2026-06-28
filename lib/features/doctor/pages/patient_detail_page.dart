@@ -1,6 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../widgets/diabetes_type_badge.dart';
 import 'patient_threshold_page.dart';
 import 'clinical_note_form_page.dart';
 import 'doctor_prescription_page.dart';
@@ -152,7 +153,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
       );
     }
     return Scaffold(
-      backgroundColor: AppColors.primaryBlue,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         top: false,
         child: Column(
@@ -218,12 +219,13 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
     final initials = _getInitials(name);
 
     return Container(
-      padding: EdgeInsets.fromLTRB(20, topPad + 12, 20, 18),
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(20, topPad + 12, 20, 24),
       decoration: const BoxDecoration(
         color: AppColors.primaryBlue,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(28),
-          bottomRight: Radius.circular(28),
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
         ),
       ),
       child: Column(
@@ -240,7 +242,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 22,
+                    fontSize: 20,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -249,18 +251,17 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
             ],
           ),
           const SizedBox(height: 12),
-
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: const [
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
                 BoxShadow(
-                  color: Colors.black12,
+                  color: Colors.black.withValues(alpha: 0.08),
                   blurRadius: 10,
-                  offset: Offset(0, 6),
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
@@ -268,37 +269,27 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
               children: [
                 Row(
                   children: [
-                    Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        color: AppColors.lightBlue,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: AppColors.veryLightBlue,
-                          width: 4,
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          initials,
-                          style: TextStyle(
-                            color: AppColors.primaryBlue,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
+                    CircleAvatar(
+                      radius: 28,
+                      backgroundColor: AppColors.lightBlue,
+                      child: Text(
+                        initials,
+                        style: const TextStyle(
+                          color: AppColors.primaryBlue,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
                         ),
                       ),
                     ),
                     const SizedBox(width: 14),
-
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             name,
-                            style: TextStyle(
+                            style: const TextStyle(
+                              color: AppColors.dark1,
                               fontWeight: FontWeight.w700,
                               fontSize: 16,
                             ),
@@ -306,7 +297,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                           const SizedBox(height: 6),
                           Text(
                             '$age tahun • $gender',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 13,
                               color: AppColors.dark2,
                             ),
@@ -316,12 +307,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                             spacing: 6,
                             runSpacing: 6,
                             children: [
-                              _badge(
-                                text: diabetesType,
-                                bg: AppColors.veryLightBlue,
-                                color: AppColors.primaryBlue,
-                                icon: Icons.opacity,
-                              ),
+                              DiabetesTypeBadge(value: diabetesType),
                               if (!widget.isConnected)
                                 _badge(
                                   text: 'Tidak Terhubung',
@@ -336,7 +322,6 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                     ),
                   ],
                 ),
-
                 if (widget.isConnected) ...[
                   const SizedBox(height: 14),
                   SizedBox(
@@ -968,15 +953,8 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
         ];
       }).toList();
 
-      return _buildTrendAndHistory(
-        title: 'Tren Tekanan Darah Sistolik',
-        unitLabel: 'mmHg',
-        lineColor: Colors.orange,
-        spots: _buildSpotsFromRecords(
-          records: filteredPhysiological,
-          valueKey: 'systolic',
-          dateKey: 'measured_at',
-        ),
+      return _buildPhysiologicalContent(
+        records: filteredPhysiological,
         history: history.isEmpty
             ? [
                 ['Belum ada data', '-', '-'],
@@ -1204,6 +1182,491 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
     } catch (e) {
       debugPrint(e.toString());
     }
+  }
+
+  Widget _buildPhysiologicalContent({
+    required List<Map<String, dynamic>> records,
+    required List<List<String>> history,
+  }) {
+    final systolicSpots = _buildSpotsFromRecords(
+      records: records,
+      valueKey: 'systolic',
+      dateKey: 'measured_at',
+    );
+
+    final diastolicSpots = _buildSpotsFromRecords(
+      records: records,
+      valueKey: 'diastolic',
+      dateKey: 'measured_at',
+    );
+
+    final bmiSpots = _buildSpotsFromRecords(
+      records: records,
+      valueKey: 'bmi',
+      dateKey: 'measured_at',
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildMultiLineTrendCard(
+          title: 'Tren Tekanan Darah',
+          unitLabel: 'mmHg',
+          firstLabel: 'Sistolik',
+          firstColor: AppColors.primaryBlue,
+          firstSpots: systolicSpots,
+          secondLabel: 'Diastolik',
+          secondColor: Colors.orange,
+          secondSpots: diastolicSpots,
+        ),
+        const SizedBox(height: 18),
+        _buildSingleLineTrendCard(
+          title: 'Tren BMI',
+          unitLabel: 'BMI',
+          lineColor: const Color(0xFF10C878),
+          spots: bmiSpots,
+        ),
+        const SizedBox(height: 18),
+        _buildHistorySection(history),
+      ],
+    );
+  }
+
+  Widget _buildHistorySection(List<List<String>> history) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'RIWAYAT DATA',
+          style: TextStyle(
+            color: AppColors.dark1,
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 10),
+        ...history.map((item) {
+          return Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.light1),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item[0],
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.dark1,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        item[1],
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.dark2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  item[2],
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primaryBlue,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          height: 46,
+          child: ElevatedButton(
+            onPressed: _openFullHistory,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryBlue,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text(
+              'Lihat Semua Riwayat',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSingleLineTrendCard({
+    required String title,
+    required String unitLabel,
+    required Color lineColor,
+    required List<FlSpot> spots,
+  }) {
+    final safeSpots = spots.isEmpty
+        ? const [FlSpot(0, 0), FlSpot(1, 0)]
+        : spots;
+
+    final values = safeSpots.map((e) => e.y).toList();
+    final minValue = values.reduce((a, b) => a < b ? a : b);
+    final maxValue = values.reduce((a, b) => a > b ? a : b);
+
+    final paddingY = maxValue <= 10 ? 2 : 20;
+    final minY = (minValue - paddingY).clamp(0, double.infinity).toDouble();
+    final maxY = maxValue + paddingY;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _trendTitle(title),
+        const SizedBox(height: 12),
+        Container(
+          height: 230,
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+          decoration: _trendCardDecoration(),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.show_chart, color: lineColor, size: 18),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Trend $unitLabel',
+                      style: const TextStyle(
+                        color: AppColors.dark2,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    unitLabel,
+                    style: const TextStyle(
+                      color: AppColors.primaryBlue,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: LineChart(
+                  LineChartData(
+                    minX: 0,
+                    maxX: safeSpots.length > 1
+                        ? (safeSpots.length - 1).toDouble()
+                        : 1,
+                    minY: minY,
+                    maxY: maxY,
+                    gridData: _chartGridData(maxY),
+                    titlesData: _chartTitlesData(maxY, safeSpots),
+                    borderData: FlBorderData(show: false),
+                    lineTouchData: _chartTouchData(unitLabel),
+                    lineBarsData: [
+                      _lineBarData(
+                        spots: safeSpots,
+                        color: lineColor,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMultiLineTrendCard({
+    required String title,
+    required String unitLabel,
+    required String firstLabel,
+    required Color firstColor,
+    required List<FlSpot> firstSpots,
+    required String secondLabel,
+    required Color secondColor,
+    required List<FlSpot> secondSpots,
+  }) {
+    final safeFirst = firstSpots.isEmpty
+        ? const [FlSpot(0, 0), FlSpot(1, 0)]
+        : firstSpots;
+    final safeSecond = secondSpots.isEmpty
+        ? const [FlSpot(0, 0), FlSpot(1, 0)]
+        : secondSpots;
+
+    final values = [...safeFirst, ...safeSecond].map((e) => e.y).toList();
+    final minValue = values.reduce((a, b) => a < b ? a : b);
+    final maxValue = values.reduce((a, b) => a > b ? a : b);
+
+    final paddingY = maxValue <= 10 ? 2 : 20;
+    final minY = (minValue - paddingY).clamp(0, double.infinity).toDouble();
+    final maxY = maxValue + paddingY;
+    final longestSpots = safeFirst.length >= safeSecond.length
+        ? safeFirst
+        : safeSecond;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _trendTitle(title),
+        const SizedBox(height: 12),
+        Container(
+          height: 250,
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+          decoration: _trendCardDecoration(),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.monitor_heart_outlined,
+                    color: AppColors.primaryBlue,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 6),
+                  const Expanded(
+                    child: Text(
+                      'Trend mmHg',
+                      style: TextStyle(
+                        color: AppColors.dark2,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  _chartLegend(firstLabel, firstColor),
+                  const SizedBox(width: 8),
+                  _chartLegend(secondLabel, secondColor),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: LineChart(
+                  LineChartData(
+                    minX: 0,
+                    maxX: longestSpots.length > 1
+                        ? (longestSpots.length - 1).toDouble()
+                        : 1,
+                    minY: minY,
+                    maxY: maxY,
+                    gridData: _chartGridData(maxY),
+                    titlesData: _chartTitlesData(maxY, longestSpots),
+                    borderData: FlBorderData(show: false),
+                    lineTouchData: _chartTouchData(unitLabel),
+                    lineBarsData: [
+                      _lineBarData(spots: safeFirst, color: firstColor),
+                      _lineBarData(spots: safeSecond, color: secondColor),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _trendTitle(String title) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(
+              color: AppColors.dark1,
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: AppColors.veryLightBlue,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            widget.isConnected ? _periodLabel() : 'Data Lama',
+            style: const TextStyle(
+              color: AppColors.primaryBlue,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _chartLegend(String label, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.dark2,
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  BoxDecoration _trendCardDecoration() {
+    return BoxDecoration(
+      color: AppColors.white,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: AppColors.light1),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.05),
+          blurRadius: 8,
+          offset: const Offset(0, 3),
+        ),
+      ],
+    );
+  }
+
+  FlGridData _chartGridData(double maxY) {
+    return FlGridData(
+      show: true,
+      drawVerticalLine: false,
+      horizontalInterval: _getInterval(maxY),
+      getDrawingHorizontalLine: (value) {
+        return FlLine(
+          color: AppColors.light1.withValues(alpha: 0.7),
+          strokeWidth: 1,
+        );
+      },
+    );
+  }
+
+  FlTitlesData _chartTitlesData(double maxY, List<FlSpot> spots) {
+    return FlTitlesData(
+      leftTitles: AxisTitles(
+        sideTitles: SideTitles(
+          showTitles: true,
+          reservedSize: 36,
+          interval: _getInterval(maxY),
+          getTitlesWidget: (value, meta) {
+            return Text(
+              value.toInt().toString(),
+              style: const TextStyle(
+                color: AppColors.dark3,
+                fontSize: 10,
+              ),
+            );
+          },
+        ),
+      ),
+      bottomTitles: AxisTitles(
+        sideTitles: SideTitles(
+          showTitles: true,
+          reservedSize: 26,
+          interval: 1,
+          getTitlesWidget: (value, meta) {
+            return Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                _bottomLabel(value.toInt(), spots),
+                style: const TextStyle(
+                  color: AppColors.dark3,
+                  fontSize: 10,
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+      rightTitles: const AxisTitles(
+        sideTitles: SideTitles(showTitles: false),
+      ),
+      topTitles: const AxisTitles(
+        sideTitles: SideTitles(showTitles: false),
+      ),
+    );
+  }
+
+  LineTouchData _chartTouchData(String unitLabel) {
+    return LineTouchData(
+      enabled: true,
+      touchTooltipData: LineTouchTooltipData(
+        getTooltipItems: (spots) {
+          return spots.map((spot) {
+            return LineTooltipItem(
+              '${spot.y.toStringAsFixed(0)} $unitLabel',
+              const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            );
+          }).toList();
+        },
+      ),
+    );
+  }
+
+  LineChartBarData _lineBarData({
+    required List<FlSpot> spots,
+    required Color color,
+  }) {
+    return LineChartBarData(
+      spots: spots,
+      isCurved: true,
+      curveSmoothness: 0.32,
+      barWidth: 3,
+      color: color,
+      isStrokeCapRound: true,
+      belowBarData: BarAreaData(
+        show: true,
+        color: color.withValues(alpha: 0.10),
+      ),
+      dotData: FlDotData(
+        show: true,
+        getDotPainter: (spot, percent, barData, index) {
+          final isLast = index == spots.length - 1;
+
+          return FlDotCirclePainter(
+            radius: isLast ? 4 : 2.6,
+            color: isLast ? color : AppColors.white,
+            strokeWidth: 2,
+            strokeColor: color,
+          );
+        },
+      ),
+    );
   }
 
   Widget _buildTrendAndHistory({

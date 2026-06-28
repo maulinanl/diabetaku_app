@@ -62,7 +62,7 @@ class _DoctorHistoryPageState extends State<DoctorHistoryPage> {
         });
 
     return Scaffold(
-      backgroundColor: AppColors.primaryBlue,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         top: false,
         child: Column(
@@ -74,6 +74,10 @@ class _DoctorHistoryPageState extends State<DoctorHistoryPage> {
                 child: Column(
                   children: [
                     _buildFilters(),
+
+                    if (!isLoading && errorMessage == null)
+                      _buildDateRangeBar(),
+
                     Expanded(
                       child: isLoading
                           ? const Center(child: CircularProgressIndicator())
@@ -81,118 +85,74 @@ class _DoctorHistoryPageState extends State<DoctorHistoryPage> {
                           ? Center(child: Text(errorMessage!))
                           : filtered.isEmpty
                           ? _buildEmptyState()
-                          : ListView(
-                              padding: const EdgeInsets.fromLTRB(
-                                18,
-                                16,
-                                18,
-                                120,
-                              ),
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        selectedRange == null
-                                            ? 'Semua riwayat terbaru'
-                                            : '${selectedRange!.start.day}/${selectedRange!.start.month}/${selectedRange!.start.year} - ${selectedRange!.end.day}/${selectedRange!.end.month}/${selectedRange!.end.year}',
-                                        style: const TextStyle(
-                                          color: AppColors.primaryBlue,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                    OutlinedButton.icon(
-                                      onPressed: () async {
-                                        final picked =
-                                            await _showCompactDateRangePicker();
-
-                                        if (picked != null) {
-                                          setState(() {
-                                            selectedRange = picked;
-                                          });
-                                        }
-                                      },
-                                      icon: const Icon(
-                                        Icons.calendar_month,
-                                        size: 14,
-                                      ),
-                                      label: Text(
-                                        selectedRange == null
-                                            ? 'Rentang tanggal'
-                                            : '${selectedRange!.start.day}/${selectedRange!.start.month} - ${selectedRange!.end.day}/${selectedRange!.end.month}',
-                                      ),
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: AppColors.primaryBlue,
-                                        backgroundColor: AppColors.white,
-                                        side: const BorderSide(
-                                          color: AppColors.light1,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                          : RefreshIndicator(
+                              onRefresh: _loadHistory,
+                              child: ListView(
+                                padding: const EdgeInsets.fromLTRB(
+                                  18,
+                                  12,
+                                  18,
+                                  120,
                                 ),
-                                const SizedBox(height: 12),
+                                children: [
+                                  ...filtered.map((item) {
+                                    final recommendationCount =
+                                        int.tryParse(
+                                          item['recommendation_count']
+                                                  ?.toString() ??
+                                              '0',
+                                        ) ??
+                                        0;
 
-                                ...filtered.map((item) {
-                                  final recommendationCount =
-                                      int.tryParse(
-                                        item['recommendation_count']
-                                                ?.toString() ??
-                                            '0',
-                                      ) ??
-                                      0;
-
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 14),
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) =>
-                                                ClinicalNoteDetailPage(
-                                                  historyData: item,
-                                                  hasRecommendation:
-                                                      recommendationCount > 0,
-                                                ),
-                                          ),
-                                        );
-                                      },
-                                      child: _HistoryCard(
-                                        initial: _getInitial(
-                                          item['full_name']?.toString() ?? '-',
-                                        ),
-                                        name:
-                                            item['full_name']?.toString() ??
-                                            '-',
-                                        age:
-                                            '${_calculateAge(item['date_of_birth']?.toString())} tahun • ${item['gender'] ?? '-'}',
-                                        hasRecommendation:
-                                            recommendationCount > 0,
-                                        status:
-                                            item['patient_condition']
-                                                ?.toString() ??
-                                            '-',
-                                        description:
-                                            item['doctor_note']?.toString() ??
-                                            item['treatment_plan']
-                                                ?.toString() ??
-                                            '-',
-                                        followUp: item['follow_up_date'] == null
-                                            ? 'Tanpa follow up'
-                                            : 'Follow up: ${item['follow_up_date']}',
+                                    return Padding(
+                                      padding: const EdgeInsets.only(
+                                        bottom: 14,
                                       ),
-                                    ),
-                                  );
-                                }).toList(),
-                              ],
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) =>
+                                                  ClinicalNoteDetailPage(
+                                                    historyData: item,
+                                                    hasRecommendation:
+                                                        recommendationCount > 0,
+                                                  ),
+                                            ),
+                                          );
+                                        },
+                                        child: _HistoryCard(
+                                          initial: _getInitial(
+                                            item['full_name']?.toString() ??
+                                                '-',
+                                          ),
+                                          name:
+                                              item['full_name']?.toString() ??
+                                              '-',
+                                          age:
+                                              '${_calculateAge(item['date_of_birth']?.toString())} tahun • ${item['gender'] ?? '-'}',
+                                          hasRecommendation:
+                                              recommendationCount > 0,
+                                          status:
+                                              item['patient_condition']
+                                                  ?.toString() ??
+                                              '-',
+                                          description:
+                                              item['doctor_note']?.toString() ??
+                                              item['treatment_plan']
+                                                  ?.toString() ??
+                                              '-',
+                                          followUp:
+                                              item['follow_up_date'] == null
+                                              ? 'Tanpa follow up'
+                                              : 'Follow up: ${item['follow_up_date']}',
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ],
+                              ),
                             ),
                     ),
                   ],
@@ -293,8 +253,8 @@ class _DoctorHistoryPageState extends State<DoctorHistoryPage> {
       decoration: const BoxDecoration(
         color: AppColors.primaryBlue,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(22),
-          bottomRight: Radius.circular(22),
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
         ),
       ),
       child: Column(
@@ -342,7 +302,7 @@ class _DoctorHistoryPageState extends State<DoctorHistoryPage> {
               fillColor: Colors.white,
               contentPadding: const EdgeInsets.symmetric(vertical: 16),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
               ),
             ),
@@ -391,6 +351,75 @@ class _DoctorHistoryPageState extends State<DoctorHistoryPage> {
               ),
             );
           }),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDateRangeBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 8, 18, 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              selectedRange == null ? 'SEMUA RIWAYAT' : 'RIWAYAT TERPILIH',
+              style: const TextStyle(
+                color: AppColors.dark2,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          _dateRangeButton(),
+        ],
+      ),
+    );
+  }
+
+  Widget _dateRangeButton() {
+    return GestureDetector(
+      onTap: () async {
+        final picked = await _showCompactDateRangePicker();
+
+        if (picked != null) {
+          setState(() {
+            selectedRange = picked;
+          });
+        }
+      },
+      onLongPress: () {
+        setState(() {
+          selectedRange = null;
+        });
+      },
+      child: Container(
+        height: 38,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.light1),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.calendar_month,
+              size: 15,
+              color: AppColors.primaryBlue,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              selectedRange == null
+                  ? 'Rentang tanggal'
+                  : '${selectedRange!.start.day}/${selectedRange!.start.month} - ${selectedRange!.end.day}/${selectedRange!.end.month}',
+              style: const TextStyle(
+                color: AppColors.primaryBlue,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -565,42 +594,29 @@ class _DoctorHistoryPageState extends State<DoctorHistoryPage> {
 
   Widget _buildEmptyState() {
     final isSearching = searchQuery.trim().isNotEmpty;
+    final isFilteringDate = selectedRange != null;
+
+    String message;
+
+    if (isSearching) {
+      message = 'Riwayat tidak ditemukan';
+    } else if (isFilteringDate) {
+      message = 'Belum ada riwayat pada rentang tanggal ini';
+    } else {
+      message = 'Belum ada riwayat';
+    }
 
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircleAvatar(
-              radius: 36,
-              backgroundColor: AppColors.veryLightBlue,
-              child: Icon(
-                isSearching ? Icons.search_off : Icons.history_toggle_off,
-                color: AppColors.primaryBlue,
-                size: 36,
-              ),
-            ),
-            const SizedBox(height: 18),
-            Text(
-              isSearching ? 'Riwayat tidak ditemukan' : 'Belum ada riwayat',
-              style: const TextStyle(
-                color: AppColors.dark1,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              isSearching
-                  ? 'Tidak ada riwayat untuk nama pasien yang kamu cari.'
-                  : 'Catatan klinis dengan rekomendasi akan muncul di sini setelah kamu membuat catatan klinis untuk pasien.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.primaryBlue,
-                fontSize: 12,
-              ),
-            ),
-          ],
+        child: Text(
+          message,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: AppColors.dark2,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ),
     );

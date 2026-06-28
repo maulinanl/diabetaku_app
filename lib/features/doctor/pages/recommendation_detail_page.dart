@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../widgets/diabetes_type_badge.dart';
 
 class RecommendationDetailPage extends StatelessWidget {
   final String patientName;
@@ -68,12 +69,7 @@ class RecommendationDetailPage extends StatelessWidget {
   }
 
   static String _formatDiabetesType(dynamic value) {
-    final type = value?.toString() ?? '-';
-
-    if (type.contains('1')) return 'DM Tipe 1';
-    if (type.contains('2')) return 'DM Tipe 2';
-
-    return type.replaceAll('_', ' ');
+    return formatDiabetesType(value);
   }
 
   String _initials(String name) {
@@ -94,13 +90,13 @@ class RecommendationDetailPage extends StatelessWidget {
         child: Column(
           children: [
             Container(
-              constraints: const BoxConstraints(minHeight: 210),
+              width: double.infinity,
               padding: EdgeInsets.fromLTRB(20, topPad + 12, 20, 24),
               decoration: const BoxDecoration(
                 color: AppColors.primaryBlue,
                 borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(28),
-                  bottomRight: Radius.circular(28),
+                  bottomLeft: Radius.circular(24),
+                  bottomRight: Radius.circular(24),
                 ),
               ),
               child: Column(
@@ -117,7 +113,7 @@ class RecommendationDetailPage extends StatelessWidget {
                             'Detail Rekomendasi',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 22,
+                              fontSize: 20,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -193,12 +189,12 @@ class RecommendationDetailPage extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
           BoxShadow(
-            color: Colors.black12,
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 10,
-            offset: Offset(0, 6),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -256,7 +252,7 @@ class RecommendationDetailPage extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 6,
                   children: [
-                    _smallBadge(diabetesType),
+                    DiabetesTypeBadge(value: diabetesType),
                     _smallBadge(time),
                   ],
                 ),

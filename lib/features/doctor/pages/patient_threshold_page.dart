@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../widgets/diabetes_type_badge.dart';
 import '../../../data/services/api_service.dart';
 
 class PatientThresholdPage extends StatefulWidget {
@@ -39,39 +40,37 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
     try {
       final data = await ApiService.getPatientThresholds(widget.patientId);
 
+      if (!mounted) return;
+
       setState(() {
         _items.clear();
 
         for (final item in data) {
-          final lower =
-              double.tryParse(
-                (item['custom_min'] ?? item['default_min'] ?? '').toString(),
-              )?.toStringAsFixed(2) ??
+          final lower = _parseDouble(
+            item['custom_min'] ?? item['default_min'],
+          )?.toStringAsFixed(2) ??
               '';
 
-          final upper =
-              double.tryParse(
-                (item['custom_max'] ?? item['default_max'] ?? '').toString(),
-              )?.toStringAsFixed(2) ??
+          final upper = _parseDouble(
+            item['custom_max'] ?? item['default_max'],
+          )?.toStringAsFixed(2) ??
               '';
 
           _items.add(
             _ThresholdItem(
-              parameterId: item['parameter_id'],
+              parameterId: int.tryParse(item['parameter_id'].toString()) ?? 0,
               title: item['parameter_name']?.toString() ?? '-',
               lower: lower,
               upper: upper,
               unit: item['unit']?.toString() ?? '',
-              defaultLower:
-                  double.tryParse(
-                    (item['default_min'] ?? '').toString(),
-                  )?.toStringAsFixed(2) ??
+              defaultLower: _parseDouble(item['default_min'])
+                      ?.toStringAsFixed(2) ??
                   '',
-              defaultUpper:
-                  double.tryParse(
-                    (item['default_max'] ?? '').toString(),
-                  )?.toStringAsFixed(2) ??
+              defaultUpper: _parseDouble(item['default_max'])
+                      ?.toStringAsFixed(2) ??
                   '',
+              validMin: _parseDouble(item['valid_min']),
+              validMax: _parseDouble(item['valid_max']),
             ),
           );
         }
@@ -79,6 +78,8 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
         isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
+
       setState(() {
         errorMessage = e.toString().replaceFirst('Exception: ', '');
         isLoading = false;
@@ -118,6 +119,7 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
   }
 
   Future<void> _saveEdit(int index) async {
+    final item = _items[index];
     final low = _lowerCtrls[index]!.text.trim();
     final up = _upperCtrls[index]!.text.trim();
 
@@ -130,16 +132,32 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
     }
 
     if (upVal <= lowVal) {
-      setState(
-        () => _errorText = 'Batas atas harus lebih besar dari batas bawah',
-      );
+      setState(() {
+        _errorText = 'Batas atas harus lebih besar dari batas bawah';
+      });
+      return;
+    }
+
+    if (item.validMin != null && lowVal < item.validMin!) {
+      setState(() {
+        _errorText =
+            'Batas bawah ${item.title} tidak boleh kurang dari ${_formatLimit(item.validMin!)} ${item.unit}';
+      });
+      return;
+    }
+
+    if (item.validMax != null && upVal > item.validMax!) {
+      setState(() {
+        _errorText =
+            'Batas atas ${item.title} tidak boleh lebih dari ${_formatLimit(item.validMax!)} ${item.unit}';
+      });
       return;
     }
 
     try {
       await ApiService.updatePatientThreshold(
         patientId: widget.patientId,
-        parameterId: _items[index].parameterId,
+        parameterId: item.parameterId,
         minValue: lowVal,
         maxValue: upVal,
       );
@@ -150,30 +168,31 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
         await widget.onThresholdChanged!();
       }
 
-      setState(() {
-        _items[index].lower = lowVal.toStringAsFixed(2);
-        _items[index].upper = upVal.toStringAsFixed(2);
-        _hasChanges = true;
+      if (!mounted) return;
 
+      setState(() {
+        item.lower = lowVal.toStringAsFixed(2);
+        item.upper = upVal.toStringAsFixed(2);
+        _hasChanges = true;
         _editingIndex = null;
         _errorText = null;
-
-        _lowerCtrls[index]?.dispose();
-        _upperCtrls[index]?.dispose();
-        _lowerCtrls.remove(index);
-        _upperCtrls.remove(index);
       });
 
-      if (mounted) {
-        _showSuccessBottomSheet();
-      }
+      _disposeControllers(index);
+      _showSuccessBottomSheet();
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-        );
-      }
+      if (!mounted) return;
+      _showSnackBar(
+        e.toString().replaceFirst('Exception: ', ''),
+      );
     }
+  }
+
+  void _disposeControllers(int index) {
+    _lowerCtrls[index]?.dispose();
+    _upperCtrls[index]?.dispose();
+    _lowerCtrls.remove(index);
+    _upperCtrls.remove(index);
   }
 
   void _showSuccessBottomSheet() {
@@ -286,12 +305,12 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
         _errorText = null;
       });
 
+      _disposeControllers(index);
       _showSuccessBottomSheet();
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      _showSnackBar(
+        e.toString().replaceFirst('Exception: ', ''),
       );
     }
   }
@@ -311,6 +330,7 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
         body: Center(child: Text(errorMessage!)),
       );
     }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -327,309 +347,27 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
                 ),
                 itemCount: _items.length,
                 itemBuilder: (context, i) {
-                  final it = _items[i];
+                  final item = _items[i];
                   final editing = _editingIndex == i;
+
                   return Container(
                     margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: AppColors.white,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: AppColors.light1),
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 12,
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    width: 36,
-                                    height: 36,
-                                    decoration: BoxDecoration(
-                                      color: AppColors.veryLightBlue,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Icon(
-                                      Icons.opacity,
-                                      color: AppColors.primaryBlue,
-                                      size: 18,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    it.title,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const Spacer(),
-                              if (!editing)
-                                OutlinedButton.icon(
-                                  onPressed: () => _startEdit(i),
-                                  icon: const Icon(Icons.edit, size: 16),
-                                  label: const Text('Ubah'),
-                                  style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 6,
-                                    ),
-                                    side: BorderSide(
-                                      color: AppColors.primaryBlue,
-                                    ),
-                                    foregroundColor: AppColors.primaryBlue,
-                                    backgroundColor: Colors.white,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                  ),
-                                )
-                              else
-                                TextButton(
-                                  onPressed: () => _resetToDefault(i),
-                                  child: const Text(
-                                    'Reset default',
-                                    style: TextStyle(
-                                      color: AppColors.primaryBlue,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          if (!editing)
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      const Text(
-                                        'Batas bawah',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: AppColors.dark2,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        '${it.lower} ${it.unit}',
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          color: AppColors.primaryBlue,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        'Default: ${it.defaultLower}',
-                                        style: const TextStyle(
-                                          fontSize: 11,
-                                          color: AppColors.dark2,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      const Text(
-                                        'Batas atas',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: AppColors.dark2,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        '${it.upper} ${it.unit}',
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          color: AppColors.primaryBlue,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        'Default: ${it.defaultUpper}',
-                                        style: const TextStyle(
-                                          fontSize: 11,
-                                          color: AppColors.dark2,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            )
-                          else
-                            Column(
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: TextFormField(
-                                        controller: _lowerCtrls[i],
-                                        keyboardType:
-                                            const TextInputType.numberWithOptions(
-                                              decimal: true,
-                                            ),
-                                        decoration: InputDecoration(
-                                          labelText: 'Batas bawah',
-                                          suffixText: it.unit,
-                                          filled: true,
-                                          fillColor: Colors.white,
-                                          enabledBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              6,
-                                            ),
-                                            borderSide: BorderSide(
-                                              color: AppColors.light1,
-                                            ),
-                                          ),
-                                          focusedBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              6,
-                                            ),
-                                            borderSide: BorderSide(
-                                              color: AppColors.primaryBlue,
-                                              width: 1.6,
-                                            ),
-                                          ),
-                                          isDense: true,
-                                          contentPadding:
-                                              const EdgeInsets.symmetric(
-                                                horizontal: 12,
-                                                vertical: 12,
-                                              ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: TextFormField(
-                                        controller: _upperCtrls[i],
-                                        keyboardType:
-                                            const TextInputType.numberWithOptions(
-                                              decimal: true,
-                                            ),
-                                        decoration: InputDecoration(
-                                          labelText: 'Batas atas',
-                                          suffixText: it.unit,
-                                          filled: true,
-                                          fillColor: Colors.white,
-                                          enabledBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              6,
-                                            ),
-                                            borderSide: BorderSide(
-                                              color: AppColors.light1,
-                                            ),
-                                          ),
-                                          focusedBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              6,
-                                            ),
-                                            borderSide: BorderSide(
-                                              color: AppColors.primaryBlue,
-                                              width: 1.6,
-                                            ),
-                                          ),
-                                          isDense: true,
-                                          contentPadding:
-                                              const EdgeInsets.symmetric(
-                                                horizontal: 12,
-                                                vertical: 12,
-                                              ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                if (_errorText != null) ...[
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.error_outline,
-                                        color: Colors.red,
-                                        size: 18,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          _errorText!,
-                                          style: const TextStyle(
-                                            color: Colors.red,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                                const SizedBox(height: 10),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: SizedBox(
-                                        height: 40,
-                                        child: OutlinedButton(
-                                          onPressed: _cancelEdit,
-                                          style: OutlinedButton.styleFrom(
-                                            backgroundColor: Colors.white,
-                                            foregroundColor: AppColors.dark2,
-                                            side: BorderSide(
-                                              color: AppColors.light1,
-                                            ),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(6),
-                                            ),
-                                          ),
-                                          child: const Text('Batal'),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: SizedBox(
-                                        height: 40,
-                                        child: ElevatedButton(
-                                          onPressed: () => _saveEdit(i),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor:
-                                                AppColors.primaryBlue,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(6),
-                                            ),
-                                            elevation: 0,
-                                          ),
-                                          child: const Text(
-                                            'Simpan',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                        ],
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _thresholdHeader(item: item, index: i, editing: editing),
+                        const SizedBox(height: 12),
+                        if (!editing)
+                          _thresholdReadContent(item)
+                        else
+                          _thresholdEditContent(item, i),
+                      ],
                     ),
                   );
                 },
@@ -637,6 +375,286 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _thresholdHeader({
+    required _ThresholdItem item,
+    required int index,
+    required bool editing,
+  }) {
+    return Row(
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: AppColors.veryLightBlue,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Icon(
+            Icons.opacity,
+            color: AppColors.primaryBlue,
+            size: 18,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            item.title,
+            style: const TextStyle(
+              color: AppColors.dark1,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        if (!editing)
+          OutlinedButton.icon(
+            onPressed: () => _startEdit(index),
+            icon: const Icon(Icons.edit, size: 16),
+            label: const Text('Ubah'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              side: const BorderSide(color: AppColors.primaryBlue),
+              foregroundColor: AppColors.primaryBlue,
+              backgroundColor: AppColors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          )
+        else
+          TextButton(
+            onPressed: () => _resetToDefault(index),
+            child: const Text(
+              'Reset default',
+              style: TextStyle(color: AppColors.primaryBlue),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _thresholdReadContent(_ThresholdItem item) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _valueColumn(
+                label: 'Batas bawah',
+                value: '${item.lower} ${item.unit}',
+                helper: 'Default: ${item.defaultLower} ${item.unit}',
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _valueColumn(
+                label: 'Batas atas',
+                value: '${item.upper} ${item.unit}',
+                helper: 'Default: ${item.defaultUpper} ${item.unit}',
+              ),
+            ),
+          ],
+        ),
+        _validRangeBox(item),
+      ],
+    );
+  }
+
+  Widget _thresholdEditContent(_ThresholdItem item, int index) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _numberField(
+                controller: _lowerCtrls[index],
+                label: 'Batas bawah',
+                unit: item.unit,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _numberField(
+                controller: _upperCtrls[index],
+                label: 'Batas atas',
+                unit: item.unit,
+              ),
+            ),
+          ],
+        ),
+        _validRangeBox(item),
+        if (_errorText != null) _errorBox(_errorText!),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: 42,
+                child: OutlinedButton(
+                  onPressed: _cancelEdit,
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: AppColors.white,
+                    foregroundColor: AppColors.dark2,
+                    side: const BorderSide(color: AppColors.light1),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text('Batal'),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: SizedBox(
+                height: 42,
+                child: ElevatedButton(
+                  onPressed: () => _saveEdit(index),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryBlue,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text('Simpan'),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _valueColumn({
+    required String label,
+    required String value,
+    required String helper,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, color: AppColors.dark2),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 14,
+            color: AppColors.primaryBlue,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          helper,
+          style: const TextStyle(fontSize: 11, color: AppColors.dark2),
+        ),
+      ],
+    );
+  }
+
+  Widget _numberField({
+    required TextEditingController? controller,
+    required String label,
+    required String unit,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      decoration: InputDecoration(
+        labelText: label,
+        suffixText: unit,
+        filled: true,
+        fillColor: AppColors.white,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.light1),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.primaryBlue, width: 1.6),
+        ),
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      ),
+    );
+  }
+
+  Widget _validRangeBox(_ThresholdItem item) {
+    if (item.validMin == null || item.validMax == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.veryLightBlue,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.lightBlue),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.info_outline,
+            color: AppColors.primaryBlue,
+            size: 16,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Rentang input valid: ${_formatLimit(item.validMin!)} - ${_formatLimit(item.validMax!)} ${item.unit}',
+              style: const TextStyle(
+                color: AppColors.primaryBlue,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _errorBox(String message) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.lightRed,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.red.withValues(alpha: 0.24)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.error_outline, color: AppColors.red, size: 16),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: AppColors.red,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -668,23 +686,21 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
   }
 
   Widget _buildHeader() {
+    final topPad = MediaQuery.of(context).padding.top;
     final name = widget.patientProfile['full_name']?.toString() ?? '-';
     final gender = widget.patientProfile['gender']?.toString() ?? '-';
-    final diabetesType =
-        widget.patientProfile['diabetes_type']?.toString() ?? '-';
-    final age = _calculateAge(
-      widget.patientProfile['date_of_birth']?.toString(),
-    );
+    final diabetesType = widget.patientProfile['diabetes_type']?.toString() ?? '-';
+    final age = _calculateAge(widget.patientProfile['date_of_birth']?.toString());
     final initials = _getInitials(name);
 
     return Container(
-      height: 210,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(20, topPad + 12, 20, 24),
       decoration: const BoxDecoration(
         color: AppColors.primaryBlue,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(28),
-          bottomRight: Radius.circular(28),
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
         ),
       ),
       child: Column(
@@ -697,14 +713,13 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
               ),
               const Expanded(
-                child: Center(
-                  child: Text(
-                    'Batas Normal Pasien',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                    ),
+                child: Text(
+                  'Batas Normal Pasien',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -712,49 +727,31 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
             ],
           ),
           const SizedBox(height: 12),
-
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: const [
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
                 BoxShadow(
-                  color: Colors.black12,
+                  color: Colors.black.withValues(alpha: 0.08),
                   blurRadius: 10,
-                  offset: Offset(0, 6),
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
             child: Row(
               children: [
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: AppColors.lightBlue,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: AppColors.veryLightBlue,
-                      width: 4,
-                    ),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 6,
-                        offset: Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Center(
-                    child: Text(
-                      initials,
-                      style: const TextStyle(
-                        color: AppColors.primaryBlue,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: AppColors.lightBlue,
+                  child: Text(
+                    initials,
+                    style: const TextStyle(
+                      color: AppColors.primaryBlue,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
                     ),
                   ),
                 ),
@@ -766,6 +763,7 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
                       Text(
                         name,
                         style: const TextStyle(
+                          color: AppColors.dark1,
                           fontWeight: FontWeight.w700,
                           fontSize: 16,
                         ),
@@ -779,23 +777,7 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.veryLightBlue,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          diabetesType,
-                          style: const TextStyle(
-                            color: AppColors.primaryBlue,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
+                      DiabetesTypeBadge(value: diabetesType),
                     ],
                   ),
                 ),
@@ -805,6 +787,55 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
         ],
       ),
     );
+  }
+
+  double? _parseDouble(dynamic value) {
+    if (value == null) return null;
+    return double.tryParse(value.toString().replaceAll(',', '.'));
+  }
+
+  String _formatLimit(double value) {
+    if (value % 1 == 0) {
+      return value.toInt().toString();
+    }
+
+    return value.toStringAsFixed(2);
+  }
+
+  void _showSnackBar(String message, {bool isError = true}) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          backgroundColor: isError ? AppColors.red : AppColors.primaryBlue,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          content: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                isError ? Icons.error_outline : Icons.check_circle_outline,
+                color: Colors.white,
+                size: 20,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  message,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    height: 1.35,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
   }
 }
 
@@ -816,6 +847,8 @@ class _ThresholdItem {
   final String unit;
   final String defaultLower;
   final String defaultUpper;
+  final double? validMin;
+  final double? validMax;
 
   _ThresholdItem({
     required this.parameterId,
@@ -825,5 +858,7 @@ class _ThresholdItem {
     required this.unit,
     required this.defaultLower,
     required this.defaultUpper,
+    this.validMin,
+    this.validMax,
   });
 }

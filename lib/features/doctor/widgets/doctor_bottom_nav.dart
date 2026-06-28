@@ -13,7 +13,7 @@ class DoctorBottomNavBar extends StatelessWidget {
 
   static const items = [
     _NavItem(icon: Icons.home_rounded, label: 'Beranda'),
-    _NavItem(icon: Icons.person_add_alt_1_rounded, label: 'Permintaan'),
+    _NavItem(icon: Icons.person_add_alt_1_rounded, label: 'Koneksi'),
     _NavItem(icon: Icons.description_rounded, label: 'Riwayat'),
     _NavItem(icon: Icons.person_rounded, label: 'Profil'),
   ];

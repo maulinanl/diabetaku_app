@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
+import 'doctor_prescription_form_page.dart';
 
 class DoctorPrescriptionDetailPage extends StatefulWidget {
   final Map<String, dynamic> prescription;
@@ -24,14 +25,6 @@ class _DoctorPrescriptionDetailPageState
   bool isSaving = false;
   int? currentDoctorId;
 
-  late TextEditingController dosageCtr;
-  late TextEditingController formCtr;
-  late TextEditingController indicationCtr;
-  late TextEditingController ruleCtr;
-  late TextEditingController noteCtr;
-  late TextEditingController validFromCtr;
-  late TextEditingController validUntilCtr;
-
   Map<String, dynamic> get prescription => widget.prescription;
 
   int get prescriptionId =>
@@ -39,9 +32,6 @@ class _DoctorPrescriptionDetailPageState
 
   int get patientId =>
       int.tryParse(prescription['patient_id']?.toString() ?? '') ?? 0;
-
-  int get medicationId =>
-      int.tryParse(prescription['medication_id']?.toString() ?? '') ?? 0;
 
   int get doctorId =>
       int.tryParse(prescription['doctor_id']?.toString() ?? '') ?? 0;
@@ -77,20 +67,16 @@ class _DoctorPrescriptionDetailPageState
     }).join(', ');
   }
 
+  bool get stoppedByDisconnectedRelation {
+    final text = '${prescription['notes'] ?? ''} ${prescription['reason'] ?? ''}'
+        .toLowerCase();
+
+    return text.contains('relasi dokter-pasien terputus');
+  }
+
   @override
   void initState() {
     super.initState();
-
-    dosageCtr = TextEditingController(text: dose == '-' ? '' : dose);
-    formCtr = TextEditingController(text: form == '-' ? '' : form);
-    indicationCtr = TextEditingController(text: indication);
-    ruleCtr = TextEditingController(text: rule == '-' ? '' : rule);
-    noteCtr = TextEditingController(text: note);
-    validFromCtr = TextEditingController(text: date == '-' ? '' : _dateOnly(date));
-    validUntilCtr = TextEditingController(
-      text: validUntil == '-' ? '' : _dateOnly(validUntil),
-    );
-
     _loadDoctorId();
   }
 
@@ -104,75 +90,20 @@ class _DoctorPrescriptionDetailPageState
     });
   }
 
-  @override
-  void dispose() {
-    dosageCtr.dispose();
-    formCtr.dispose();
-    indicationCtr.dispose();
-    ruleCtr.dispose();
-    noteCtr.dispose();
-    validFromCtr.dispose();
-    validUntilCtr.dispose();
-    super.dispose();
-  }
+  Future<void> _openEditForm() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DoctorPrescriptionFormPage(
+          patientId: patientId,
+          isEdit: true,
+          initialPrescription: prescription,
+        ),
+      ),
+    );
 
-  Future<void> _updatePrescription(BuildContext sheetContext) async {
-    FocusScope.of(context).unfocus();
-
-    if (currentDoctorId == null) {
-      _showSnackBar('Doctor ID tidak ditemukan');
-      return;
-    }
-
-    if (dosageCtr.text.trim().isEmpty ||
-        formCtr.text.trim().isEmpty ||
-        validFromCtr.text.trim().isEmpty ||
-        validUntilCtr.text.trim().isEmpty ||
-        schedules.isEmpty) {
-      _showSnackBar('Dosis, bentuk, masa berlaku, dan jadwal wajib diisi');
-      return;
-    }
-
-    setState(() => isSaving = true);
-
-    try {
-      await ApiService.updatePrescription(
-        prescriptionId: prescriptionId,
-        doctorId: currentDoctorId!,
-        patientId: patientId,
-        medicationId: medicationId,
-        dosage: dosageCtr.text.trim(),
-        form: formCtr.text.trim(),
-        indication: indicationCtr.text.trim(),
-        mealRule: ruleCtr.text.trim(),
-        notes: noteCtr.text.trim(),
-        validFrom: validFromCtr.text.trim(),
-        validUntil: validUntilCtr.text.trim(),
-        schedules: schedules.map((item) {
-          return {
-            'session_id': item['session_id'],
-            'dose_per_session': item['dose_per_session']?.toString() ?? '1 tablet',
-            'reminder_time': _normalizeReminderTime(
-              item['reminder_time'] ?? item['default_reminder_time'],
-            ),
-          };
-        }).toList(),
-      );
-
-      if (!mounted) return;
-
-      Navigator.pop(sheetContext);
-      await _showSuccessSheet('Resep berhasil diperbarui');
-
-      if (!mounted) return;
+    if (result == true && mounted) {
       Navigator.pop(context, true);
-    } catch (e) {
-      if (!mounted) return;
-      _showSnackBar(e.toString().replaceFirst('Exception: ', ''));
-    } finally {
-      if (mounted) {
-        setState(() => isSaving = false);
-      }
     }
   }
 
@@ -208,33 +139,6 @@ class _DoctorPrescriptionDetailPageState
     }
   }
 
-  Future<void> _pickDate(TextEditingController controller) async {
-    final initialDate = DateTime.tryParse(controller.text) ?? DateTime.now();
-
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: initialDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2035),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.primaryBlue,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (picked != null) {
-      setState(() {
-        controller.text = picked.toIso8601String().split('T').first;
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final canEdit = widget.isConnected && isMine && status == 'Aktif';
@@ -262,7 +166,7 @@ class _DoctorPrescriptionDetailPageState
                             child: SizedBox(
                               height: 44,
                               child: ElevatedButton.icon(
-                                onPressed: isSaving ? null : _showEditForm,
+                                onPressed: isSaving ? null : _openEditForm,
                                 icon: const Icon(Icons.edit_outlined, size: 16),
                                 label: const Text('Ubah'),
                                 style: ElevatedButton.styleFrom(
@@ -281,7 +185,8 @@ class _DoctorPrescriptionDetailPageState
                             child: SizedBox(
                               height: 44,
                               child: OutlinedButton.icon(
-                                onPressed: isSaving ? null : _showStopConfirmation,
+                                onPressed:
+                                    isSaving ? null : _showStopConfirmation,
                                 icon: const Icon(Icons.block, size: 16),
                                 label: const Text('Hentikan'),
                                 style: OutlinedButton.styleFrom(
@@ -313,8 +218,14 @@ class _DoctorPrescriptionDetailPageState
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(16, topPad + 12, 16, 28),
-      color: AppColors.primaryBlue,
+      padding: EdgeInsets.fromLTRB(20, topPad + 12, 20, 24),
+      decoration: const BoxDecoration(
+        color: AppColors.primaryBlue,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
+        ),
+      ),
       child: Column(
         children: [
           Row(
@@ -329,41 +240,87 @@ class _DoctorPrescriptionDetailPageState
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
               const SizedBox(width: 48),
             ],
           ),
-          const SizedBox(height: 14),
-          const CircleAvatar(
-            radius: 30,
-            backgroundColor: AppColors.lightBlue,
-            child: Icon(
-              Icons.medication_outlined,
-              color: AppColors.primaryBlue,
-              size: 30,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            '$medicine $dose',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
               color: Colors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const CircleAvatar(
+                  radius: 28,
+                  backgroundColor: AppColors.lightBlue,
+                  child: Icon(
+                    Icons.medication_outlined,
+                    color: AppColors.primaryBlue,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        medicine,
+                        style: const TextStyle(
+                          color: AppColors.dark1,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '$dose • $form',
+                        style: const TextStyle(
+                          color: AppColors.dark2,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        scheduleText,
+                        style: const TextStyle(
+                          color: AppColors.dark2,
+                          fontSize: 12,
+                          height: 1.35,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          _statusBadge(status),
+                          _statusBadge(isMine ? 'Resep Saya' : 'Dokter Lain'),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            scheduleText,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.white, fontSize: 13),
-          ),
-          const SizedBox(height: 10),
-          _statusBadge(isMine ? 'Resep Saya' : 'Dokter Lain'),
         ],
       ),
     );
@@ -474,8 +431,12 @@ class _DoctorPrescriptionDetailPageState
   Widget _readonlyInfo() {
     String text;
 
-    if (!widget.isConnected) {
-      text = 'Pasien sudah tidak terhubung. Resep hanya dapat dilihat sebagai data lama.';
+    if (stoppedByDisconnectedRelation) {
+      text =
+          'Resep ini sudah tidak aktif karena relasi dokter-pasien telah terputus. Data tetap tersimpan sebagai riwayat.';
+    } else if (!widget.isConnected) {
+      text =
+          'Pasien sudah tidak terhubung. Resep hanya dapat dilihat sebagai data lama.';
     } else if (!isMine) {
       text = 'Resep ini dibuat oleh dokter lain, sehingga hanya dapat dilihat.';
     } else {
@@ -491,7 +452,11 @@ class _DoctorPrescriptionDetailPageState
       ),
       child: Row(
         children: [
-          const Icon(Icons.info_outline, color: AppColors.primaryBlue, size: 18),
+          const Icon(
+            Icons.info_outline,
+            color: AppColors.primaryBlue,
+            size: 18,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -510,10 +475,11 @@ class _DoctorPrescriptionDetailPageState
 
   Widget _statusBadge(String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.veryLightBlue,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.lightBlue),
       ),
       child: Text(
         text,
@@ -523,163 +489,6 @@ class _DoctorPrescriptionDetailPageState
           fontWeight: FontWeight.w600,
         ),
       ),
-    );
-  }
-
-  void _showEditForm() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
-          ),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-            ),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 44,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: AppColors.light1,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Ubah Resep',
-                    style: TextStyle(
-                      color: AppColors.primaryBlue,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _label('Nama Obat'),
-                  _readonlyInput(medicine),
-                  const SizedBox(height: 12),
-                  _label('Dosis*'),
-                  _input(dosageCtr),
-                  const SizedBox(height: 12),
-                  _label('Bentuk Sediaan*'),
-                  _input(formCtr),
-                  const SizedBox(height: 12),
-                  _label('Indikasi'),
-                  _input(indicationCtr),
-                  const SizedBox(height: 12),
-                  _label('Aturan Minum'),
-                  _input(ruleCtr),
-                  const SizedBox(height: 12),
-                  _label('Mulai Berlaku*'),
-                  _dateInput(
-                    controller: validFromCtr,
-                    onTap: () => _pickDate(validFromCtr),
-                  ),
-                  const SizedBox(height: 12),
-                  _label('Berlaku Sampai*'),
-                  _dateInput(
-                    controller: validUntilCtr,
-                    onTap: () => _pickDate(validUntilCtr),
-                  ),
-                  const SizedBox(height: 12),
-                  _label('Jadwal Minum'),
-                  _schedulePreview(),
-                  const SizedBox(height: 12),
-                  _label('Catatan'),
-                  _input(noteCtr, maxLines: 3),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 46,
-                    child: ElevatedButton(
-                      onPressed: isSaving
-                          ? null
-                          : () => _updatePrescription(sheetContext),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryBlue,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: const Color(0xFFAFCBEA),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                      ),
-                      child: isSaving
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : const Text('Simpan Perubahan'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _schedulePreview() {
-    if (schedules.isEmpty) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(13),
-        decoration: BoxDecoration(
-          color: AppColors.veryLightBlue,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: const Text(
-          'Jadwal belum tersedia',
-          style: TextStyle(color: AppColors.dark2, fontSize: 12),
-        ),
-      );
-    }
-
-    return Column(
-      children: schedules.map((item) {
-        final session = item['session_name']?.toString() ?? '-';
-        final dose = item['dose_per_session']?.toString() ?? '-';
-        final reminder = _formatTime(
-          item['reminder_time'] ?? item['default_reminder_time'],
-        );
-
-        return Container(
-          width: double.infinity,
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppColors.veryLightBlue,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.light1),
-          ),
-          child: Text(
-            '$session • $dose • $reminder',
-            style: const TextStyle(
-              color: AppColors.primaryBlue,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        );
-      }).toList(),
     );
   }
 
@@ -731,8 +540,9 @@ class _DoctorPrescriptionDetailPageState
                 width: double.infinity,
                 height: 46,
                 child: ElevatedButton(
-                  onPressed:
-                      isSaving ? null : () => _stopPrescription(sheetContext),
+                  onPressed: isSaving
+                      ? null
+                      : () => _stopPrescription(sheetContext),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.red,
                     foregroundColor: Colors.white,
@@ -832,77 +642,6 @@ class _DoctorPrescriptionDetailPageState
     );
   }
 
-  Widget _label(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 7),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: AppColors.primaryBlue,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  Widget _input(TextEditingController controller, {int maxLines = 1}) {
-    return TextField(
-      controller: controller,
-      maxLines: maxLines,
-      enabled: !isSaving,
-      decoration: _inputDecoration(),
-    );
-  }
-
-  Widget _readonlyInput(String value) {
-    return TextField(
-      controller: TextEditingController(text: value),
-      enabled: false,
-      decoration: _inputDecoration(),
-    );
-  }
-
-  Widget _dateInput({
-    required TextEditingController controller,
-    required VoidCallback onTap,
-  }) {
-    return TextField(
-      controller: controller,
-      readOnly: true,
-      enabled: !isSaving,
-      onTap: isSaving ? null : onTap,
-      decoration: _inputDecoration(
-        suffixIcon: const Icon(
-          Icons.calendar_today_outlined,
-          color: AppColors.primaryBlue,
-          size: 18,
-        ),
-      ),
-    );
-  }
-
-  InputDecoration _inputDecoration({Widget? suffixIcon}) {
-    return InputDecoration(
-      suffixIcon: suffixIcon,
-      filled: true,
-      fillColor: AppColors.white,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(6),
-        borderSide: const BorderSide(color: AppColors.light1),
-      ),
-      disabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(6),
-        borderSide: const BorderSide(color: AppColors.light1),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(6),
-        borderSide: const BorderSide(color: AppColors.primaryBlue),
-      ),
-    );
-  }
-
   BoxDecoration _cardDecoration() {
     return BoxDecoration(
       color: AppColors.white,
@@ -929,31 +668,11 @@ class _DoctorPrescriptionDetailPageState
         '${date.year}';
   }
 
-  String _dateOnly(dynamic value) {
-    final date = DateTime.tryParse(value.toString());
-    if (date == null) return value.toString();
-
-    return '${date.year}-'
-        '${date.month.toString().padLeft(2, '0')}-'
-        '${date.day.toString().padLeft(2, '0')}';
-  }
-
   String _formatTime(dynamic value) {
     if (value == null) return '-';
 
     final text = value.toString();
     if (text.isEmpty || text == '-') return '-';
-
-    if (text.length >= 5) return text.substring(0, 5);
-
-    return text;
-  }
-
-  String _normalizeReminderTime(dynamic value) {
-    if (value == null) return '07:00';
-
-    final text = value.toString();
-    if (text.isEmpty || text == '-') return '07:00';
 
     if (text.length >= 5) return text.substring(0, 5);
 
@@ -971,10 +690,7 @@ class _DoctorPrescriptionDetailPageState
             const Icon(Icons.info_outline, color: Colors.white),
             const SizedBox(width: 8),
             Expanded(
-              child: Text(
-                message,
-                style: const TextStyle(color: Colors.white),
-              ),
+              child: Text(message, style: const TextStyle(color: Colors.white)),
             ),
           ],
         ),

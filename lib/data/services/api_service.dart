@@ -740,26 +740,30 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> getDoctorPatientConnectionStatus({
-    required int patientId,
-  }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final doctorId = prefs.getInt('doctor_id') ?? 1;
+  required int patientId,
+}) async {
+  final prefs = await SharedPreferences.getInstance();
+  final doctorId = prefs.getInt('doctor_id');
 
-    final response = await http.get(
-      Uri.parse(
-        '$baseUrl/doctor/connections/status/$patientId?doctor_id=$doctorId',
-      ),
-      headers: await _authHeaders(),
-    );
-
-    final data = jsonDecode(response.body);
-
-    if (response.statusCode == 200) {
-      return Map<String, dynamic>.from(data['data']);
-    }
-
-    throw Exception(data['message'] ?? 'Gagal mengambil status koneksi pasien');
+  if (doctorId == null) {
+    throw Exception('Doctor ID tidak ditemukan');
   }
+
+  final response = await http.get(
+    Uri.parse(
+      '$baseUrl/doctor/connections/status/$patientId?doctor_id=$doctorId',
+    ),
+    headers: await _authHeaders(),
+  );
+
+  final data = jsonDecode(response.body);
+
+  if (response.statusCode == 200) {
+    return Map<String, dynamic>.from(data['data']);
+  }
+
+  throw Exception(data['message'] ?? 'Gagal mengambil status koneksi pasien');
+}
 
   static Future<void> storeRecommendations({
     required int clinicalNoteId,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../widgets/diabetes_type_badge.dart';
 import 'recommendation_form_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../data/services/api_service.dart';
@@ -572,25 +573,26 @@ class _ClinicalNoteFormPageState extends State<ClinicalNoteFormPage> {
   }
 
   Widget _buildHeader() {
+    final topPad = MediaQuery.of(context).padding.top;
     final name = widget.patientProfile['full_name']?.toString() ?? '-';
     final gender = widget.patientProfile['gender']?.toString() ?? '-';
 
-    String diabetesType =
+    final diabetesType =
         widget.patientProfile['diabetes_type']?.toString() ?? '-';
-    diabetesType = diabetesType.replaceAll('_', ' ').toUpperCase();
 
     final age = _calculateAge(
       widget.patientProfile['date_of_birth']?.toString(),
     );
     final initials = _getInitials(name);
+
     return Container(
-      constraints: const BoxConstraints(minHeight: 210),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-      decoration: BoxDecoration(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(20, topPad + 12, 20, 24),
+      decoration: const BoxDecoration(
         color: AppColors.primaryBlue,
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(28),
-          bottomRight: Radius.circular(28),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
         ),
       ),
       child: Column(
@@ -603,14 +605,13 @@ class _ClinicalNoteFormPageState extends State<ClinicalNoteFormPage> {
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
               ),
               const Expanded(
-                child: Center(
-                  child: Text(
-                    'Buat Catatan Klinis',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                    ),
+                child: Text(
+                  'Buat Catatan Klinis',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -618,97 +619,59 @@ class _ClinicalNoteFormPageState extends State<ClinicalNoteFormPage> {
             ],
           ),
           const SizedBox(height: 12),
-
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: const [
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
                 BoxShadow(
-                  color: Colors.black12,
+                  color: Colors.black.withValues(alpha: 0.08),
                   blurRadius: 10,
-                  offset: Offset(0, 6),
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        color: AppColors.lightBlue,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: AppColors.veryLightBlue,
-                          width: 4,
-                        ),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 6,
-                            offset: Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Text(
-                          initials,
-                          style: const TextStyle(
-                            color: AppColors.primaryBlue,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: AppColors.lightBlue,
+                  child: Text(
+                    initials,
+                    style: const TextStyle(
+                      color: AppColors.primaryBlue,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          color: AppColors.dark1,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            name,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            '$age tahun • $gender',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AppColors.dark2,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.veryLightBlue,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              diabetesType,
-                              style: const TextStyle(
-                                color: AppColors.primaryBlue,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                        ],
+                      const SizedBox(height: 6),
+                      Text(
+                        '$age tahun • $gender',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.dark2,
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 8),
+                      DiabetesTypeBadge(value: diabetesType),
+                    ],
+                  ),
                 ),
               ],
             ),
