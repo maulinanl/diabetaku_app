@@ -59,6 +59,20 @@ class PushNotificationService {
     FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
       print('FCM TOKEN REFRESHED: $newToken');
 
+      final isLoggingOut = await ApiService.isLoggingOut();
+
+      if (isLoggingOut) {
+        print('USER SEDANG LOGOUT, FCM TOKEN TIDAK DIKIRIM KE BACKEND');
+        return;
+      }
+
+      final authToken = await ApiService.getToken();
+
+      if (authToken == null) {
+        print('USER BELUM LOGIN, FCM TOKEN TIDAK DIKIRIM KE BACKEND');
+        return;
+      }
+
       try {
         await ApiService.saveFcmToken(newToken);
       } catch (e) {
@@ -68,6 +82,20 @@ class PushNotificationService {
   }
 
   static Future<void> registerTokenToBackend() async {
+    final isLoggingOut = await ApiService.isLoggingOut();
+
+    if (isLoggingOut) {
+      print('USER SEDANG LOGOUT, REGISTER FCM DIBATALKAN');
+      return;
+    }
+
+    final authToken = await ApiService.getToken();
+
+    if (authToken == null) {
+      print('USER BELUM LOGIN, REGISTER FCM DIBATALKAN');
+      return;
+    }
+
     final token = await FirebaseMessaging.instance.getToken();
 
     print('REGISTER FCM TOKEN TO BACKEND: $token');

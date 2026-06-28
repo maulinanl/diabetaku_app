@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 class ApiService {
   static const String baseUrl = 'http://192.168.8.225:8000/api';
-  
+
   static Future<void> registerDoctor({
     required String fullName,
     required String email,
@@ -262,16 +263,54 @@ class ApiService {
     };
   }
 
+  static Future<bool> isLoggingOut() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('is_logging_out') ?? false;
+  }
+
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
+
+    await prefs.setBool('is_logging_out', true);
+
+    final headers = await _authHeaders();
+
+    String? fcmToken;
+
+    try {
+      fcmToken = await FirebaseMessaging.instance.getToken();
+    } catch (e) {
+      print('GET FCM TOKEN SAAT LOGOUT ERROR: $e');
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/logout'),
+        headers: headers,
+        body: jsonEncode({'fcm_token': fcmToken}),
+      );
+
+      print('LOGOUT STATUS: ${response.statusCode}');
+      print('LOGOUT BODY: ${response.body}');
+    } catch (e) {
+      print('LOGOUT API ERROR: $e');
+    }
+
     await prefs.clear();
+
+    try {
+      await FirebaseMessaging.instance.deleteToken();
+      print('FCM TOKEN BERHASIL DIHAPUS DARI DEVICE');
+    } catch (e) {
+      print('DELETE FCM TOKEN ERROR: $e');
+    }
   }
 
   static Future<void> saveFcmToken(String fcmToken) async {
     final response = await http.post(
       Uri.parse('$baseUrl/notifications/fcm-token'),
       headers: await _authHeaders(),
-      body: jsonEncode({'fcm_token': fcmToken}),
+      body: jsonEncode({'fcm_token': fcmToken, 'platform': 'android'}),
     );
 
     final data = response.body.isNotEmpty ? jsonDecode(response.body) : {};
@@ -279,7 +318,7 @@ class ApiService {
     print('SAVE FCM TOKEN STATUS: ${response.statusCode}');
     print('SAVE FCM TOKEN BODY: ${response.body}');
 
-    if (response.statusCode != 200) {
+    if (response.statusCode != 200 && response.statusCode != 201) {
       throw Exception(data['message'] ?? 'Gagal menyimpan FCM token');
     }
   }
