@@ -9,7 +9,12 @@ import 'patient_detail_page.dart';
 import 'recommendation_detail_page.dart';
 
 class DoctorNotificationPage extends StatefulWidget {
-  const DoctorNotificationPage({super.key});
+  final int? initialNotificationId;
+
+  const DoctorNotificationPage({
+    super.key,
+    this.initialNotificationId,
+  });
 
   @override
   State<DoctorNotificationPage> createState() => _DoctorNotificationPageState();
@@ -22,6 +27,7 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
   List<Map<String, dynamic>> notifications = [];
   bool isLoading = true;
   bool isMarkingAll = false;
+  bool hasOpenedInitialNotification = false;
   String? errorMessage;
 
   @override
@@ -35,6 +41,38 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
   void dispose() {
     searchController.dispose();
     super.dispose();
+  }
+
+  void _openInitialNotificationIfNeeded() {
+    final initialId = widget.initialNotificationId;
+
+    if (initialId == null || hasOpenedInitialNotification) return;
+
+    hasOpenedInitialNotification = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+
+      Map<String, dynamic>? item;
+
+      for (final notification in notifications) {
+        final id = int.tryParse(
+          (notification['notification_id'] ?? notification['id'] ?? '')
+              .toString(),
+        );
+
+        if (id == initialId) {
+          item = notification;
+          break;
+        }
+      }
+
+      item ??= await ApiService.getNotificationDetail(initialId);
+
+      if (!mounted) return;
+
+      await _openNotificationDetail(item);
+    });
   }
 
   Future<void> _loadNotifications() async {
@@ -59,6 +97,8 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
         notifications = data;
         isLoading = false;
       });
+
+      _openInitialNotificationIfNeeded();
     } catch (e) {
       if (!mounted) return;
 

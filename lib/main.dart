@@ -8,6 +8,7 @@ import 'core/theme/app_colors.dart';
 import 'firebase_options.dart';
 import 'data/services/push_notification_service.dart';
 import 'data/services/medication_reminder_service.dart';
+import 'core/navigation/app_navigator.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -46,10 +47,11 @@ class DiabetAkuApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
+      navigatorKey: AppNavigator.navigatorKey,
       title: 'diabetAku',
       debugShowCheckedModeBanner: false,
-      home: SplashPage(),
+      home: const SplashPage(),
     );
   }
 }

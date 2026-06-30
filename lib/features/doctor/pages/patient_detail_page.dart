@@ -307,7 +307,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                             spacing: 6,
                             runSpacing: 6,
                             children: [
-                              DiabetesTypeBadge(value: diabetesType),
+                              DiabetesTypeBadge(value: diabetesType, inactive: !widget.isConnected),
                               if (!widget.isConnected)
                                 _badge(
                                   text: 'Tidak Terhubung',
@@ -432,12 +432,39 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
     );
   }
 
+
+  double? _asDouble(dynamic value) {
+    if (value == null) return null;
+
+    return double.tryParse(value.toString().replaceAll(',', '.'));
+  }
+
+  String _calculatedBmi(Map<String, dynamic>? physiological) {
+    final existing = _asDouble(physiological?['bmi']);
+
+    if (existing != null && existing > 0) {
+      return existing.toStringAsFixed(1);
+    }
+
+    final weight = _asDouble(physiological?['weight_kg']);
+    final heightCm = _asDouble(profile['height_cm']);
+
+    if (weight == null || heightCm == null || heightCm <= 0) {
+      return '-';
+    }
+
+    final heightMeter = heightCm / 100;
+    final bmi = weight / (heightMeter * heightMeter);
+
+    return bmi.toStringAsFixed(1);
+  }
+
   Widget _buildSummaryCards() {
     final glucoseValue = latestGlucose?['glucose_value']?.toString() ?? '-';
 
     final systolic = latestPhysiological?['systolic']?.toString() ?? '-';
     final diastolic = latestPhysiological?['diastolic']?.toString() ?? '-';
-    final bmi = latestPhysiological?['bmi']?.toString() ?? '-';
+    final bmi = _calculatedBmi(latestPhysiological);
 
     final items = [
       [
@@ -944,7 +971,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
         final date = item['measured_at']?.toString() ?? '-';
         final systolic = item['systolic']?.toString() ?? '-';
         final diastolic = item['diastolic']?.toString() ?? '-';
-        final bmi = item['bmi']?.toString() ?? '-';
+        final bmi = _calculatedBmi(item);
 
         return [
           'Data Fisiologis',

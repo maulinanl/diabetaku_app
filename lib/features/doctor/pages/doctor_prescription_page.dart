@@ -181,7 +181,7 @@ class _DoctorPrescriptionPageState extends State<DoctorPrescriptionPage> {
                 rule: item['meal_rule']?.toString() ?? '-',
                 note: item['notes']?.toString() ?? '-',
                 doctor: item['doctor_name']?.toString() ?? '-',
-                date: _formatDate(item['valid_from']),
+                date: _formatDate(item['start_date'] ?? item['valid_from']),
                 isMine:
                     item['is_mine'] == true ||
                     item['is_mine'] == 1 ||
@@ -251,7 +251,7 @@ class _DoctorPrescriptionPageState extends State<DoctorPrescriptionPage> {
                   schedule: _buildScheduleText(item),
                   rule: item['meal_rule']?.toString() ?? '-',
                   doctor: item['doctor_name']?.toString() ?? '-',
-                  startDate: _formatDate(item['valid_from']),
+                  startDate: _formatDate(item['start_date'] ?? item['valid_from']),
                   endDate: _formatDate(item['valid_until']),
                   status: item['status']?.toString() ?? 'Selesai',
                   reason:

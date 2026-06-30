@@ -5,7 +5,12 @@ import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 
 class FamilyNotificationPage extends StatefulWidget {
-  const FamilyNotificationPage({super.key});
+  final int? initialNotificationId;
+
+  const FamilyNotificationPage({
+    super.key,
+    this.initialNotificationId,
+  });
 
   @override
   State<FamilyNotificationPage> createState() => _FamilyNotificationPageState();
@@ -16,6 +21,7 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
 
   int selectedTab = 0;
   bool isLoading = true;
+  bool hasOpenedInitialNotification = false;
   String? errorMessage;
 
   List<Map<String, dynamic>> notifications = [];
@@ -31,6 +37,38 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
   void dispose() {
     searchController.dispose();
     super.dispose();
+  }
+
+  void _openInitialNotificationIfNeeded() {
+    final initialId = widget.initialNotificationId;
+
+    if (initialId == null || hasOpenedInitialNotification) return;
+
+    hasOpenedInitialNotification = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+
+      Map<String, dynamic>? item;
+
+      for (final notification in notifications) {
+        final id = int.tryParse(
+          (notification['notification_id'] ?? notification['id'] ?? '')
+              .toString(),
+        );
+
+        if (id == initialId) {
+          item = notification;
+          break;
+        }
+      }
+
+      item ??= await ApiService.getNotificationDetail(initialId);
+
+      if (!mounted) return;
+
+      await _openNotification(item);
+    });
   }
 
   Future<void> _loadNotifications() async {
@@ -66,6 +104,8 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
         notifications = data;
         isLoading = false;
       });
+
+      _openInitialNotificationIfNeeded();
     } catch (e) {
       if (!mounted) return;
 

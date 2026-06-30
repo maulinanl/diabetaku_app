@@ -24,7 +24,7 @@ class DoctorConnectionPage extends StatefulWidget {
 class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
   int selectedTab = 0;
   bool hasOpenedInitialPatient = false;
-  final tabs = ['Menunggu', 'Diterima', 'Ditolak'];
+  final tabs = ['Menunggu', 'Pasien', 'Ditolak'];
 
   bool isLoading = true;
   String? errorMessage;
@@ -188,16 +188,22 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
         ? 'Menunggu persetujuan dokter'
         : tabStatus == 1
         ? 'Koneksi diterima'
+        : tabStatus == 3
+        ? 'Relasi diputus'
         : 'Koneksi ditolak';
 
-    if (tabStatus == 1) {
+    if (tabStatus == 1 || tabStatus == 3) {
       await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) =>
-              PatientDetailPage(patientId: patientId, isConnected: true),
+          builder: (_) => PatientDetailPage(
+            patientId: patientId,
+            isConnected: tabStatus == 1,
+          ),
         ),
       );
+
+      await _loadData();
       return;
     }
 
@@ -256,7 +262,7 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
                                 selectedTab == 0
                                     ? 'KONEKSI MENUNGGU - ${data.length}'
                                     : selectedTab == 1
-                                    ? 'KONEKSI DITERIMA - ${data.length}'
+                                    ? 'PASIEN - ${data.length}'
                                     : 'KONEKSI DITOLAK - ${data.length}',
                                 style: const TextStyle(
                                   color: AppColors.primaryBlue,
@@ -297,10 +303,29 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
                                           item['diabetes_type'],
                                         );
 
+                                        final relationStatus =
+                                            item['relation_status']?.toString() ??
+                                            (selectedTab == 1
+                                                ? 'Diterima'
+                                                : selectedTab == 0
+                                                ? 'Menunggu'
+                                                : 'Ditolak');
+
+                                        final isDisconnected =
+                                            relationStatus.toLowerCase().trim() ==
+                                            'diputus';
+
+                                        final statusCode = selectedTab == 1 &&
+                                                isDisconnected
+                                            ? 3
+                                            : selectedTab;
+
                                         final diagnosis = selectedTab == 0
                                             ? 'Menunggu persetujuan dokter'
-                                            : selectedTab == 1
+                                            : statusCode == 1
                                             ? 'Koneksi diterima'
+                                            : statusCode == 3
+                                            ? 'Relasi diputus'
                                             : 'Koneksi ditolak';
 
                                         return _RequestCard(
@@ -308,11 +333,11 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
                                           name: name,
                                           info: '$type • $age tahun • $gender',
                                           diagnosis: diagnosis,
-                                          status: selectedTab,
+                                          status: statusCode,
                                           onDetail: () =>
                                               _openConnectionItemDetail(
                                                 item,
-                                                selectedTab,
+                                                statusCode,
                                               ),
                                         );
                                       },
@@ -343,7 +368,7 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
         ),
       ),
       child: const Text(
-        'Permintaan Koneksi',
+        'Koneksi Pasien',
         textAlign: TextAlign.center,
         style: TextStyle(
           color: Colors.white,
@@ -426,9 +451,18 @@ class _RequestCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isAccepted = status == 1;
     final isRejected = status == 2;
+    final isDisconnected = status == 3;
 
-    final statusColor = isRejected ? AppColors.red : AppColors.primaryBlue;
-    final statusBg = isRejected ? AppColors.lightRed : AppColors.veryLightBlue;
+    final statusColor = isRejected
+        ? AppColors.red
+        : isDisconnected
+        ? AppColors.dark3
+        : AppColors.primaryBlue;
+    final statusBg = isRejected
+        ? AppColors.lightRed
+        : isDisconnected
+        ? AppColors.light1
+        : AppColors.veryLightBlue;
 
     return InkWell(
       onTap: onDetail,
@@ -455,11 +489,17 @@ class _RequestCard extends StatelessWidget {
                   radius: 25,
                   backgroundColor: isRejected
                       ? AppColors.lightRed
+                      : isDisconnected
+                      ? AppColors.light1
                       : AppColors.lightBlue,
                   child: Text(
                     initial,
                     style: TextStyle(
-                      color: isRejected ? AppColors.red : AppColors.primaryBlue,
+                      color: isRejected
+                          ? AppColors.red
+                          : isDisconnected
+                          ? AppColors.dark3
+                          : AppColors.primaryBlue,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -510,6 +550,8 @@ class _RequestCard extends StatelessWidget {
                         ? Icons.check_circle_outline
                         : isRejected
                         ? Icons.cancel_outlined
+                        : isDisconnected
+                        ? Icons.link_off_rounded
                         : Icons.hourglass_bottom_rounded,
                     size: 13,
                     color: statusColor,

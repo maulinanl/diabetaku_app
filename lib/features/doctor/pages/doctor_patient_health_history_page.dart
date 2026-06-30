@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 
@@ -21,10 +22,10 @@ class _DoctorPatientHealthHistoryPageState
     extends State<DoctorPatientHealthHistoryPage> {
   bool isLoading = true;
   String? errorMessage;
-
   int selectedIndex = 0;
 
-  final categories = const [
+  final filters = const [
+    'Semua',
     'Glukosa',
     'Fisiologis',
     'Aktivitas',
@@ -32,48 +33,66 @@ class _DoctorPatientHealthHistoryPageState
     'Obat',
   ];
 
-  List<Map<String, dynamic>> glucose = [];
-  List<Map<String, dynamic>> physiological = [];
-  List<Map<String, dynamic>> activity = [];
-  List<Map<String, dynamic>> meal = [];
-  List<Map<String, dynamic>> medication = [];
+  List<Map<String, dynamic>> histories = [];
 
   @override
   void initState() {
     super.initState();
-    selectedIndex = categories.indexOf(widget.initialCategory);
+
+    selectedIndex = filters.indexOf(widget.initialCategory);
     if (selectedIndex < 0) selectedIndex = 0;
+
     _loadData();
   }
 
   Future<void> _loadData() async {
+    if (!mounted) return;
+
     setState(() {
       isLoading = true;
       errorMessage = null;
     });
 
     try {
-      glucose = await ApiService.getPatientGlucoseRecords(widget.patientId);
-      physiological =
-          await ApiService.getPatientPhysiologicalRecords(widget.patientId);
+      final results = await Future.wait([
+        ApiService.getPatientGlucoseRecords(widget.patientId),
+        ApiService.getPatientPhysiologicalRecords(widget.patientId),
+        ApiService.getPatientBehavioralRecords(widget.patientId),
+        ApiService.getPatientMedicationRecords(widget.patientId),
+      ]);
 
-      final behavioral =
-          await ApiService.getPatientBehavioralRecords(widget.patientId);
+      final glucose = List<Map<String, dynamic>>.from(results[0] as List);
+      final physiological = List<Map<String, dynamic>>.from(results[1] as List);
+      final behavioral = Map<String, dynamic>.from(results[2] as Map);
+      final medication = List<Map<String, dynamic>>.from(results[3] as List);
 
-      activity = List<Map<String, dynamic>>.from(
-        behavioral['activities'] ?? [],
-      );
+      final mapped = <Map<String, dynamic>>[
+        ..._mapGlucose(glucose),
+        ..._mapPhysiological(physiological),
+        ..._mapActivity(
+          List<Map<String, dynamic>>.from(behavioral['activities'] ?? []),
+        ),
+        ..._mapMeal(
+          List<Map<String, dynamic>>.from(behavioral['meals'] ?? []),
+        ),
+        ..._mapMedication(medication),
+      ];
 
-      meal = List<Map<String, dynamic>>.from(
-        behavioral['meals'] ?? [],
-      );
+      mapped.sort((a, b) {
+        final dateA = DateTime.tryParse(a['date_raw']?.toString() ?? '') ??
+            DateTime(2000);
+        final dateB = DateTime.tryParse(b['date_raw']?.toString() ?? '') ??
+            DateTime(2000);
 
-      medication = await ApiService.getPatientMedicationRecords(widget.patientId);
-
-      _sortAllData();
+        return dateB.compareTo(dateA);
+      });
 
       if (!mounted) return;
-      setState(() => isLoading = false);
+
+      setState(() {
+        histories = mapped;
+        isLoading = false;
+      });
     } catch (e) {
       if (!mounted) return;
 
@@ -84,39 +103,110 @@ class _DoctorPatientHealthHistoryPageState
     }
   }
 
-  void _sortAllData() {
-    glucose.sort((a, b) => _compareDateDesc(a['measured_at'], b['measured_at']));
-    physiological.sort(
-      (a, b) => _compareDateDesc(a['measured_at'], b['measured_at']),
-    );
-    activity.sort(
-      (a, b) => _compareDateDesc(a['activity_date'], b['activity_date']),
-    );
-    meal.sort((a, b) => _compareDateDesc(a['meal_date'], b['meal_date']));
-    medication.sort((a, b) => _compareDateDesc(a['log_date'], b['log_date']));
+  List<Map<String, dynamic>> _mapGlucose(List<Map<String, dynamic>> data) {
+    return data.map((item) {
+      return {
+        'type': 'Glukosa',
+        'title': 'Glukosa ${item['measurement_type'] ?? '-'}',
+        'value': '${item['glucose_value'] ?? '-'}',
+        'unit': 'mg/dL',
+        'time': _formatDateTime(item['measured_at']),
+        'date_raw': item['measured_at'],
+        'badge': item['validation_status'] ?? 'Valid',
+        'icon': Icons.opacity,
+        'color': AppColors.red,
+      };
+    }).toList();
   }
 
-  int _compareDateDesc(dynamic a, dynamic b) {
-    final dateA = DateTime.tryParse(a?.toString() ?? '') ?? DateTime(2000);
-    final dateB = DateTime.tryParse(b?.toString() ?? '') ?? DateTime(2000);
-    return dateB.compareTo(dateA);
+  List<Map<String, dynamic>> _mapPhysiological(
+    List<Map<String, dynamic>> data,
+  ) {
+    return data.map((item) {
+      final systolic = item['systolic']?.toString() ?? '-';
+      final diastolic = item['diastolic']?.toString() ?? '-';
+      final weight = item['weight_kg']?.toString() ?? '-';
+      final bmi = item['bmi']?.toString() ?? '-';
+
+      return {
+        'type': 'Fisiologis',
+        'title': 'Data Fisiologis',
+        'value': '$systolic/$diastolic',
+        'unit': 'mmHg',
+        'description': 'Berat $weight kg • BMI $bmi',
+        'time': _formatDateTime(item['measured_at']),
+        'date_raw': item['measured_at'],
+        'badge': item['validation_status'] ?? 'Valid',
+        'icon': Icons.monitor_heart_outlined,
+        'color': Colors.orange,
+      };
+    }).toList();
   }
 
-  List<Map<String, dynamic>> get currentData {
-    switch (categories[selectedIndex]) {
-      case 'Glukosa':
-        return glucose;
-      case 'Fisiologis':
-        return physiological;
-      case 'Aktivitas':
-        return activity;
-      case 'Makan':
-        return meal;
-      case 'Obat':
-        return medication;
-      default:
-        return [];
-    }
+  List<Map<String, dynamic>> _mapActivity(List<Map<String, dynamic>> data) {
+    return data.map((item) {
+      return {
+        'type': 'Aktivitas',
+        'title': item['activity_name']?.toString() ?? 'Aktivitas',
+        'value': '${item['duration_minutes'] ?? '-'}',
+        'unit': 'menit',
+        'description': item['intensity']?.toString() ?? '-',
+        'time': _formatDateTime(item['activity_date']),
+        'date_raw': item['activity_date'],
+        'badge': item['validation_status'] ?? 'Valid',
+        'icon': Icons.directions_run,
+        'color': AppColors.primaryBlue,
+      };
+    }).toList();
+  }
+
+  List<Map<String, dynamic>> _mapMeal(List<Map<String, dynamic>> data) {
+    return data.map((item) {
+      return {
+        'type': 'Makan',
+        'title': item['meal_type_name']?.toString() ?? 'Pola Makan',
+        'value': '${item['carbohydrate_estimate'] ?? '-'}',
+        'unit': 'gram',
+        'description': item['food_description']?.toString() ?? '-',
+        'time': _formatDateTime(item['meal_date']),
+        'date_raw': item['meal_date'],
+        'badge': item['validation_status'] ?? 'Valid',
+        'icon': Icons.restaurant_outlined,
+        'color': AppColors.primaryBlue,
+      };
+    }).toList();
+  }
+
+  List<Map<String, dynamic>> _mapMedication(List<Map<String, dynamic>> data) {
+    return data.map((item) {
+      final status = item['status']?.toString() ?? '-';
+      final session =
+          item['session']?.toString() ?? item['session_name']?.toString() ?? '-';
+      final dose = item['dose_per_session']?.toString() ??
+          item['dosage']?.toString() ??
+          '-';
+
+      return {
+        'type': 'Obat',
+        'title': item['medication_name']?.toString() ?? 'Obat',
+        'value': status,
+        'unit': '',
+        'description': 'Sesi $session • $dose',
+        'time': _formatDateTime(item['log_date']),
+        'date_raw': item['log_date'],
+        'badge': status,
+        'icon': Icons.medication_outlined,
+        'color': status == 'Terlewat' ? AppColors.red : AppColors.primaryBlue,
+      };
+    }).toList();
+  }
+
+  List<Map<String, dynamic>> get filteredHistories {
+    if (selectedIndex == 0) return histories;
+
+    final selectedType = filters[selectedIndex];
+
+    return histories.where((item) => item['type'] == selectedType).toList();
   }
 
   @override
@@ -128,7 +218,7 @@ class _DoctorPatientHealthHistoryPageState
         child: Column(
           children: [
             _header(context),
-            _categoryTabs(),
+            _filterTabs(),
             Expanded(
               child: isLoading
                   ? const Center(child: CircularProgressIndicator())
@@ -136,18 +226,20 @@ class _DoctorPatientHealthHistoryPageState
                       ? _errorState()
                       : RefreshIndicator(
                           onRefresh: _loadData,
-                          child: currentData.isEmpty
+                          child: filteredHistories.isEmpty
                               ? _emptyState()
                               : ListView.builder(
                                   padding: const EdgeInsets.fromLTRB(
                                     18,
-                                    14,
+                                    12,
                                     18,
                                     28,
                                   ),
-                                  itemCount: currentData.length,
+                                  itemCount: filteredHistories.length,
                                   itemBuilder: (context, index) {
-                                    return _historyCard(currentData[index]);
+                                    return _historyCard(
+                                      filteredHistories[index],
+                                    );
                                   },
                                 ),
                         ),
@@ -179,7 +271,7 @@ class _DoctorPatientHealthHistoryPageState
           ),
           const Expanded(
             child: Text(
-              'Riwayat Data Pasien',
+              'Riwayat Data Kesehatan',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
@@ -194,14 +286,14 @@ class _DoctorPatientHealthHistoryPageState
     );
   }
 
-  Widget _categoryTabs() {
+  Widget _filterTabs() {
     return Container(
-      color: AppColors.background,
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+      color: AppColors.background,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
-          children: List.generate(categories.length, (index) {
+          children: List.generate(filters.length, (index) {
             final selected = selectedIndex == index;
 
             return Padding(
@@ -223,7 +315,7 @@ class _DoctorPatientHealthHistoryPageState
                     ),
                   ),
                   child: Text(
-                    categories[index],
+                    filters[index],
                     style: TextStyle(
                       color: selected
                           ? AppColors.primaryBlue
@@ -243,14 +335,15 @@ class _DoctorPatientHealthHistoryPageState
   }
 
   Widget _historyCard(Map<String, dynamic> item) {
-    final type = categories[selectedIndex];
+    final color = item['color'] as Color? ?? AppColors.primaryBlue;
+    final description = item['description']?.toString() ?? '';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.light1),
         boxShadow: [
           BoxShadow(
@@ -263,29 +356,63 @@ class _DoctorPatientHealthHistoryPageState
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _iconBox(type),
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(item['icon'] as IconData? ?? Icons.history,
+                color: color, size: 21),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _titleByType(type, item),
+                  item['title']?.toString() ?? 'Riwayat',
                   style: const TextStyle(
-                    color: AppColors.primaryBlue,
+                    color: AppColors.dark1,
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  _valueByType(type, item),
-                  style: const TextStyle(
-                    color: AppColors.dark1,
-                    fontSize: 13,
-                    height: 1.4,
+                RichText(
+                  text: TextSpan(
+                    text: item['value']?.toString() ?? '-',
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: (item['unit']?.toString() ?? '').isEmpty
+                            ? ''
+                            : ' ${item['unit']}',
+                        style: const TextStyle(
+                          color: AppColors.dark2,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
+                if (description.trim().isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    description,
+                    style: const TextStyle(
+                      color: AppColors.dark2,
+                      fontSize: 12,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 8),
                 Row(
                   children: [
@@ -297,7 +424,7 @@ class _DoctorPatientHealthHistoryPageState
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        _dateByType(type, item),
+                        item['time']?.toString() ?? '-',
                         style: const TextStyle(
                           color: AppColors.dark3,
                           fontSize: 11,
@@ -310,172 +437,20 @@ class _DoctorPatientHealthHistoryPageState
             ),
           ),
           const SizedBox(width: 8),
-          _statusBadge(item, type),
+          _statusBadge(item['badge']?.toString() ?? '-'),
         ],
       ),
     );
   }
 
-  Widget _iconBox(String type) {
-    IconData icon;
-
-    switch (type) {
-      case 'Glukosa':
-        icon = Icons.opacity;
-        break;
-      case 'Fisiologis':
-        icon = Icons.monitor_heart_outlined;
-        break;
-      case 'Aktivitas':
-        icon = Icons.directions_run;
-        break;
-      case 'Makan':
-        icon = Icons.restaurant_outlined;
-        break;
-      case 'Obat':
-        icon = Icons.medication_outlined;
-        break;
-      default:
-        icon = Icons.history;
-    }
-
-    return Container(
-      width: 42,
-      height: 42,
-      decoration: BoxDecoration(
-        color: AppColors.veryLightBlue,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Icon(icon, color: AppColors.primaryBlue, size: 21),
-    );
-  }
-
-  String _titleByType(String type, Map<String, dynamic> item) {
-    if (type == 'Glukosa') {
-      return item['measurement_type']?.toString() ?? 'Data Glukosa';
-    }
-
-    if (type == 'Fisiologis') {
-      return 'Data Fisiologis';
-    }
-
-    if (type == 'Aktivitas') {
-      return item['activity_name']?.toString() ?? 'Aktivitas';
-    }
-
-    if (type == 'Makan') {
-      return item['meal_type_name']?.toString() ?? 'Pola Makan';
-    }
-
-    if (type == 'Obat') {
-      return item['medication_name']?.toString() ?? 'Kepatuhan Obat';
-    }
-
-    return 'Riwayat';
-  }
-
-  String _valueByType(String type, Map<String, dynamic> item) {
-    if (type == 'Glukosa') {
-      return '${item['glucose_value'] ?? '-'} mg/dL';
-    }
-
-    if (type == 'Fisiologis') {
-      final systolic = item['systolic']?.toString() ?? '-';
-      final diastolic = item['diastolic']?.toString() ?? '-';
-      final weight = item['weight_kg']?.toString() ?? '-';
-      final bmi = item['bmi']?.toString() ?? '-';
-
-      return 'Tekanan darah: $systolic/$diastolic mmHg\nBerat badan: $weight kg • BMI: $bmi';
-    }
-
-    if (type == 'Aktivitas') {
-      return '${item['duration_minutes'] ?? '-'} menit • ${item['intensity'] ?? '-'}';
-    }
-
-    if (type == 'Makan') {
-      final desc = item['food_description']?.toString() ?? '-';
-      final carb = item['carbohydrate_estimate']?.toString() ?? '-';
-      final calories = item['calories']?.toString() ?? '-';
-
-      return '$desc\nKarbohidrat: $carb gram • Kalori: $calories kkal';
-    }
-
-    if (type == 'Obat') {
-      final status = item['status']?.toString() ?? '-';
-      final session = item['session']?.toString() ?? '-';
-      final dose = item['dose_per_session']?.toString() ?? '-';
-      final dosage = item['dosage']?.toString() ?? '';
-      final form = item['form']?.toString() ?? '';
-      final checkedAt = item['checked_at'];
-      final note = item['note']?.toString();
-
-      final doseText = dosage.isNotEmpty || form.isNotEmpty
-          ? '$dosage $form'.trim()
-          : 'Dosis: $dose';
-
-      final checkedText = checkedAt == null
-          ? 'Belum ada waktu checklist'
-          : 'Dicatat: ${_formatDateTime(checkedAt)}';
-
-      final noteText =
-          note == null || note.trim().isEmpty ? '' : '\nCatatan: $note';
-
-      return '$status\nSesi: $session • $doseText\n$checkedText$noteText';
-    }
-
-    return '-';
-  }
-
-  String _dateByType(String type, Map<String, dynamic> item) {
-    dynamic raw;
-
-    if (type == 'Glukosa') raw = item['measured_at'];
-    if (type == 'Fisiologis') raw = item['measured_at'];
-    if (type == 'Aktivitas') raw = item['activity_date'];
-    if (type == 'Makan') raw = item['meal_date'];
-    if (type == 'Obat') raw = item['log_date'];
-
-    return _formatDate(raw);
-  }
-
-  String _formatDate(dynamic value) {
-    final date = DateTime.tryParse(value?.toString() ?? '');
-
-    if (date == null) return value?.toString() ?? '-';
-
-    final local = date.toLocal();
-
-    return '${local.day.toString().padLeft(2, '0')}/'
-        '${local.month.toString().padLeft(2, '0')}/'
-        '${local.year}';
-  }
-
-  String _formatDateTime(dynamic value) {
-    final date = DateTime.tryParse(value?.toString() ?? '');
-
-    if (date == null) return value?.toString() ?? '-';
-
-    final local = date.toLocal();
-
-    return '${local.day.toString().padLeft(2, '0')}/'
-        '${local.month.toString().padLeft(2, '0')}/'
-        '${local.year} • '
-        '${local.hour.toString().padLeft(2, '0')}:'
-        '${local.minute.toString().padLeft(2, '0')}';
-  }
-
-  Widget _statusBadge(Map<String, dynamic> item, String type) {
-    final status = type == 'Obat'
-        ? item['status']?.toString() ?? '-'
-        : item['validation_status']?.toString() ?? 'Valid';
-
+  Widget _statusBadge(String status) {
     Color bg;
     Color textColor;
 
     if (status == 'Valid' || status == 'Diminum') {
       bg = const Color(0xFFEAF7F1);
       textColor = const Color(0xFF10C878);
-    } else if (status == 'Menunggu' || status == 'Terlambat') {
+    } else if (status == 'Menunggu' || status == 'Terlewat') {
       bg = const Color(0xFFFFF3BA);
       textColor = Colors.orange;
     } else {
@@ -484,7 +459,7 @@ class _DoctorPatientHealthHistoryPageState
     }
 
     return Container(
-      constraints: const BoxConstraints(maxWidth: 82),
+      constraints: const BoxConstraints(maxWidth: 86),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: bg,
@@ -501,6 +476,21 @@ class _DoctorPatientHealthHistoryPageState
         ),
       ),
     );
+  }
+
+  String _formatDateTime(dynamic value) {
+    if (value == null) return '-';
+
+    final date = DateTime.tryParse(value.toString());
+    if (date == null) return value.toString();
+
+    final local = date.toLocal();
+
+    return '${local.day.toString().padLeft(2, '0')}/'
+        '${local.month.toString().padLeft(2, '0')}/'
+        '${local.year} • '
+        '${local.hour.toString().padLeft(2, '0')}:'
+        '${local.minute.toString().padLeft(2, '0')}';
   }
 
   Widget _emptyState() {

@@ -144,7 +144,7 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
         await ApiService.storeMedication(
           patientId: patientId,
           prescriptionId: int.parse(item['prescription_id'].toString()),
-          scheduleId: int.parse(item['schedule_id'].toString()),
+          scheduleId: int.parse(item['prescription_schedule_id'].toString()),
           status: 'Diminum',
           consumedAt: now,
           note: noteCtr.text.trim().isEmpty ? null : noteCtr.text.trim(),

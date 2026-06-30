@@ -39,16 +39,21 @@ String formatDiabetesType(dynamic value) {
 class DiabetesTypeBadge extends StatelessWidget {
   final dynamic value;
   final bool dense;
+  final bool inactive;
 
   const DiabetesTypeBadge({
     super.key,
     required this.value,
     this.dense = false,
+    this.inactive = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final text = formatDiabetesType(value);
+
+    final bg = inactive ? AppColors.light1 : AppColors.veryLightBlue;
+    final color = inactive ? AppColors.dark3 : AppColors.primaryBlue;
 
     return Container(
       padding: EdgeInsets.symmetric(
@@ -56,10 +61,10 @@ class DiabetesTypeBadge extends StatelessWidget {
         vertical: dense ? 4 : 5,
       ),
       decoration: BoxDecoration(
-        color: AppColors.veryLightBlue,
+        color: bg,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: AppColors.primaryBlue.withValues(alpha: 0.14),
+          color: color.withValues(alpha: 0.14),
         ),
       ),
       child: Row(
@@ -68,13 +73,13 @@ class DiabetesTypeBadge extends StatelessWidget {
           Icon(
             Icons.opacity,
             size: dense ? 10 : 11,
-            color: AppColors.primaryBlue,
+            color: color,
           ),
           SizedBox(width: dense ? 3 : 4),
           Text(
             text,
             style: TextStyle(
-              color: AppColors.primaryBlue,
+              color: color,
               fontSize: dense ? 10 : 11,
               fontWeight: FontWeight.w600,
             ),

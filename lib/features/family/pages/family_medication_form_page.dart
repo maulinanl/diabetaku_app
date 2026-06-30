@@ -145,7 +145,7 @@ class _FamilyMedicationFormPageState extends State<FamilyMedicationFormPage> {
         await ApiService.storeFamilyMedication(
           patientId: widget.patientId,
           prescriptionId: int.parse(item['prescription_id'].toString()),
-          scheduleId: int.parse(item['schedule_id'].toString()),
+          scheduleId: int.parse(item['prescription_schedule_id'].toString()),
           status: 'Diminum',
           logDate: now,
           note: noteCtr.text.trim().isEmpty ? null : noteCtr.text.trim(),

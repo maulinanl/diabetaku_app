@@ -43,8 +43,8 @@ class _DoctorPrescriptionDetailPageState
   String get rule => prescription['meal_rule']?.toString() ?? '-';
   String get note => prescription['notes']?.toString() ?? '';
   String get doctor => prescription['doctor_name']?.toString() ?? '-';
-  String get date => prescription['valid_from']?.toString() ?? '-';
-  String get validUntil => prescription['valid_until']?.toString() ?? '-';
+  String get date => prescription['start_date'] ?? prescription['valid_from']?.toString() ?? '-';
+  String get validUntil => prescription['end_date'] ?? prescription['valid_until']?.toString() ?? '-';
   String get status => prescription['status']?.toString() ?? 'Aktif';
 
   bool get isMine => currentDoctorId != null && currentDoctorId == doctorId;

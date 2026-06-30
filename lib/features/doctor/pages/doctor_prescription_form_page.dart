@@ -138,8 +138,8 @@ class _DoctorPrescriptionFormPageState
 
     notesCtr.text = item['notes']?.toString() ?? '';
 
-    validFrom = _parseDate(item['valid_from']) ?? DateTime.now();
-    validUntil = _parseDate(item['valid_until']) ??
+    validFrom = _parseDate(item['start_date'] ?? item['valid_from']) ?? DateTime.now();
+    validUntil = _parseDate(item['end_date'] ?? item['valid_until']) ??
         DateTime.now().add(const Duration(days: 30));
 
     selectedSessions.clear();

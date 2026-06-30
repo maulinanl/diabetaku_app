@@ -89,7 +89,7 @@ class MedicationReminderService {
 
     for (final item in schedules) {
       final prescriptionId = _asInt(item['prescription_id']);
-      final scheduleId = _asInt(item['schedule_id']);
+      final scheduleId = _asInt(item['prescription_schedule_id']);
 
       if (prescriptionId == null || scheduleId == null) continue;
 
@@ -99,9 +99,9 @@ class MedicationReminderService {
 
       if (reminderTime == null) continue;
 
-      final validFrom = _dateOnly(_parseDate(item['valid_from'])) ?? today;
+      final validFrom = _dateOnly(_parseDate(item['start_date'])) ?? today;
       final validUntil =
-          _dateOnly(_parseDate(item['valid_until'])) ?? horizonEnd;
+          _dateOnly(_parseDate(item['end_date'])) ?? horizonEnd;
 
       var targetDay = validFrom.isAfter(today) ? validFrom : today;
       final lastDay = validUntil.isBefore(horizonEnd) ? validUntil : horizonEnd;
@@ -195,7 +195,7 @@ class MedicationReminderService {
       'type': 'medication_reminder',
       'patient_id': item['patient_id'],
       'prescription_id': item['prescription_id'],
-      'schedule_id': item['schedule_id'],
+      'prescription_schedule_id': item['prescription_schedule_id'],
       'medication_name': medicationName,
     });
 
