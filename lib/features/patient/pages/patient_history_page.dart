@@ -1141,7 +1141,7 @@ class _HealthHistoryCard extends StatelessWidget {
   }
 
   Widget _inputBadge(String role, String name) {
-    final isCaregiver = role == 'Keluarga';
+    final isCaregiver = role == 'Pendamping';
     final text = isCaregiver ? '$role • $name' : role;
 
     return Container(

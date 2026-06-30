@@ -464,7 +464,7 @@ class _CaregiverHistoryPageState extends State<CaregiverHistoryPage> {
                     ),
                     const SizedBox(height: 10),
                     const Text(
-                      'Riwayat data kesehatan dan rekomendasi dokter akan muncul setelah akun keluarga terhubung dengan pasien.',
+                      'Riwayat data kesehatan dan rekomendasi dokter akan muncul setelah akun pendamping terhubung dengan pasien.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: AppColors.dark2,
@@ -520,7 +520,7 @@ class _CaregiverHistoryPageState extends State<CaregiverHistoryPage> {
             const Icon(Icons.error_outline, color: AppColors.red, size: 42),
             const SizedBox(height: 12),
             Text(
-              errorMessage ?? 'Gagal memuat riwayat keluarga',
+              errorMessage ?? 'Gagal memuat riwayat pendamping',
               textAlign: TextAlign.center,
               style: const TextStyle(color: AppColors.dark2, fontSize: 13),
             ),
@@ -1098,7 +1098,7 @@ class _HistoryCard extends StatelessWidget {
   }
 
   Widget _inputBadge(String role, String name) {
-    final isCaregiver = role == 'Keluarga';
+    final isCaregiver = role == 'Pendamping';
     final text = isCaregiver && name != '-' ? '$role • $name' : role;
 
     return Container(
@@ -1273,7 +1273,7 @@ class _RecommendationHistoryCard extends StatelessWidget {
               SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Rekomendasi diterima keluarga',
+                  'Rekomendasi diterima pendamping',
                   style: TextStyle(
                     color: AppColors.primaryBlue,
                     fontSize: 12,

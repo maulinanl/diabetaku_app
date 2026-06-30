@@ -265,7 +265,7 @@ class _RegisterCaregiverPageState extends State<RegisterCaregiverPage> {
         ),
         const Expanded(
           child: Text(
-            'Daftar sebagai Keluarga',
+            'Daftar sebagai pendamping',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: AppColors.primaryBlue,

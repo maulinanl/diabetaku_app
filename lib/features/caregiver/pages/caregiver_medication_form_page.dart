@@ -202,7 +202,7 @@ class _CaregiverMedicationFormPageState extends State<CaregiverMedicationFormPag
                                   _sectionTitle('Kepatuhan Obat'),
                                   const SizedBox(height: 6),
                                   const Text(
-                                    'Checklist obat sesuai resep aktif dari dokter. Data yang ditambahkan keluarga akan menunggu validasi pasien.',
+                                    'Checklist obat sesuai resep aktif dari dokter. Data yang ditambahkan pendamping akan menunggu validasi pasien.',
                                     style: TextStyle(
                                       color: AppColors.dark2,
                                       fontSize: 12,

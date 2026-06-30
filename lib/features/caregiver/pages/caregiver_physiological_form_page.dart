@@ -266,7 +266,7 @@ class _CaregiverPhysiologicalFormPageState
             ),
             const SizedBox(height: 6),
             const Text(
-              'Tinggi badan diambil dari profil pasien dan tidak dapat diubah oleh keluarga.',
+              'Tinggi badan diambil dari profil pasien dan tidak dapat diubah oleh pendamping.',
               style: TextStyle(
                 color: AppColors.dark2,
                 fontSize: 11,

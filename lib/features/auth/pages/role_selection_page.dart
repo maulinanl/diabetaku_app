@@ -70,8 +70,8 @@ class RoleSelectionPage extends StatelessWidget {
 
             RoleCard(
               icon: Icons.groups,
-              title: "Daftar sebagai Keluarga",
-              subtitle: "Bantu memantau kondisi anggota keluarga",
+              title: "Daftar sebagai Pendamping",
+              subtitle: "Bantu memantau kondisi pasien",
               onTap: () {
                 Navigator.push(
                   context,

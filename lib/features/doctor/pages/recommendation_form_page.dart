@@ -366,7 +366,7 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
           border: Border.all(color: AppColors.light1),
         ),
         child: const Text(
-          'Belum ada keluarga yang terhubung dengan pasien.',
+          'Belum ada pendamping yang terhubung dengan pasien.',
           style: TextStyle(color: AppColors.dark2, fontSize: 12),
         ),
       );
@@ -412,7 +412,7 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
           ...caregivers.map((caregiver) {
             final userId = int.parse(caregiver['user_id'].toString());
             final name = caregiver['full_name']?.toString() ?? '-';
-            final relation = caregiver['relation_name']?.toString() ?? 'Keluarga';
+            final relation = caregiver['relation_name']?.toString() ?? 'Pendamping';
             final selected = selectedCaregiverUserIds.contains(userId);
 
             return Padding(
@@ -558,7 +558,7 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Beritahu keluarga',
+                  'Beritahu pendamping',
                   style: TextStyle(
                     color: AppColors.primaryBlue,
                     fontSize: 13,
@@ -566,7 +566,7 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
                   ),
                 ),
                 Text(
-                  'Teruskan ke keluarga pasien',
+                  'Teruskan ke pendamping pasien',
                   style: TextStyle(color: AppColors.dark3, fontSize: 11),
                 ),
               ],
@@ -806,7 +806,7 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
                         .map((caregiver) {
                           final name = caregiver['full_name']?.toString() ?? '-';
                           final relation =
-                              caregiver['relation_name']?.toString() ?? 'Keluarga';
+                              caregiver['relation_name']?.toString() ?? 'Pendamping';
 
                           return Padding(
                             padding: const EdgeInsets.only(top: 8),

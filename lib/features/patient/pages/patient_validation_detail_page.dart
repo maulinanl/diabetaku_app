@@ -29,7 +29,7 @@ class _PatientValidationDetailPageState
       widget.item['inputBy']?.toString() ??
       '-';
 
-  String get relation => widget.item['relation']?.toString() ?? 'Keluarga';
+  String get relation => widget.item['relation']?.toString() ?? 'Pendamping';
 
   String get type => widget.item['title']?.toString() ?? '-';
 
@@ -130,7 +130,7 @@ class _PatientValidationDetailPageState
                 const SizedBox(height: 12),
                 Text(
                   approve
-                      ? 'Pastikan data dari keluarga sudah benar sebelum disetujui.'
+                      ? 'Pastikan data dari pendamping sudah benar sebelum disetujui.'
                       : 'Pastikan data memang tidak sesuai sebelum ditolak.',
                   style: const TextStyle(
                     color: AppColors.dark2,
@@ -425,7 +425,7 @@ class _PatientValidationDetailPageState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Catatan Keluarga',
+            'Catatan Pendamping',
             style: TextStyle(
               color: AppColors.primaryBlue,
               fontWeight: FontWeight.w700,

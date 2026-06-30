@@ -215,7 +215,7 @@ class CaregiverRecommendationDetailPage extends StatelessWidget {
               Icon(Icons.send_outlined, color: AppColors.primaryBlue, size: 17),
               SizedBox(width: 8),
               Text(
-                'Rekomendasi untuk Keluarga',
+                'Rekomendasi untuk Pendamping',
                 style: TextStyle(
                   color: AppColors.primaryBlue,
                   fontSize: 13,

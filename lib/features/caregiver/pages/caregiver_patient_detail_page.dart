@@ -346,7 +346,7 @@ class _CaregiverPatientDetailPageState extends State<CaregiverPatientDetailPage>
           SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Sebagai keluarga pendamping, kamu dapat membantu menginput data kesehatan pasien, melihat riwayat tertentu, dan menerima notifikasi penting terkait kondisi pasien.',
+              'Sebagai pendamping pendamping, kamu dapat membantu menginput data kesehatan pasien, melihat riwayat tertentu, dan menerima notifikasi penting terkait kondisi pasien.',
               style: TextStyle(
                 color: AppColors.primaryBlue,
                 fontSize: 12,
@@ -414,7 +414,7 @@ class _CaregiverPatientDetailPageState extends State<CaregiverPatientDetailPage>
               ),
               const SizedBox(height: 8),
               const Text(
-                'Setelah relasi diputus, keluarga tidak lagi dapat membantu input data, melihat riwayat pasien, atau menerima notifikasi penting.',
+                'Setelah relasi diputus, pendamping tidak lagi dapat membantu input data, melihat riwayat pasien, atau menerima notifikasi penting.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: AppColors.dark2,

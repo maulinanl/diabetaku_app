@@ -538,7 +538,7 @@ class _CaregiverConnectionPageState extends State<CaregiverConnectionPage> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Cari pasien menggunakan email untuk mengajukan koneksi sebagai keluarga pendamping.',
+              'Cari pasien menggunakan email untuk mengajukan koneksi sebagai pendamping pendamping.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppColors.dark2,
@@ -649,7 +649,7 @@ class _CaregiverConnectionPageState extends State<CaregiverConnectionPage> {
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Text(
-          errorMessage ?? 'Gagal memuat koneksi keluarga',
+          errorMessage ?? 'Gagal memuat koneksi pendamping',
           textAlign: TextAlign.center,
           style: const TextStyle(color: AppColors.dark2, fontSize: 13),
         ),

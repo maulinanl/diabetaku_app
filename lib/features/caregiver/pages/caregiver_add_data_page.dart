@@ -672,7 +672,7 @@ class _CaregiverAddDataPageState extends State<CaregiverAddDataPage> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Hubungkan akun keluarga dengan pasien terlebih dahulu sebelum menambahkan data.',
+              'Hubungkan akun pendamping dengan pasien terlebih dahulu sebelum menambahkan data.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppColors.dark2,

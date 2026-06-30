@@ -155,7 +155,7 @@ class _PatientValidationPageState extends State<PatientValidationPage> {
               item['inputBy']?.toString() ??
               '-';
 
-          final relation = item['relation']?.toString() ?? 'Keluarga';
+          final relation = item['relation']?.toString() ?? 'Pendamping';
           final title = item['title']?.toString() ?? '-';
           final time = _formatDate(item['date']);
           final value = _valueWithUnit(item);
@@ -253,7 +253,7 @@ class _PatientValidationPageState extends State<PatientValidationPage> {
             ),
             SizedBox(height: 8),
             Text(
-              'Data dari keluarga yang perlu dikonfirmasi akan muncul di halaman ini.',
+              'Data dari pendamping yang perlu dikonfirmasi akan muncul di halaman ini.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppColors.primaryBlue,

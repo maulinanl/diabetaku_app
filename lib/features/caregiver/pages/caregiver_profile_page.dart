@@ -155,7 +155,7 @@ class _CaregiverProfilePageState extends State<CaregiverProfilePage> {
             const Icon(Icons.error_outline, color: AppColors.red, size: 42),
             const SizedBox(height: 12),
             Text(
-              errorMessage ?? 'Gagal memuat profil keluarga',
+              errorMessage ?? 'Gagal memuat profil pendamping',
               textAlign: TextAlign.center,
               style: const TextStyle(color: AppColors.dark2, fontSize: 13),
             ),
@@ -219,7 +219,7 @@ class _CaregiverProfilePageState extends State<CaregiverProfilePage> {
             style: const TextStyle(color: Colors.white, fontSize: 12),
           ),
           const SizedBox(height: 12),
-          _roleBadge('Keluarga'),
+          _roleBadge('Pendamping'),
         ],
       ),
     );

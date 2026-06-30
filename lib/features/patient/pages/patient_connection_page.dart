@@ -17,7 +17,7 @@ class _PatientConnectionPageState extends State<PatientConnectionPage> {
   bool isSearchMode = false;
 
   final searchCtr = TextEditingController();
-  final tabs = ['Dokter', 'Keluarga', 'Permintaan'];
+  final tabs = ['Dokter', 'Pendamping', 'Permintaan'];
 
   bool isLoading = true;
   bool isSearching = false;
@@ -140,7 +140,7 @@ class _PatientConnectionPageState extends State<PatientConnectionPage> {
         return _ActionBottomSheet(
           title: isAccept ? 'Terima Permintaan?' : 'Tolak Permintaan?',
           message: isAccept
-              ? 'Apakah kamu yakin ingin menerima $name sebagai keluarga pendamping?'
+              ? 'Apakah kamu yakin ingin menerima $name sebagai pendamping?'
               : 'Apakah kamu yakin ingin menolak permintaan koneksi dari $name?',
           primaryText: isAccept ? 'Terima' : 'Tolak',
           primaryColor: isAccept ? AppColors.primaryBlue : AppColors.red,
@@ -178,7 +178,7 @@ class _PatientConnectionPageState extends State<PatientConnectionPage> {
           return _SuccessBottomSheet(
             title: isAccept ? 'Berhasil Diterima' : 'Berhasil Ditolak',
             message: isAccept
-                ? '$name berhasil ditambahkan sebagai keluarga pendamping.'
+                ? '$name berhasil ditambahkan sebagai pendamping.'
                 : 'Permintaan koneksi dari $name berhasil ditolak.',
           );
         },
@@ -250,7 +250,7 @@ class _PatientConnectionPageState extends State<PatientConnectionPage> {
 
     if (selectedTab == 1) {
       return _connectionList(
-        title: 'KELUARGA SAYA - ${caregivers.length} TERHUBUNG',
+        title: 'PENDAMPING SAYA - ${caregivers.length} TERHUBUNG',
         data: caregivers,
         isDoctor: false,
       );
@@ -363,7 +363,7 @@ class _PatientConnectionPageState extends State<PatientConnectionPage> {
         child: Text(
           isDoctor
               ? 'Belum ada dokter yang terhubung'
-              : 'Belum ada keluarga yang terhubung',
+              : 'Belum ada pendamping yang terhubung',
           style: const TextStyle(color: AppColors.dark2, fontSize: 13),
         ),
       );
@@ -1076,8 +1076,8 @@ class _PatientRequestDetailPageState extends State<PatientRequestDetailPage> {
   }
 
   String get headerTitle {
-    if (isAccepted) return 'Koneksi Keluarga Diterima';
-    if (isRejected) return 'Koneksi Keluarga Ditolak';
+    if (isAccepted) return 'Koneksi Pendamping Diterima';
+    if (isRejected) return 'Koneksi Pendamping Ditolak';
     return 'Permintaan Koneksi';
   }
 
@@ -1276,7 +1276,7 @@ class _PatientRequestDetailPageState extends State<PatientRequestDetailPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Data Keluarga',
+            'Data Pendamping',
             style: TextStyle(
               color: AppColors.primaryBlue,
               fontWeight: FontWeight.w700,
@@ -1310,8 +1310,8 @@ class _PatientRequestDetailPageState extends State<PatientRequestDetailPage> {
           Expanded(
             child: Text(
               isAccepted
-                  ? 'Permintaan koneksi keluarga ini sudah diterima. Keluarga sudah menjadi pendamping pasien.'
-                  : 'Permintaan koneksi keluarga ini sudah ditolak.',
+                  ? 'Permintaan koneksi pendamping ini sudah diterima. Pendamping sudah menjadi pendamping pasien.'
+                  : 'Permintaan koneksi pendamping ini sudah ditolak.',
               style: TextStyle(
                 color: statusColor,
                 fontSize: 12,

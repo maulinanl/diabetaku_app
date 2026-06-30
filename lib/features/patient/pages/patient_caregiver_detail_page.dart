@@ -124,7 +124,7 @@ class _PatientCaregiverDetailPageState extends State<PatientCaregiverDetailPage>
               ),
               const Expanded(
                 child: Text(
-                  'Detail Keluarga',
+                  'Detail Pendamping',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white,
@@ -263,7 +263,7 @@ class _PatientCaregiverDetailPageState extends State<PatientCaregiverDetailPage>
               ),
               const SizedBox(height: 18),
               const Text(
-                'Putus relasi keluarga?',
+                'Putus relasi pendamping?',
                 style: TextStyle(
                   color: AppColors.primaryBlue,
                   fontSize: 20,
@@ -272,7 +272,7 @@ class _PatientCaregiverDetailPageState extends State<PatientCaregiverDetailPage>
               ),
               const SizedBox(height: 8),
               const Text(
-                'Keluarga tidak lagi dapat membantu menginput data, melihat riwayat tertentu, atau menerima notifikasi penting setelah relasi diputus.',
+                'Pendamping tidak lagi dapat membantu menginput data, melihat riwayat tertentu, atau menerima notifikasi penting setelah relasi diputus.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: AppColors.dark2,

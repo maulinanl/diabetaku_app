@@ -1776,7 +1776,7 @@ class ApiService {
       headers: await _authHeaders(),
       body: jsonEncode({
         'email': email.trim().toLowerCase(),
-        'caregivery_id': caregiverId,
+        'caregiver_id': caregiverId,
       }),
     );
 

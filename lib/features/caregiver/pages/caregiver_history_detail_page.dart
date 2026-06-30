@@ -390,7 +390,7 @@ class CaregiverHistoryDetailPage extends StatelessWidget {
           SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Riwayat pasien hanya dapat dilihat oleh keluarga dan tidak dapat diubah dari halaman ini.',
+              'Riwayat pasien hanya dapat dilihat oleh pendamping dan tidak dapat diubah dari halaman ini.',
               style: TextStyle(
                 color: AppColors.primaryBlue,
                 fontSize: 12,

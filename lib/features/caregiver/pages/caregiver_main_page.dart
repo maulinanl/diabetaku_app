@@ -943,7 +943,7 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
             const Icon(Icons.error_outline, color: AppColors.red, size: 42),
             const SizedBox(height: 12),
             Text(
-              errorMessage ?? 'Gagal memuat data keluarga',
+              errorMessage ?? 'Gagal memuat data pendamping',
               textAlign: TextAlign.center,
               style: const TextStyle(color: AppColors.dark2, fontSize: 13),
             ),
@@ -1002,7 +1002,7 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
                     ),
                     const SizedBox(height: 10),
                     const Text(
-                      'Hubungkan akun keluarga dengan pasien agar kamu bisa membantu memantau data kesehatannya.',
+                      'Hubungkan akun pendamping dengan pasien agar kamu bisa membantu memantau data kesehatannya.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: AppColors.dark2,

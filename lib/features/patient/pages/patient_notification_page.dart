@@ -240,7 +240,7 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
     final cleaned = message.trim();
 
     if (cleaned.isEmpty || cleaned == '-') {
-      return 'Keluarga';
+      return 'Pendamping';
     }
 
     final match = RegExp(
@@ -253,7 +253,7 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
       if (name != null && name.isNotEmpty) return name;
     }
 
-    return 'Keluarga';
+    return 'Pendamping';
   }
 
   String _safeText(dynamic value, {String fallback = '-'}) {
@@ -268,7 +268,7 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
   String _caregiverRelation(Map<String, dynamic> item) {
     return _safeText(
       item['relation'] ?? item['relation_name'] ?? item['caregiver_relation'],
-      fallback: 'Keluarga',
+      fallback: 'Pendamping',
     );
   }
 
@@ -431,7 +431,7 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
 
       _showSnackBar(
         isAccept
-            ? '$name berhasil diterima sebagai keluarga pendamping.'
+            ? '$name berhasil diterima sebagai pendamping.'
             : 'Permintaan koneksi dari $name berhasil ditolak.',
         isError: false,
       );
@@ -483,7 +483,7 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
 
   bool _isCaregiverRoute(String routeKey) {
     return routeKey.contains('caregiver') ||
-        routeKey.contains('keluarga');
+        routeKey.contains('pendamping');
   }
 
   bool _isCaregiverDisconnectedRoute(String routeKey) {
@@ -635,7 +635,7 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
           ),
         ),
       );
-    } else if (routeKey.contains('caregiver') || routeKey.contains('keluarga')) {
+    } else if (routeKey.contains('caregiver') || routeKey.contains('pendamping')) {
       final caregiverId = _asInt(detail['caregiver_id'] ?? detail['reference_id']);
       final caregiverName = _safeText(
         detail['caregiver_name'] ?? detail['full_name'] ?? detail['name'],
@@ -1190,7 +1190,7 @@ _NotificationVisual _notificationVisual(String routeKey) {
     );
   }
 
-  if (routeKey.contains('caregiver') || routeKey.contains('keluarga')) {
+  if (routeKey.contains('caregiver') || routeKey.contains('pendamping')) {
     return const _NotificationVisual(
       icon: Icons.person_add_alt_1_rounded,
       bg: Color(0xFFEAFBF3),
@@ -1785,14 +1785,14 @@ class CaregiverDisconnectedDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _NotificationDetailScaffold(
-      title: 'Relasi Keluarga Terputus',
+      title: 'Relasi Pendamping Terputus',
       icon: Icons.link_off_rounded,
       iconBg: AppColors.lightRed,
       iconColor: AppColors.red,
-      headerText: 'Relasi keluarga terputus\n$date',
+      headerText: 'Relasi pendamping terputus\n$date',
       children: [
         _whiteCard(
-          title: 'Data Keluarga',
+          title: 'Data Pendamping',
           children: [
             _InfoRow(label: 'Nama', value: name),
             _InfoRow(label: 'Hubungan', value: relation),

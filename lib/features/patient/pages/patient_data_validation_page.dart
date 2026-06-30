@@ -301,7 +301,7 @@ class _PatientDataValidationPageState extends State<PatientDataValidationPage> {
                 item['input_by']?.toString() ??
                 item['inputBy']?.toString() ??
                 '-';
-            final relation = item['relation']?.toString() ?? 'Keluarga';
+            final relation = item['relation']?.toString() ?? 'Pendamping';
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 18),
@@ -376,7 +376,7 @@ class _PatientDataValidationPageState extends State<PatientDataValidationPage> {
           SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Data berikut diinput oleh anggota keluargamu. Konfirmasi jika data benar, atau tolak jika tidak sesuai.',
+              'Data berikut diinput oleh anggota pendampingmu. Konfirmasi jika data benar, atau tolak jika tidak sesuai.',
               style: TextStyle(
                 color: AppColors.primaryBlue,
                 fontSize: 13,
@@ -416,7 +416,7 @@ class _PatientDataValidationPageState extends State<PatientDataValidationPage> {
             ),
             SizedBox(height: 8),
             Text(
-              'Data dari keluarga yang perlu dikonfirmasi akan muncul di halaman ini.',
+              'Data dari pendamping yang perlu dikonfirmasi akan muncul di halaman ini.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppColors.primaryBlue,

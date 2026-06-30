@@ -509,7 +509,7 @@ class _PatientHomePageState extends State<PatientHomePage> {
                   ),
                   const SizedBox(height: 4),
                   const Text(
-                    'Data ditambahkan oleh anggota keluarga',
+                    'Data ditambahkan oleh anggota pendampinga',
                     style: TextStyle(color: AppColors.dark2, fontSize: 11),
                   ),
                 ],
