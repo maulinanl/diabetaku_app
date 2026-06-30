@@ -618,59 +618,114 @@ class _RegisterPatientPageState extends State<RegisterPatientPage> {
     required String? selectedValue,
     required ValueChanged<String> onSelected,
   }) {
+    final displayTitle = title.toLowerCase().startsWith('pilih')
+        ? title
+        : 'Pilih $title';
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (sheetContext) {
-        return Container(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
-          decoration: const BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 42,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.light1,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Text(
-                'Pilih $title',
-                style: const TextStyle(
-                  color: AppColors.primaryBlue,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
-              ...items.map((item) {
-                final selected = item == selectedValue;
-
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(
-                    item,
-                    style: TextStyle(
-                      color: selected ? AppColors.primaryBlue : AppColors.dark1,
-                      fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                    ),
+        return SafeArea(
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: const BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.light1,
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                  trailing: selected
-                      ? const Icon(Icons.check, color: AppColors.primaryBlue)
-                      : null,
-                  onTap: () {
-                    onSelected(item);
-                    Navigator.pop(sheetContext);
-                  },
-                );
-              }),
-            ],
+                ),
+                const SizedBox(height: 22),
+                CircleAvatar(
+                  radius: 34,
+                  backgroundColor: AppColors.lightBlue,
+                  child: Icon(
+                    displayTitle.toLowerCase().contains('jenis kelamin')
+                        ? Icons.wc_outlined
+                        : displayTitle.toLowerCase().contains('darah') ||
+                              displayTitle.toLowerCase().contains('rhesus')
+                            ? Icons.bloodtype_outlined
+                            : Icons.check_circle_outline,
+                    color: AppColors.primaryBlue,
+                    size: 32,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  displayTitle,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.primaryBlue,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                ...items.map((item) {
+                  final selected = item == selectedValue;
+
+                  return InkWell(
+                    onTap: () {
+                      onSelected(item);
+                      Navigator.pop(sheetContext);
+                    },
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 13,
+                      ),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? AppColors.veryLightBlue
+                            : AppColors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: selected
+                              ? AppColors.lightBlue
+                              : AppColors.light1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              item,
+                              style: TextStyle(
+                                color: selected
+                                    ? AppColors.primaryBlue
+                                    : AppColors.dark1,
+                                fontSize: 14,
+                                fontWeight: selected
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          if (selected)
+                            const Icon(
+                              Icons.check_circle,
+                              color: AppColors.primaryBlue,
+                              size: 20,
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
           ),
         );
       },

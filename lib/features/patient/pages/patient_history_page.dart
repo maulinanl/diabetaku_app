@@ -23,7 +23,7 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
   String? errorMessage;
 
   List<Map<String, dynamic>> healthHistories = [];
-  List<Map<String, String>> recommendationHistories = [];
+  List<Map<String, dynamic>> recommendationHistories = [];
   List<Map<String, dynamic>> connectedDoctors = [];
 
   final healthFilters = const [
@@ -190,24 +190,64 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
     return result;
   }
 
-  List<Map<String, String>> _mapRecommendationHistories(
+  List<Map<String, dynamic>> _mapRecommendationHistories(
     List<Map<String, dynamic>> data,
   ) {
-    return data.map((item) {
-      final doctorName = item['doctor_name']?.toString() ?? 'Dokter';
+    final grouped = <String, List<Map<String, dynamic>>>{};
+
+    for (final item in data) {
+      final clinicalNoteKey = item['clinical_note_id']?.toString().trim();
+      final key = clinicalNoteKey != null && clinicalNoteKey.isNotEmpty
+          ? clinicalNoteKey
+          : 'recommendation_${item['recommendation_id'] ?? grouped.length}';
+
+      grouped.putIfAbsent(key, () => <Map<String, dynamic>>[]);
+      grouped[key]!.add(item);
+    }
+
+    final result = grouped.entries.map((entry) {
+      final items = entry.value;
+      final first = items.first;
+      final doctorName = first['doctor_name']?.toString() ?? 'Dokter';
       final initial = doctorName.isNotEmpty ? doctorName[0].toUpperCase() : 'D';
+      final categories = items
+          .map((item) => item['category']?.toString() ?? 'Rekomendasi')
+          .where((category) => category.trim().isNotEmpty)
+          .toSet()
+          .toList();
+      final description = items.length == 1
+          ? items.first['recommendation_text']?.toString() ?? '-'
+          : '${items.length} rekomendasi: ${categories.join(', ')}';
 
       return {
         'initial': initial,
         'doctor': doctorName,
-        'doctor_id': item['doctor_id']?.toString() ?? '',
-        'date': _formatDateTime(item['created_at']),
-        'status': item['category']?.toString() ?? 'Rekomendasi',
-        'description': item['recommendation_text']?.toString() ?? '-',
-        'recommendation_id': item['recommendation_id']?.toString() ?? '',
-        'clinical_note_id': item['clinical_note_id']?.toString() ?? '',
+        'doctor_name': doctorName,
+        'doctor_id': first['doctor_id']?.toString() ?? '',
+        'date': _formatDateTime(first['created_at']),
+        'created_at': first['created_at']?.toString() ?? '',
+        'status': items.length == 1
+            ? (first['category']?.toString() ?? 'Rekomendasi')
+            : '${items.length} Rekomendasi',
+        'category': items.length == 1
+            ? (first['category']?.toString() ?? 'Rekomendasi')
+            : '${items.length} Rekomendasi',
+        'description': description,
+        'recommendation_text': first['recommendation_text']?.toString() ?? '-',
+        'recommendation_id': first['recommendation_id']?.toString() ?? '',
+        'clinical_note_id': first['clinical_note_id']?.toString() ?? entry.key,
+        'recommendations': items,
       };
     }).toList();
+
+    result.sort((a, b) {
+      final aDate = DateTime.tryParse(a['created_at']?.toString() ?? '');
+      final bDate = DateTime.tryParse(b['created_at']?.toString() ?? '');
+      if (aDate == null || bDate == null) return 0;
+      return bDate.compareTo(aDate);
+    });
+
+    return result;
   }
 
   String _formatDateTime(dynamic value) {
@@ -236,7 +276,7 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
     }).toList();
   }
 
-  List<Map<String, String>> get _filteredRecommendations {
+  List<Map<String, dynamic>> get _filteredRecommendations {
     if (selectedDoctorId == null) return recommendationHistories;
 
     return recommendationHistories.where((item) {
@@ -459,7 +499,7 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
     );
   }
 
-  Widget _recommendationContent(List<Map<String, String>> data) {
+  Widget _recommendationContent(List<Map<String, dynamic>> data) {
     return Column(
       children: [
         Padding(
@@ -1343,6 +1383,8 @@ class PatientHealthDetailPage extends StatelessWidget {
                   children: [
                     _detailSection(data),
                     const SizedBox(height: 14),
+                    _inputInfoSection(),
+                    const SizedBox(height: 14),
                     _noteSection(data),
                     const SizedBox(height: 18),
                     _readonlyInfo(type),
@@ -1352,6 +1394,87 @@ class PatientHealthDetailPage extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+
+  String _text(dynamic value, {String fallback = '-'}) {
+    if (value == null) return fallback;
+    final text = value.toString().trim();
+    if (text.isEmpty || text == 'null') return fallback;
+    return text;
+  }
+
+  String _bmiText(Map<String, dynamic> item) {
+    final existing = item['bmi'];
+    if (existing != null && existing.toString().trim().isNotEmpty) {
+      return existing.toString();
+    }
+
+    final weight = double.tryParse(item['weight_kg']?.toString() ?? '');
+    final heightCm = double.tryParse(
+      item['height_cm']?.toString() ?? item['patient_height_cm']?.toString() ?? '',
+    );
+
+    if (weight == null || heightCm == null || heightCm <= 0) return '-';
+
+    final heightM = heightCm / 100;
+    final bmi = weight / (heightM * heightM);
+    return bmi.toStringAsFixed(1);
+  }
+
+  Widget _inputInfoSection() {
+    final inputByRole = _text(item['input_by_role'], fallback: 'Pasien');
+    final inputByName = _text(item['input_by_name'], fallback: '-');
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: _cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Informasi Input',
+            style: TextStyle(
+              color: AppColors.primaryBlue,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _inputInfoRow('Diinput oleh', inputByRole),
+          _inputInfoRow('Nama Penginput', inputByName),
+        ],
+      ),
+    );
+  }
+
+  Widget _inputInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(color: AppColors.dark2, fontSize: 12),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                color: AppColors.primaryBlue,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1384,7 +1507,7 @@ class PatientHealthDetailPage extends StatelessWidget {
           ['Sistolik', '${item['systolic'] ?? '-'} mmHg'],
           ['Diastolik', '${item['diastolic'] ?? '-'} mmHg'],
           ['Berat Badan', '${item['weight_kg'] ?? '-'} kg'],
-          ['BMI', '${item['bmi'] ?? '-'} kg/m²'],
+          ['BMI', '${_bmiText(item)} kg/m²'],
           ['Status', '${item['validation_status'] ?? 'Valid'}'],
         ],
         'note': item['note']?.toString() ?? '',

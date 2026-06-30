@@ -13,81 +13,40 @@ class PatientEditProfilePage extends StatefulWidget {
 }
 
 class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
-  final nameCtr = TextEditingController();
-  final emailCtr = TextEditingController();
-  final phoneCtr = TextEditingController();
-  final birthCtr = TextEditingController();
-  final diagnosisCtr = TextEditingController();
-  final heightCtr = TextEditingController();
-
-  String gender = 'Perempuan';
-  String dmType = 'Tipe 2';
-  String bloodType = 'O';
-  String rhesus = 'Positif (+)';
-
-  late String originalName;
-  late String originalPhone;
-  late String originalBirth;
-  late String originalDiagnosis;
-  late String originalHeight;
-  late String originalGender;
-  late String originalDmType;
-  late String originalBloodType;
-  late String originalRhesus;
+  late TextEditingController nameCtr;
+  late TextEditingController emailCtr;
+  late TextEditingController phoneCtr;
+  late TextEditingController birthCtr;
+  late TextEditingController diagnosisCtr;
+  late TextEditingController heightCtr;
 
   bool isSaving = false;
 
-  @override
-  void initState() {
-    super.initState();
+  late String gender;
+  late String dmType;
+  late String bloodType;
+  late String rhesus;
 
-    final profile = widget.profile;
+  late String initialName;
+  late String initialPhone;
+  late String initialBirth;
+  late String initialDiagnosis;
+  late String initialHeight;
+  late String initialGender;
+  late String initialDmType;
+  late String initialBloodType;
+  late String initialRhesus;
 
-    nameCtr.text = profile['full_name']?.toString() ?? '';
-    emailCtr.text = profile['email']?.toString() ?? '';
-    phoneCtr.text = profile['phone_number']?.toString() ?? '';
-    birthCtr.text = profile['date_of_birth']?.toString() ?? '';
-    diagnosisCtr.text = profile['diagnosis_date']?.toString() ?? '';
-    heightCtr.text = profile['height_cm']?.toString() ?? '';
-
-    gender = profile['gender']?.toString() ?? 'Perempuan';
-    dmType = profile['diabetes_type']?.toString() ?? 'Tipe 2';
-    bloodType = profile['blood_type']?.toString() ?? 'O';
-    rhesus = profile['rhesus_type']?.toString() ?? 'Positif (+)';
-
-    originalName = nameCtr.text.trim();
-    originalPhone = phoneCtr.text.trim();
-    originalBirth = birthCtr.text.trim();
-    originalDiagnosis = diagnosisCtr.text.trim();
-    originalHeight = heightCtr.text.trim();
-    originalGender = gender;
-    originalDmType = dmType;
-    originalBloodType = bloodType;
-    originalRhesus = rhesus;
-
-    for (final controller in [
-      nameCtr,
-      phoneCtr,
-      birthCtr,
-      diagnosisCtr,
-      heightCtr,
-    ]) {
-      controller.addListener(() {
-        if (mounted) setState(() {});
-      });
-    }
-  }
-
-  bool get hasChanged {
-    return nameCtr.text.trim() != originalName ||
-        phoneCtr.text.trim() != originalPhone ||
-        birthCtr.text.trim() != originalBirth ||
-        diagnosisCtr.text.trim() != originalDiagnosis ||
-        heightCtr.text.trim() != originalHeight ||
-        gender != originalGender ||
-        dmType != originalDmType ||
-        bloodType != originalBloodType ||
-        rhesus != originalRhesus;
+  bool get _hasChanges {
+    return nameCtr.text.trim() != initialName ||
+        phoneCtr.text.trim() != initialPhone ||
+        birthCtr.text.trim() != initialBirth ||
+        diagnosisCtr.text.trim() != initialDiagnosis ||
+        heightCtr.text.trim() != initialHeight ||
+        gender != initialGender ||
+        dmType != initialDmType ||
+        bloodType != initialBloodType ||
+        rhesus != initialRhesus;
   }
 
   int get bloodTypeId {
@@ -104,11 +63,68 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
   }
 
   int get rhesusTypeId {
-    return rhesus.contains('Positif') ? 1 : 2;
+    return rhesus == 'Negatif (-)' ? 2 : 1;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    final profile = widget.profile;
+
+    nameCtr = TextEditingController(
+      text: profile['full_name']?.toString() ?? '',
+    );
+    emailCtr = TextEditingController(
+      text: profile['email']?.toString() ?? '',
+    );
+    phoneCtr = TextEditingController(
+      text: profile['phone_number']?.toString() ?? '',
+    );
+    birthCtr = TextEditingController(
+      text: profile['date_of_birth']?.toString() ?? '',
+    );
+    diagnosisCtr = TextEditingController(
+      text: profile['diagnosis_date']?.toString() ?? '',
+    );
+    heightCtr = TextEditingController(
+      text: profile['height_cm']?.toString() ?? '',
+    );
+
+    gender = _normalizeGender(profile['gender']?.toString());
+    dmType = _normalizeDiabetesType(profile['diabetes_type']?.toString());
+    bloodType = _normalizeBloodType(profile['blood_type']?.toString());
+    rhesus = _normalizeRhesus(profile['rhesus_type']?.toString());
+
+    initialName = nameCtr.text.trim();
+    initialPhone = phoneCtr.text.trim();
+    initialBirth = birthCtr.text.trim();
+    initialDiagnosis = diagnosisCtr.text.trim();
+    initialHeight = heightCtr.text.trim();
+    initialGender = gender;
+    initialDmType = dmType;
+    initialBloodType = bloodType;
+    initialRhesus = rhesus;
+
+    nameCtr.addListener(_onFormChanged);
+    phoneCtr.addListener(_onFormChanged);
+    birthCtr.addListener(_onFormChanged);
+    diagnosisCtr.addListener(_onFormChanged);
+    heightCtr.addListener(_onFormChanged);
+  }
+
+  void _onFormChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    nameCtr.removeListener(_onFormChanged);
+    phoneCtr.removeListener(_onFormChanged);
+    birthCtr.removeListener(_onFormChanged);
+    diagnosisCtr.removeListener(_onFormChanged);
+    heightCtr.removeListener(_onFormChanged);
+
     nameCtr.dispose();
     emailCtr.dispose();
     phoneCtr.dispose();
@@ -118,8 +134,40 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
     super.dispose();
   }
 
+  String _normalizeGender(String? value) {
+    final normalized = value?.trim().toLowerCase() ?? '';
+    if (normalized == 'laki-laki' || normalized == 'laki laki') {
+      return 'Laki-laki';
+    }
+    return 'Perempuan';
+  }
+
+  String _normalizeDiabetesType(String? value) {
+    final normalized = value?.trim().toLowerCase() ?? '';
+    if (normalized == 'tipe 1' || normalized == 'type 1') {
+      return 'Tipe 1';
+    }
+    return 'Tipe 2';
+  }
+
+  String _normalizeBloodType(String? value) {
+    final normalized = value?.trim().toUpperCase() ?? '';
+    if (normalized == 'A' || normalized == 'B' || normalized == 'AB') {
+      return normalized;
+    }
+    return 'O';
+  }
+
+  String _normalizeRhesus(String? value) {
+    final normalized = value?.trim().toLowerCase() ?? '';
+    if (normalized.contains('-') || normalized.contains('negatif')) {
+      return 'Negatif (-)';
+    }
+    return 'Positif (+)';
+  }
+
   DateTime _parseDate(String? value) {
-    if (value == null || value.isEmpty) return DateTime.now();
+    if (value == null || value.trim().isEmpty) return DateTime.now();
     return DateTime.tryParse(value) ?? DateTime.now();
   }
 
@@ -131,11 +179,14 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
     required TextEditingController controller,
     required DateTime initialDate,
   }) async {
+    final now = DateTime.now();
+    final safeInitialDate = initialDate.isAfter(now) ? now : initialDate;
+
     final picked = await showDatePicker(
       context: context,
-      initialDate: initialDate,
+      initialDate: safeInitialDate,
       firstDate: DateTime(1950),
-      lastDate: DateTime.now(),
+      lastDate: now,
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -156,10 +207,9 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
   }
 
   Future<void> _saveProfile() async {
+    if (!_hasChanges || isSaving) return;
+
     FocusScope.of(context).unfocus();
-
-    if (!hasChanged) return;
-
     setState(() => isSaving = true);
 
     try {
@@ -167,7 +217,7 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
       final patientId = prefs.getInt('patient_id');
 
       if (patientId == null) {
-        throw Exception('Patient ID tidak ditemukan');
+        throw Exception('Patient ID tidak ditemukan. Coba login ulang.');
       }
 
       await ApiService.updatePatientProfile(
@@ -184,257 +234,105 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
       );
 
       if (!mounted) return;
-      Navigator.pop(context, true);
+
+      setState(() => isSaving = false);
+      _showSuccessSheet(context);
     } catch (e) {
       if (!mounted) return;
+
+      setState(() => isSaving = false);
       _showStyledSnackBar(
         message: e.toString().replaceFirst('Exception: ', ''),
       );
-    } finally {
-      if (mounted) setState(() => isSaving = false);
     }
-  }
-
-  void _showOptionSheet({
-    required String title,
-    required List<String> items,
-    required String selectedValue,
-    required ValueChanged<String> onSelected,
-  }) {
-    if (isSaving) return;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 44,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.light1,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: AppColors.primaryBlue,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ...items.map((item) {
-                  final selected = item == selectedValue;
-
-                  return InkWell(
-                    borderRadius: BorderRadius.circular(12),
-                    onTap: () {
-                      Navigator.pop(sheetContext);
-                      setState(() => onSelected(item));
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 14,
-                      ),
-                      decoration: BoxDecoration(
-                        color: selected
-                            ? AppColors.veryLightBlue
-                            : AppColors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: selected
-                              ? AppColors.primaryBlue
-                              : AppColors.light1,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              item,
-                              style: TextStyle(
-                                color: selected
-                                    ? AppColors.primaryBlue
-                                    : AppColors.dark1,
-                                fontSize: 14,
-                                fontWeight: selected
-                                    ? FontWeight.w700
-                                    : FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                          Icon(
-                            selected
-                                ? Icons.radio_button_checked
-                                : Icons.radio_button_unchecked,
-                            color: selected
-                                ? AppColors.primaryBlue
-                                : AppColors.dark4,
-                            size: 20,
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }),
-                const SizedBox(height: 4),
-                SizedBox(
-                  width: double.infinity,
-                  height: 46,
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(sheetContext),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.primaryBlue,
-                      side: const BorderSide(color: AppColors.light1),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text('Batal'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final canSave = hasChanged && !isSaving;
-
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         top: false,
         child: Column(
           children: [
-            _header(context),
+            _buildHeader(context),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+                padding: const EdgeInsets.all(20),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _sectionTitle(Icons.person, 'Data Diri'),
-
-                    _label('Nama Lengkap'),
-                    _input(nameCtr),
-
-                    _label('Email'),
-                    _input(
-                      emailCtr,
-                      keyboardType: TextInputType.emailAddress,
+                    _textField(
+                      label: 'Nama Lengkap',
+                      controller: nameCtr,
+                    ),
+                    _textField(
+                      label: 'Email',
+                      controller: emailCtr,
                       enabled: false,
                     ),
-
-                    _label('Nomor Telepon'),
-                    _input(phoneCtr, keyboardType: TextInputType.phone),
-
-                    _label('Tanggal Lahir'),
-                    _dateInput(
-                      controller: birthCtr,
+                    _textField(
+                      label: 'Nomor Telepon',
+                      controller: phoneCtr,
+                      keyboardType: TextInputType.phone,
+                    ),
+                    _selectField(
+                      label: 'Tanggal Lahir',
+                      value: birthCtr.text.isEmpty
+                          ? 'Pilih tanggal lahir'
+                          : birthCtr.text,
                       onTap: () => _pickDate(
                         controller: birthCtr,
                         initialDate: _parseDate(birthCtr.text),
                       ),
                     ),
-
-                    _label('Jenis Kelamin'),
-                    _selectInput(
+                    _selectField(
+                      label: 'Jenis Kelamin',
                       value: gender,
-                      onTap: () => _showOptionSheet(
-                        title: 'Pilih Jenis Kelamin',
-                        items: const ['Laki-laki', 'Perempuan'],
-                        selectedValue: gender,
-                        onSelected: (value) => gender = value,
-                      ),
+                      onTap: _showGenderSheet,
                     ),
-
-                    const SizedBox(height: 18),
-                    _sectionTitle(Icons.medical_services, 'Data Medis'),
-
-                    _label('Tipe DM'),
-                    _selectInput(
+                    _selectField(
+                      label: 'Tipe Diabetes',
                       value: dmType,
-                      onTap: () => _showOptionSheet(
-                        title: 'Pilih Tipe DM',
-                        items: const ['Tipe 1', 'Tipe 2'],
-                        selectedValue: dmType,
-                        onSelected: (value) => dmType = value,
-                      ),
+                      onTap: _showDiabetesTypeSheet,
                     ),
-
-                    _label('Tanggal Diagnosis'),
-                    _dateInput(
-                      controller: diagnosisCtr,
+                    _selectField(
+                      label: 'Tanggal Diagnosis',
+                      value: diagnosisCtr.text.isEmpty
+                          ? 'Pilih tanggal diagnosis'
+                          : diagnosisCtr.text,
                       onTap: () => _pickDate(
                         controller: diagnosisCtr,
                         initialDate: _parseDate(diagnosisCtr.text),
                       ),
                     ),
-
-                    _label('Golongan Darah'),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _selectInput(
-                            value: bloodType,
-                            onTap: () => _showOptionSheet(
-                              title: 'Pilih Golongan Darah',
-                              items: const ['A', 'B', 'AB', 'O'],
-                              selectedValue: bloodType,
-                              onSelected: (value) => bloodType = value,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _selectInput(
-                            value: rhesus,
-                            onTap: () => _showOptionSheet(
-                              title: 'Pilih Rhesus',
-                              items: const ['Positif (+)', 'Negatif (-)'],
-                              selectedValue: rhesus,
-                              onSelected: (value) => rhesus = value,
-                            ),
-                          ),
-                        ),
-                      ],
+                    _selectField(
+                      label: 'Golongan Darah',
+                      value: bloodType,
+                      onTap: _showBloodTypeSheet,
                     ),
-
-                    _label('Tinggi Badan (cm)'),
-                    _input(heightCtr, keyboardType: TextInputType.number),
-
-                    const SizedBox(height: 26),
-
+                    _selectField(
+                      label: 'Rhesus',
+                      value: rhesus,
+                      onTap: _showRhesusSheet,
+                    ),
+                    _textField(
+                      label: 'Tinggi Badan (cm)',
+                      controller: heightCtr,
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 24),
                     SizedBox(
                       width: double.infinity,
-                      height: 48,
+                      height: 46,
                       child: ElevatedButton(
-                        onPressed: canSave ? _saveProfile : null,
+                        onPressed: isSaving || !_hasChanges
+                            ? null
+                            : _saveProfile,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryBlue,
+                          disabledBackgroundColor: AppColors.light2,
+                          disabledForegroundColor: AppColors.dark3,
                           foregroundColor: Colors.white,
-                          disabledBackgroundColor: const Color(0xFFAFCBEA),
-                          disabledForegroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(6),
@@ -449,20 +347,7 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : const Text(
-                                'Simpan Perubahan',
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                      ),
-                    ),
-
-                    TextButton(
-                      onPressed: isSaving ? null : () => Navigator.pop(context),
-                      child: const Center(
-                        child: Text(
-                          'Batal',
-                          style: TextStyle(color: AppColors.primaryBlue),
-                        ),
+                            : const Text('Simpan Perubahan'),
                       ),
                     ),
                   ],
@@ -475,13 +360,19 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
     );
   }
 
-  Widget _header(BuildContext context) {
+  Widget _buildHeader(BuildContext context) {
     final topPad = MediaQuery.of(context).padding.top;
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(12, topPad + 12, 20, 18),
-      color: AppColors.primaryBlue,
+      padding: EdgeInsets.fromLTRB(12, topPad + 12, 20, 24),
+      decoration: const BoxDecoration(
+        color: AppColors.primaryBlue,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
+        ),
+      ),
       child: Row(
         children: [
           IconButton(
@@ -494,8 +385,8 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                fontSize: 20,
               ),
             ),
           ),
@@ -505,112 +396,302 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
     );
   }
 
-  Widget _sectionTitle(IconData icon, String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10, top: 4),
-      child: Row(
-        children: [
-          Icon(icon, color: AppColors.primaryBlue, size: 16),
-          const SizedBox(width: 6),
-          Text(
-            title,
-            style: const TextStyle(
-              color: AppColors.primaryBlue,
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _label(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 12, bottom: 8),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: AppColors.dark2,
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
-
-  Widget _input(
-    TextEditingController controller, {
+  Widget _textField({
+    required String label,
+    required TextEditingController controller,
     TextInputType? keyboardType,
     bool enabled = true,
   }) {
-    return TextFormField(
-      controller: controller,
-      enabled: enabled && !isSaving,
-      keyboardType: keyboardType,
-      decoration: _inputDecoration(),
-    );
-  }
-
-  Widget _dateInput({
-    required TextEditingController controller,
-    required VoidCallback onTap,
-  }) {
-    return TextFormField(
-      controller: controller,
-      enabled: !isSaving,
-      readOnly: true,
-      onTap: isSaving ? null : onTap,
-      decoration: _inputDecoration(
-        suffixIcon: const Icon(
-          Icons.calendar_today_outlined,
-          color: AppColors.primaryBlue,
-          size: 18,
-        ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: TextFormField(
+        controller: controller,
+        enabled: enabled && !isSaving,
+        keyboardType: keyboardType,
+        style: const TextStyle(color: AppColors.dark1, fontSize: 14),
+        decoration: _inputDecoration(label, enabled: enabled && !isSaving),
       ),
     );
   }
 
-  Widget _selectInput({
+  Widget _selectField({
+    required String label,
     required String value,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
   }) {
-    return InkWell(
-      onTap: isSaving ? null : onTap,
-      borderRadius: BorderRadius.circular(6),
-      child: IgnorePointer(
-        child: TextFormField(
-          enabled: !isSaving,
-          controller: TextEditingController(text: value),
-          decoration: _inputDecoration(
-            suffixIcon: const Icon(
-              Icons.keyboard_arrow_down_rounded,
-              color: AppColors.primaryBlue,
-            ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: InkWell(
+        onTap: isSaving ? null : onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: InputDecorator(
+          decoration: _inputDecoration(label),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  value,
+                  style: const TextStyle(
+                    color: AppColors.dark1,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: AppColors.primaryBlue,
+                size: 20,
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  InputDecoration _inputDecoration({Widget? suffixIcon}) {
+  InputDecoration _inputDecoration(String label, {bool enabled = true}) {
     return InputDecoration(
-      suffixIcon: suffixIcon,
+      labelText: label,
+      labelStyle: const TextStyle(color: AppColors.dark2, fontSize: 14),
       filled: true,
-      fillColor: AppColors.white,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+      fillColor: enabled ? AppColors.white : AppColors.light2,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(6),
+        borderSide: const BorderSide(color: AppColors.light2),
+      ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(6),
-        borderSide: const BorderSide(color: AppColors.light1),
+        borderSide: const BorderSide(color: AppColors.light2),
       ),
       disabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(6),
-        borderSide: const BorderSide(color: AppColors.light1),
+        borderSide: const BorderSide(color: AppColors.light2),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(6),
         borderSide: const BorderSide(color: AppColors.primaryBlue, width: 1.4),
       ),
+    );
+  }
+
+  void _showGenderSheet() {
+    _showOptionSheet<String>(
+      title: 'Pilih Jenis Kelamin',
+      items: const ['Laki-laki', 'Perempuan'],
+      itemLabel: (item) => item,
+      isSelected: (item) => item == gender,
+      onSelected: (item) {
+        setState(() => gender = item);
+      },
+    );
+  }
+
+  void _showDiabetesTypeSheet() {
+    _showOptionSheet<String>(
+      title: 'Pilih Tipe Diabetes',
+      items: const ['Tipe 1', 'Tipe 2'],
+      itemLabel: (item) => item,
+      isSelected: (item) => item == dmType,
+      onSelected: (item) {
+        setState(() => dmType = item);
+      },
+    );
+  }
+
+  void _showBloodTypeSheet() {
+    _showOptionSheet<String>(
+      title: 'Pilih Golongan Darah',
+      items: const ['A', 'B', 'AB', 'O'],
+      itemLabel: (item) => item,
+      isSelected: (item) => item == bloodType,
+      onSelected: (item) {
+        setState(() => bloodType = item);
+      },
+    );
+  }
+
+  void _showRhesusSheet() {
+    _showOptionSheet<String>(
+      title: 'Pilih Rhesus',
+      items: const ['Positif (+)', 'Negatif (-)'],
+      itemLabel: (item) => item,
+      isSelected: (item) => item == rhesus,
+      onSelected: (item) {
+        setState(() => rhesus = item);
+      },
+    );
+  }
+
+  void _showOptionSheet<T>({
+    required String title,
+    required List<T> items,
+    required String Function(T item) itemLabel,
+    required bool Function(T item) isSelected,
+    required void Function(T item) onSelected,
+    double? maxHeightFactor,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        final content = Column(
+          mainAxisSize: maxHeightFactor == null
+              ? MainAxisSize.min
+              : MainAxisSize.max,
+          children: [
+            Container(
+              width: 42,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.light1,
+                borderRadius: BorderRadius.circular(20),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              title,
+              style: const TextStyle(
+                color: AppColors.primaryBlue,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Flexible(
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: items.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 2),
+                itemBuilder: (context, index) {
+                  final item = items[index];
+                  final selected = isSelected(item);
+
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      itemLabel(item),
+                      style: TextStyle(
+                        color: selected
+                            ? AppColors.primaryBlue
+                            : AppColors.dark1,
+                        fontSize: 14,
+                        fontWeight: selected
+                            ? FontWeight.w600
+                            : FontWeight.w400,
+                      ),
+                    ),
+                    trailing: selected
+                        ? const Icon(
+                            Icons.check,
+                            color: AppColors.primaryBlue,
+                            size: 20,
+                          )
+                        : null,
+                    onTap: () {
+                      onSelected(item);
+                      Navigator.pop(sheetContext);
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+
+        return Container(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+          decoration: const BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: maxHeightFactor == null
+              ? content
+              : SizedBox(
+                  height: MediaQuery.of(context).size.height * maxHeightFactor,
+                  child: content,
+                ),
+        );
+      },
+    );
+  }
+
+  void _showSuccessSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return Container(
+          padding: const EdgeInsets.fromLTRB(24, 14, 24, 24),
+          decoration: const BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.light1,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              const SizedBox(height: 22),
+              const CircleAvatar(
+                radius: 34,
+                backgroundColor: Color(0xFFE7F8EF),
+                child: Icon(Icons.check, color: Colors.green, size: 34),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Profil berhasil diperbarui',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.primaryBlue,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Data profil Anda telah tersimpan.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.dark2,
+                  fontSize: 13,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 22),
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    Navigator.pop(context, true);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryBlue,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                  child: const Text(
+                    'Kembali ke Profil',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

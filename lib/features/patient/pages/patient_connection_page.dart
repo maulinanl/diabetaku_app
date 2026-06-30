@@ -1385,6 +1385,7 @@ class _ConnectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isConnected = status == 'Diterima' || status == 'Terhubung';
+    final isWaiting = status == 'Menunggu' || status == 'Menunggu Persetujuan';
 
     return InkWell(
       onTap: onTap,
@@ -1444,9 +1445,13 @@ class _ConnectionCard extends StatelessWidget {
                         text: status,
                         bg: isConnected
                             ? const Color(0xFFEAFBF3)
+                            : isWaiting
+                            ? const Color(0xFFFFF4C7)
                             : AppColors.veryLightBlue,
                         textColor: isConnected
                             ? const Color(0xFF10C878)
+                            : isWaiting
+                            ? Colors.orange
                             : AppColors.primaryBlue,
                         icon: isConnected
                             ? Icons.check_circle
@@ -1673,6 +1678,8 @@ class _SearchDoctorCard extends StatelessWidget {
                             : AppColors.veryLightBlue,
                         textColor: isConnected
                             ? const Color(0xFF10C878)
+                            : isWaiting
+                            ? Colors.orange
                             : AppColors.primaryBlue,
                         icon: isConnected
                             ? Icons.check_circle

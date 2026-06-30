@@ -6,6 +6,8 @@ import '../../../data/services/api_service.dart';
 import 'patient_connection_page.dart';
 import 'patient_doctor_detail_page.dart';
 import 'patient_recommendation_detail_page.dart';
+import 'patient_history_page.dart';
+import 'patient_validation_detail_page.dart';
 import 'patient_validation_page.dart';
 
 class PatientNotificationPage extends StatefulWidget {
@@ -531,10 +533,7 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
       );
     } else if (routeKey.contains('validation') ||
         routeKey.contains('validasi')) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const PatientValidationPage()),
-      );
+      await _openValidationNotification(detail);
     } else if (_isPrescriptionRoute(routeKey)) {
       await Navigator.push(
         context,
@@ -693,6 +692,62 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
 
     if (mounted) {
       _loadNotifications();
+    }
+  }
+
+
+  Future<void> _openValidationNotification(Map<String, dynamic> detail) async {
+    final recordType = detail['record_type']?.toString() ?? '';
+    final recordId = _asInt(detail['record_id']);
+    final status = detail['validation_status']?.toString().toLowerCase() ?? '';
+
+    if (recordType.isEmpty || recordId == null) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const PatientValidationPage()),
+      );
+      return;
+    }
+
+    if (status == 'menunggu') {
+      final changed = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PatientValidationDetailPage(item: detail),
+        ),
+      );
+
+      if (changed == true) {
+        await _loadNotifications();
+      }
+      return;
+    }
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PatientHealthDetailPage(
+          type: _historyTypeFromRecordType(recordType),
+          item: detail,
+        ),
+      ),
+    );
+  }
+
+  String _historyTypeFromRecordType(String recordType) {
+    switch (recordType) {
+      case 'glucose':
+        return 'Glukosa';
+      case 'physiological':
+        return 'Fisiologis';
+      case 'activity':
+        return 'Aktivitas';
+      case 'meal':
+        return 'Makan';
+      case 'medication':
+        return 'Obat';
+      default:
+        return 'Glukosa';
     }
   }
 

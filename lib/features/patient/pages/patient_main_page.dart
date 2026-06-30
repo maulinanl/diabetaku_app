@@ -154,6 +154,7 @@ class _PatientHomePageState extends State<PatientHomePage> {
 
     return [
       ['Glukosa', Icons.opacity, items['glucose'] == true],
+      ['Fisiologis', Icons.favorite_border, items['physiological'] == true],
       ['Resep Obat', Icons.medication_outlined, items['medication'] == true],
       ['Aktivitas', Icons.directions_run, items['activity'] == true],
       ['Makan', Icons.restaurant_outlined, items['meal'] == true],
@@ -261,7 +262,7 @@ class _PatientHomePageState extends State<PatientHomePage> {
   Map<String, String> _buildConsistencyStatus() {
     final result = <String, Set<String>>{};
 
-    for (final type in ['glucose', 'medication', 'activity', 'meal']) {
+    for (final type in ['glucose', 'physiological', 'medication', 'activity', 'meal']) {
       final records = List<Map<String, dynamic>>.from(
         healthHistories[type] ?? [],
       );
@@ -279,7 +280,7 @@ class _PatientHomePageState extends State<PatientHomePage> {
     }
 
     return result.map((key, value) {
-      if (value.length >= 4) return MapEntry(key, 'lengkap');
+      if (value.length >= 5) return MapEntry(key, 'lengkap');
       if (value.isNotEmpty) return MapEntry(key, 'sebagian');
       return MapEntry(key, 'tidak');
     });
@@ -557,7 +558,7 @@ class _PatientHomePageState extends State<PatientHomePage> {
                   ),
                 ),
                 Text(
-                  '${homeSummary?['daily_checklist']?['completed'] ?? 0} / ${homeSummary?['daily_checklist']?['total'] ?? 4} selesai',
+                  '${homeSummary?['daily_checklist']?['completed'] ?? 0} / ${homeSummary?['daily_checklist']?['total'] ?? 5} selesai',
                   style: const TextStyle(
                     color: AppColors.primaryBlue,
                     fontSize: 11,
@@ -577,7 +578,7 @@ class _PatientHomePageState extends State<PatientHomePage> {
             child: FractionallySizedBox(
               widthFactor:
                   ((homeSummary?['daily_checklist']?['completed'] ?? 0) /
-                          (homeSummary?['daily_checklist']?['total'] ?? 4))
+                          (homeSummary?['daily_checklist']?['total'] ?? 5))
                       .clamp(0.0, 1.0),
               child: Container(
                 decoration: BoxDecoration(
@@ -733,11 +734,53 @@ class _PatientHomePageState extends State<PatientHomePage> {
 
               if (dayNumber < 1) {
                 final prevDay = prevMonthDays + dayNumber;
+                final date = DateTime(prevMonth.year, prevMonth.month, prevDay);
+                final status = statusMap[_dateKey(date)]?.toLowerCase();
+                final prevStatus = statusMap[
+                  _dateKey(date.subtract(const Duration(days: 1)))
+                ];
+                final nextStatus = statusMap[
+                  _dateKey(date.add(const Duration(days: 1)))
+                ];
+
+                if (status == 'lengkap' ||
+                    status == 'sebagian' ||
+                    status == 'tidak') {
+                  return _calendarStreakDay(
+                    text: '$prevDay',
+                    status: status!,
+                    selected: false,
+                    connectLeft: prevStatus == status,
+                    connectRight: nextStatus == status,
+                  );
+                }
+
                 return _calendarTextDay('$prevDay', color: AppColors.dark4);
               }
 
               if (dayNumber > totalDays) {
                 final nextDay = dayNumber - totalDays;
+                final date = DateTime(year, month + 1, nextDay);
+                final status = statusMap[_dateKey(date)]?.toLowerCase();
+                final prevStatus = statusMap[
+                  _dateKey(date.subtract(const Duration(days: 1)))
+                ];
+                final nextStatus = statusMap[
+                  _dateKey(date.add(const Duration(days: 1)))
+                ];
+
+                if (status == 'lengkap' ||
+                    status == 'sebagian' ||
+                    status == 'tidak') {
+                  return _calendarStreakDay(
+                    text: '$nextDay',
+                    status: status!,
+                    selected: false,
+                    connectLeft: prevStatus == status,
+                    connectRight: nextStatus == status,
+                  );
+                }
+
                 return _calendarTextDay('$nextDay', color: AppColors.dark4);
               }
 

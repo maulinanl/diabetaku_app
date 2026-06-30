@@ -68,6 +68,157 @@ class _PatientValidationDetailPageState
     return '${date.day}/${date.month}/${date.year} • ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 
+
+  void _confirmRespond(bool approve) {
+    if (isProcessing) return;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(22, 18, 22, 24),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.light1,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 24,
+                      backgroundColor: approve
+                          ? AppColors.veryLightBlue
+                          : AppColors.lightRed,
+                      child: Icon(
+                        approve
+                            ? Icons.check_circle_outline
+                            : Icons.cancel_outlined,
+                        color: approve ? AppColors.primaryBlue : AppColors.red,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        approve ? 'Setujui data ini?' : 'Tolak data ini?',
+                        style: TextStyle(
+                          color: approve ? AppColors.primaryBlue : AppColors.red,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  approve
+                      ? 'Pastikan data dari keluarga sudah benar sebelum disetujui.'
+                      : 'Pastikan data memang tidak sesuai sebelum ditolak.',
+                  style: const TextStyle(
+                    color: AppColors.dark2,
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(13),
+                  decoration: BoxDecoration(
+                    color: AppColors.veryLightBlue,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.light1),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        type,
+                        style: const TextStyle(
+                          color: AppColors.dark1,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        '$value • $time',
+                        style: const TextStyle(
+                          color: AppColors.dark2,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        'Diinput oleh: $name ($relation)',
+                        style: const TextStyle(
+                          color: AppColors.primaryBlue,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(sheetContext),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.dark2,
+                          side: const BorderSide(color: AppColors.light1),
+                          minimumSize: const Size.fromHeight(46),
+                        ),
+                        child: const Text('Batal'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(sheetContext);
+                          _respond(approve);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              approve ? AppColors.primaryBlue : AppColors.red,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          minimumSize: const Size.fromHeight(46),
+                        ),
+                        child: Text(approve ? 'Ya, Setujui' : 'Ya, Tolak'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _respond(bool approve) async {
     if (isProcessing) return;
 
@@ -128,7 +279,7 @@ class _PatientValidationDetailPageState
                         Expanded(
                           child: OutlinedButton(
                             onPressed:
-                                isProcessing ? null : () => _respond(false),
+                                isProcessing ? null : () => _confirmRespond(false),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.red,
                               side: const BorderSide(color: AppColors.red),
@@ -141,7 +292,7 @@ class _PatientValidationDetailPageState
                         Expanded(
                           child: ElevatedButton(
                             onPressed:
-                                isProcessing ? null : () => _respond(true),
+                                isProcessing ? null : () => _confirmRespond(true),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primaryBlue,
                               foregroundColor: Colors.white,

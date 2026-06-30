@@ -21,11 +21,11 @@ class _PatientAddDataPageState extends State<PatientAddDataPage> {
   String? errorMessage;
 
   Map<String, String> todayStatus = {
-    'glucose': 'Belum Ada Data',
-    'physiological': 'Belum Ada Data',
-    'activity': 'Belum Ada Data',
-    'meal': 'Belum Ada Data',
-    'medication': 'Belum Ada Data',
+    'glucose': 'Belum Input',
+    'physiological': 'Belum Input',
+    'activity': 'Belum Input',
+    'meal': 'Belum Input',
+    'medication': 'Belum Input',
   };
 
   final List<Map<String, dynamic>> items = [
@@ -112,7 +112,7 @@ class _PatientAddDataPageState extends State<PatientAddDataPage> {
 
   String _getTodayStatus(dynamic records) {
     if (records == null || records is! List || records.isEmpty) {
-      return 'Belum Ada Data';
+      return 'Belum Input';
     }
 
     final todayRecords = records.where((item) {
@@ -128,7 +128,7 @@ class _PatientAddDataPageState extends State<PatientAddDataPage> {
     }).toList();
 
     if (todayRecords.isEmpty) {
-      return 'Belum Ada Data';
+      return 'Belum Input';
     }
 
     final hasWaiting = todayRecords.any((item) {
@@ -153,7 +153,7 @@ class _PatientAddDataPageState extends State<PatientAddDataPage> {
       return 'Valid';
     }
 
-    return 'Belum Ada Data';
+    return 'Belum Input';
   }
 
   bool _isToday(dynamic value) {
@@ -231,7 +231,7 @@ class _PatientAddDataPageState extends State<PatientAddDataPage> {
         itemBuilder: (context, index) {
           final item = items[index];
           final key = item['key'].toString();
-          final status = todayStatus[key] ?? 'Belum Ada Data';
+          final status = todayStatus[key] ?? 'Belum Input';
 
           return InkWell(
             borderRadius: BorderRadius.circular(14),
