@@ -4,23 +4,24 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 
-class FamilyNotificationPage extends StatefulWidget {
+class CaregiverNotificationPage extends StatefulWidget {
   final int? initialNotificationId;
 
-  const FamilyNotificationPage({
+  const CaregiverNotificationPage({
     super.key,
     this.initialNotificationId,
   });
 
   @override
-  State<FamilyNotificationPage> createState() => _FamilyNotificationPageState();
+  State<CaregiverNotificationPage> createState() => _CaregiverNotificationPageState();
 }
 
-class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
+class _CaregiverNotificationPageState extends State<CaregiverNotificationPage> {
   final searchController = TextEditingController();
 
   int selectedTab = 0;
   bool isLoading = true;
+  bool isMarkingAll = false;
   bool hasOpenedInitialNotification = false;
   String? errorMessage;
 
@@ -125,6 +126,44 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
         value?.toString().toLowerCase() == 'false';
   }
 
+
+  bool get hasUnreadNotification {
+    return notifications.any(_isUnread);
+  }
+
+  Future<void> _markAllAsRead() async {
+    if (isMarkingAll || !hasUnreadNotification) return;
+
+    setState(() => isMarkingAll = true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getInt('user_id');
+
+      if (userId == null) {
+        throw Exception('User ID tidak ditemukan. Coba login ulang.');
+      }
+
+      await ApiService.markAllNotificationsAsRead(userId);
+
+      if (!mounted) return;
+
+      setState(() {
+        for (final item in notifications) {
+          item['is_read'] = true;
+          item['read'] = true;
+        }
+        isMarkingAll = false;
+      });
+
+      _showSnackBar('Semua notifikasi sudah ditandai dibaca', isError: false);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => isMarkingAll = false);
+      _showSnackBar(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
   String _title(Map<String, dynamic> item) {
     return item['title']?.toString() ??
         item['notification_title']?.toString() ??
@@ -204,7 +243,7 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
 
     if (type.contains('validation') ||
         type.contains('validasi') ||
-        type.contains('family_data')) {
+        type.contains('caregiver_data')) {
       return Icons.assignment_outlined;
     }
 
@@ -233,7 +272,7 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
   Color _iconBgFromType(String type) {
     if (type.contains('validation') ||
         type.contains('validasi') ||
-        type.contains('family_data')) {
+        type.contains('caregiver_data')) {
       return const Color(0xFFFFF4DA);
     }
 
@@ -262,7 +301,7 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
   Color _iconColorFromType(String type) {
     if (type.contains('validation') ||
         type.contains('validasi') ||
-        type.contains('family_data')) {
+        type.contains('caregiver_data')) {
       return Colors.orange;
     }
 
@@ -347,7 +386,12 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
 
     if (!mounted) return;
 
-    _showNotificationDetail(item);
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CaregiverNotificationDetailPage(item: item),
+      ),
+    );
   }
 
   void _showNotificationDetail(Map<String, dynamic> item) {
@@ -504,6 +548,28 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
     );
   }
 
+  void _showSnackBar(String message, {bool isError = true}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: isError ? AppColors.red : AppColors.primaryBlue,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        content: Row(
+          children: [
+            Icon(
+              isError ? Icons.info_outline : Icons.check_circle_outline,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(message, style: const TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final filteredNotifications = _filteredNotifications();
@@ -565,7 +631,7 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
       final type = _type(item);
 
       widgets.add(
-        _FamilyNotificationItem(
+        _CaregiverNotificationItem(
           icon: _iconFromType(type),
           iconBg: _iconBgFromType(type),
           iconColor: _iconColorFromType(type),
@@ -613,7 +679,27 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
                   ),
                 ),
               ),
-              const SizedBox(width: 48),
+              IconButton(
+                onPressed: hasUnreadNotification && !isMarkingAll
+                    ? _markAllAsRead
+                    : null,
+                tooltip: 'Tandai semua dibaca',
+                icon: isMarkingAll
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Icon(
+                        Icons.done_all_rounded,
+                        color: hasUnreadNotification
+                            ? Colors.white
+                            : Colors.white.withValues(alpha: 0.45),
+                      ),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -782,7 +868,348 @@ class _FamilyNotificationPageState extends State<FamilyNotificationPage> {
   }
 }
 
-class _FamilyNotificationItem extends StatelessWidget {
+
+class CaregiverNotificationDetailPage extends StatelessWidget {
+  final Map<String, dynamic> item;
+
+  const CaregiverNotificationDetailPage({
+    super.key,
+    required this.item,
+  });
+
+  String get title => item['title']?.toString() ??
+      item['notification_title']?.toString() ??
+      'Notifikasi';
+
+  String get message => item['message']?.toString() ??
+      item['notification_message']?.toString() ??
+      '-';
+
+  String get type {
+    final rawType = item['type_code'] ??
+        item['reference_type'] ??
+        item['type'] ??
+        item['notification_type_name'] ??
+        item['notification_type'] ??
+        '';
+
+    return rawType
+        .toString()
+        .toLowerCase()
+        .trim()
+        .replaceAll(' ', '_')
+        .replaceAll('-', '_');
+  }
+
+  String get categoryLabel {
+    if (type.contains('validation') || type.contains('validasi')) {
+      return 'Validasi Data';
+    }
+    if (type.contains('medication') || type.contains('obat')) {
+      return 'Kepatuhan Obat';
+    }
+    if (type.contains('recommendation') || type.contains('rekomendasi')) {
+      return 'Rekomendasi';
+    }
+    if (type.contains('disconnect') || type.contains('putus')) {
+      return 'Relasi Terputus';
+    }
+    if (type.contains('connection') || type.contains('koneksi')) {
+      return 'Koneksi';
+    }
+    return 'Informasi';
+  }
+
+  IconData get icon {
+    if (type.contains('validation') || type.contains('validasi')) {
+      return Icons.assignment_outlined;
+    }
+    if (type.contains('medication') || type.contains('obat')) {
+      return Icons.medication_outlined;
+    }
+    if (type.contains('recommendation') || type.contains('rekomendasi')) {
+      return Icons.medical_information_outlined;
+    }
+    if (type.contains('disconnect') || type.contains('putus')) {
+      return Icons.link_off_rounded;
+    }
+    if (type.contains('connection') || type.contains('koneksi')) {
+      return Icons.person_outline;
+    }
+    return Icons.notifications_none_outlined;
+  }
+
+  Color get iconBg {
+    if (type.contains('validation') || type.contains('validasi')) {
+      return const Color(0xFFFFF4DA);
+    }
+    if (type.contains('disconnect') || type.contains('putus')) {
+      return AppColors.lightRed;
+    }
+    if (type.contains('connection') || type.contains('koneksi')) {
+      return const Color(0xFFEAFBF3);
+    }
+    return AppColors.veryLightBlue;
+  }
+
+  Color get iconColor {
+    if (type.contains('validation') || type.contains('validasi')) {
+      return Colors.orange;
+    }
+    if (type.contains('disconnect') || type.contains('putus')) {
+      return AppColors.red;
+    }
+    if (type.contains('connection') || type.contains('koneksi')) {
+      return const Color(0xFF10C878);
+    }
+    return AppColors.primaryBlue;
+  }
+
+  String _formatTime(dynamic raw) {
+    final value = raw?.toString() ?? '';
+    if (value.isEmpty) return '-';
+
+    final dt = DateTime.tryParse(value);
+    if (dt == null) return value;
+
+    final local = dt.toLocal();
+    return '${local.day.toString().padLeft(2, '0')}/'
+        '${local.month.toString().padLeft(2, '0')}/'
+        '${local.year} • '
+        '${local.hour.toString().padLeft(2, '0')}:'
+        '${local.minute.toString().padLeft(2, '0')}';
+  }
+
+  String get time => _formatTime(
+        item['created_at'] ?? item['notification_date'] ?? item['time'],
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        top: false,
+        child: Column(
+          children: [
+            _header(context),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+                child: Column(
+                  children: [
+                    _messageCard(),
+                    const SizedBox(height: 14),
+                    _infoCard(),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _header(BuildContext context) {
+    final topPad = MediaQuery.of(context).padding.top;
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(14, topPad + 12, 20, 24),
+      decoration: const BoxDecoration(
+        color: AppColors.primaryBlue,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(22),
+          bottomRight: Radius.circular(22),
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+              ),
+              const Expanded(
+                child: Text(
+                  'Detail Notifikasi',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 21,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 48),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 29,
+                  backgroundColor: iconBg,
+                  child: Icon(icon, color: iconColor, size: 28),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          color: AppColors.dark1,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        time,
+                        style: const TextStyle(
+                          color: AppColors.dark2,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 7),
+                      _badge(categoryLabel),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _messageCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(15),
+      decoration: _cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Isi Notifikasi',
+            style: TextStyle(
+              color: AppColors.primaryBlue,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            message,
+            style: const TextStyle(
+              color: AppColors.dark1,
+              fontSize: 13,
+              height: 1.45,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(15),
+      decoration: _cardDecoration(),
+      child: Column(
+        children: [
+          _infoRow('Kategori', categoryLabel),
+          _infoRow('Waktu', time),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 9),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(color: AppColors.dark2, fontSize: 12),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                color: AppColors.primaryBlue,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _badge(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.lightBlue,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: AppColors.primaryBlue,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  BoxDecoration _cardDecoration() {
+    return BoxDecoration(
+      color: AppColors.white,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: AppColors.light1),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.06),
+          blurRadius: 8,
+          offset: const Offset(0, 3),
+        ),
+      ],
+    );
+  }
+}
+
+class _CaregiverNotificationItem extends StatelessWidget {
   final IconData icon;
   final Color iconBg;
   final Color iconColor;
@@ -792,7 +1219,7 @@ class _FamilyNotificationItem extends StatelessWidget {
   final bool unread;
   final VoidCallback onTap;
 
-  const _FamilyNotificationItem({
+  const _CaregiverNotificationItem({
     required this.icon,
     required this.iconBg,
     required this.iconColor,

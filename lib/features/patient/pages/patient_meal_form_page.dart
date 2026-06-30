@@ -447,8 +447,14 @@ class _PatientMealFormPageState extends State<PatientMealFormPage> {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(16, topPad + 14, 16, 18),
-      color: AppColors.primaryBlue,
+      padding: EdgeInsets.fromLTRB(12, topPad + 12, 20, 24),
+      decoration: const BoxDecoration(
+        color: AppColors.primaryBlue,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
+        ),
+      ),
       child: Row(
         children: [
           IconButton(
@@ -461,8 +467,8 @@ class _PatientMealFormPageState extends State<PatientMealFormPage> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 21,
-                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),

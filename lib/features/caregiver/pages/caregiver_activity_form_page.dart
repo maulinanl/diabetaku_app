@@ -4,13 +4,13 @@ import 'package:flutter/services.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 
-class FamilyMealFormPage extends StatefulWidget {
+class CaregiverActivityFormPage extends StatefulWidget {
   final int patientId;
   final String patientInitial;
   final String patientName;
   final String patientInfo;
 
-  const FamilyMealFormPage({
+  const CaregiverActivityFormPage({
     super.key,
     required this.patientId,
     required this.patientInitial,
@@ -19,47 +19,39 @@ class FamilyMealFormPage extends StatefulWidget {
   });
 
   @override
-  State<FamilyMealFormPage> createState() => _FamilyMealFormPageState();
+  State<CaregiverActivityFormPage> createState() => _CaregiverActivityFormPageState();
 }
 
-class _FamilyMealFormPageState extends State<FamilyMealFormPage> {
-  int selectedMealType = 0;
+class _CaregiverActivityFormPageState extends State<CaregiverActivityFormPage> {
+  int selectedActivity = 0;
+  int selectedIntensity = 0;
 
-  final mealTypes = const ['Sarapan', 'Makan Siang', 'Makan Malam', 'Snack'];
+  final activities = const [
+    'Jalan Kaki',
+    'Lari',
+    'Bersepeda',
+    'Senam',
+    'Yoga',
+  ];
 
-  final carbController = TextEditingController();
-  final caloriesController = TextEditingController();
-  final foodController = TextEditingController();
+  final intensities = const ['Ringan', 'Sedang', 'Berat'];
+
+  final durationController = TextEditingController();
+  final noteController = TextEditingController();
 
   DateTime selectedDate = DateTime.now();
   TimeOfDay selectedTime = TimeOfDay.now();
 
   bool isSaving = false;
 
-  int get mealTypeId {
-    switch (selectedMealType) {
-      case 0:
-        return 1;
-      case 1:
-        return 2;
-      case 2:
-        return 3;
-      case 3:
-        return 4;
-      default:
-        return 1;
-    }
-  }
+  int get activityTypeId => selectedActivity + 1;
 
   bool get isValid {
-    final carb = double.tryParse(carbController.text.trim());
-
-    return carb != null &&
-        carb > 0 &&
-        foodController.text.trim().isNotEmpty;
+    final duration = int.tryParse(durationController.text.trim());
+    return duration != null && duration > 0;
   }
 
-  DateTime get mealDate {
+  DateTime get activityDate {
     return DateTime(
       selectedDate.year,
       selectedDate.month,
@@ -72,21 +64,14 @@ class _FamilyMealFormPageState extends State<FamilyMealFormPage> {
   @override
   void initState() {
     super.initState();
-
-    for (final controller in [
-      carbController,
-      caloriesController,
-      foodController,
-    ]) {
-      controller.addListener(() => setState(() {}));
-    }
+    durationController.addListener(() => setState(() {}));
+    noteController.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
-    carbController.dispose();
-    caloriesController.dispose();
-    foodController.dispose();
+    durationController.dispose();
+    noteController.dispose();
     super.dispose();
   }
 
@@ -149,22 +134,18 @@ class _FamilyMealFormPageState extends State<FamilyMealFormPage> {
     setState(() => isSaving = true);
 
     try {
-      await ApiService.storeFamilyMeal(
+      await ApiService.storeCaregiverActivity(
         patientId: widget.patientId,
-        mealTypeId: mealTypeId,
-        carbohydrateGram: double.parse(carbController.text.trim()),
-        calories: caloriesController.text.trim().isEmpty
-            ? null
-            : double.tryParse(caloriesController.text.trim()),
-        description: foodController.text.trim(),
-        mealDate: mealDate,
+        activityTypeId: activityTypeId,
+        durationMinutes: int.parse(durationController.text.trim()),
+        intensity: intensities[selectedIntensity],
+        activityDate: activityDate,
       );
 
       if (!mounted) return;
       _showSuccessSheet(context);
     } catch (e) {
       if (!mounted) return;
-
       _showStyledSnackBar(
         message: e.toString().replaceFirst('Exception: ', ''),
       );
@@ -193,14 +174,16 @@ class _FamilyMealFormPageState extends State<FamilyMealFormPage> {
           children: [
             _patientCard(),
             const SizedBox(height: 18),
+
             const Text(
-              'Pola Makan',
+              'Aktivitas Fisik',
               style: TextStyle(
                 color: AppColors.primaryBlue,
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
               ),
             ),
+
             const SizedBox(height: 14),
 
             _label('Tanggal dan waktu*'),
@@ -226,72 +209,38 @@ class _FamilyMealFormPageState extends State<FamilyMealFormPage> {
 
             const SizedBox(height: 14),
 
-            _label('Tipe makan*'),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: List.generate(mealTypes.length, (index) {
-                final selected = selectedMealType == index;
-
-                return GestureDetector(
-                  onTap: () => setState(() => selectedMealType = index),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 9,
-                    ),
-                    decoration: BoxDecoration(
-                      color: selected ? AppColors.primaryBlue : AppColors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: selected
-                            ? AppColors.primaryBlue
-                            : AppColors.light1,
-                      ),
-                    ),
-                    child: Text(
-                      mealTypes[index],
-                      style: TextStyle(
-                        color: selected ? Colors.white : AppColors.primaryBlue,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                );
-              }),
+            _label('Jenis aktivitas*'),
+            _choiceWrap(
+              data: activities,
+              selectedIndex: selectedActivity,
+              onTap: (index) => setState(() => selectedActivity = index),
             ),
 
             const SizedBox(height: 14),
 
-            _label('Estimasi karbohidrat (gram)*'),
+            _label('Durasi (menit)*'),
             _input(
-              hint: 'Masukkan estimasi karbohidrat',
-              controller: carbController,
+              hint: 'Masukkan durasi aktivitas',
+              controller: durationController,
               keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-              ],
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             ),
 
             const SizedBox(height: 14),
 
-            _label('Estimasi kalori'),
-            _input(
-              hint: 'Opsional, contoh: 450',
-              controller: caloriesController,
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-              ],
+            _label('Intensitas*'),
+            _choiceWrap(
+              data: intensities,
+              selectedIndex: selectedIntensity,
+              onTap: (index) => setState(() => selectedIntensity = index),
             ),
 
             const SizedBox(height: 14),
 
-            _label('Deskripsi makanan*'),
+            _label('Catatan opsional'),
             _input(
-              hint: 'Contoh: Nasi putih, ayam goreng, sayur bayam',
-              controller: foodController,
+              hint: 'Contoh: Jalan pagi keliling kompleks',
+              controller: noteController,
               maxLines: 3,
             ),
 
@@ -388,6 +337,42 @@ class _FamilyMealFormPageState extends State<FamilyMealFormPage> {
     );
   }
 
+  Widget _choiceWrap({
+    required List<String> data,
+    required int selectedIndex,
+    required ValueChanged<int> onTap,
+  }) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: List.generate(data.length, (index) {
+        final selected = selectedIndex == index;
+
+        return GestureDetector(
+          onTap: () => onTap(index),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            decoration: BoxDecoration(
+              color: selected ? AppColors.primaryBlue : AppColors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: selected ? AppColors.primaryBlue : AppColors.light1,
+              ),
+            ),
+            child: Text(
+              data[index],
+              style: TextStyle(
+                color: selected ? Colors.white : AppColors.primaryBlue,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
   Widget _label(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 7),
@@ -455,10 +440,7 @@ class _FamilyMealFormPageState extends State<FamilyMealFormPage> {
         hintStyle: const TextStyle(color: AppColors.dark3, fontSize: 12),
         filled: true,
         fillColor: AppColors.white,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 13,
-        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6),
           borderSide: const BorderSide(color: AppColors.light1),
@@ -477,57 +459,55 @@ class _FamilyMealFormPageState extends State<FamilyMealFormPage> {
       backgroundColor: Colors.transparent,
       isDismissible: false,
       enableDrag: false,
-      builder: (sheetContext) {
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircleAvatar(
-                radius: 36,
-                backgroundColor: Color(0xFFEAFBF3),
-                child: Icon(Icons.check, color: Color(0xFF10C878), size: 36),
+      builder: (sheetContext) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircleAvatar(
+              radius: 36,
+              backgroundColor: Color(0xFFEAFBF3),
+              child: Icon(Icons.check, color: Color(0xFF10C878), size: 36),
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              'Data berhasil disimpan',
+              style: TextStyle(
+                color: AppColors.primaryBlue,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
               ),
-              const SizedBox(height: 18),
-              const Text(
-                'Data berhasil disimpan',
-                style: TextStyle(
-                  color: AppColors.primaryBlue,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Data menunggu konfirmasi pasien sebelum masuk ke riwayat kesehatan.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.dark2, fontSize: 13),
+            ),
+            const SizedBox(height: 22),
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(sheetContext);
+                  Navigator.pop(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryBlue,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
                 ),
+                child: const Text('Kembali'),
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Data menunggu konfirmasi pasien sebelum masuk ke riwayat kesehatan.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.dark2, fontSize: 13),
-              ),
-              const SizedBox(height: 22),
-              SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(sheetContext);
-                    Navigator.pop(context);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryBlue,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                  ),
-                  child: const Text('Kembali'),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+            ),
+          ],
+        ),
+      ),
     );
   }
 

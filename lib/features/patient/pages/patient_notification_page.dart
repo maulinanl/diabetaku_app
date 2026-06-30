@@ -236,7 +236,7 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
     return 'Dokter';
   }
 
-  String _familyFromMessage(String message) {
+  String _caregiverFromMessage(String message) {
     final cleaned = message.trim();
 
     if (cleaned.isEmpty || cleaned == '-') {
@@ -265,9 +265,9 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
     return text;
   }
 
-  String _familyRelation(Map<String, dynamic> item) {
+  String _caregiverRelation(Map<String, dynamic> item) {
     return _safeText(
-      item['relation'] ?? item['relation_name'] ?? item['family_relation'],
+      item['relation'] ?? item['relation_name'] ?? item['caregiver_relation'],
       fallback: 'Keluarga',
     );
   }
@@ -402,8 +402,8 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
     }
   }
 
-  Future<bool> _handleFamilyRequestFromNotification({
-    required int familyId,
+  Future<bool> _handleCaregiverRequestFromNotification({
+    required int caregiverId,
     required String name,
     required bool isAccept,
   }) async {
@@ -416,14 +416,14 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
       }
 
       if (isAccept) {
-        await ApiService.acceptFamilyRequest(
+        await ApiService.acceptCaregiverRequest(
           patientId: patientId,
-          familyId: familyId,
+          caregiverId: caregiverId,
         );
       } else {
-        await ApiService.rejectFamilyRequest(
+        await ApiService.rejectCaregiverRequest(
           patientId: patientId,
-          familyId: familyId,
+          caregiverId: caregiverId,
         );
       }
 
@@ -481,13 +481,13 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
   }
 
 
-  bool _isFamilyRoute(String routeKey) {
-    return routeKey.contains('family') ||
+  bool _isCaregiverRoute(String routeKey) {
+    return routeKey.contains('caregiver') ||
         routeKey.contains('keluarga');
   }
 
-  bool _isFamilyDisconnectedRoute(String routeKey) {
-    return _isFamilyRoute(routeKey) &&
+  bool _isCaregiverDisconnectedRoute(String routeKey) {
+    return _isCaregiverRoute(routeKey) &&
         (routeKey.contains('disconnect') ||
             routeKey.contains('disconnected') ||
             routeKey.contains('diputus') ||
@@ -541,12 +541,12 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
           builder: (_) => PatientPrescriptionNotificationDetailPage(item: detail),
         ),
       );
-    } else if (_isFamilyDisconnectedRoute(routeKey)) {
-      final familyName = _safeText(
-        detail['family_name'] ?? detail['full_name'] ?? detail['name'],
-        fallback: _familyFromMessage(_desc(detail)),
+    } else if (_isCaregiverDisconnectedRoute(routeKey)) {
+      final caregiverName = _safeText(
+        detail['caregiver_name'] ?? detail['full_name'] ?? detail['name'],
+        fallback: _caregiverFromMessage(_desc(detail)),
       );
-      final relation = _familyRelation(detail);
+      final relation = _caregiverRelation(detail);
       final endedAt = _formatDateTime(
         detail['relation_updated_at'] ??
             detail['responded_at'] ??
@@ -557,15 +557,15 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
       );
       final initial = _safeText(
         detail['initial'],
-        fallback: _initialFromName(familyName),
+        fallback: _initialFromName(caregiverName),
       );
 
       await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => FamilyDisconnectedDetailPage(
+          builder: (_) => CaregiverDisconnectedDetailPage(
             initial: initial,
-            name: familyName,
+            name: caregiverName,
             relation: relation,
             date: endedAt,
             message: _desc(detail),
@@ -635,20 +635,20 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
           ),
         ),
       );
-    } else if (routeKey.contains('family') || routeKey.contains('keluarga')) {
-      final familyId = _asInt(detail['family_id'] ?? detail['reference_id']);
-      final familyName = _safeText(
-        detail['family_name'] ?? detail['full_name'] ?? detail['name'],
-        fallback: _familyFromMessage(_desc(detail)),
+    } else if (routeKey.contains('caregiver') || routeKey.contains('keluarga')) {
+      final caregiverId = _asInt(detail['caregiver_id'] ?? detail['reference_id']);
+      final caregiverName = _safeText(
+        detail['caregiver_name'] ?? detail['full_name'] ?? detail['name'],
+        fallback: _caregiverFromMessage(_desc(detail)),
       );
-      final relation = _familyRelation(detail);
+      final relation = _caregiverRelation(detail);
       final requestedAt = _formatDateTime(
         detail['requested_at'] ?? detail['created_at'] ?? detail['time'],
       );
       final status = _safeText(detail['status'], fallback: 'Menunggu');
       final initial = _safeText(
         detail['initial'],
-        fallback: _initialFromName(familyName),
+        fallback: _initialFromName(caregiverName),
       );
 
       final changed = await Navigator.push(
@@ -656,29 +656,29 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
         MaterialPageRoute(
           builder: (_) => PatientRequestDetailPage(
             initial: initial,
-            name: familyName,
+            name: caregiverName,
             relation: relation,
             time: '',
             date: requestedAt,
             initialStatus: status,
-            onAccept: familyId == null
+            onAccept: caregiverId == null
                 ? () async {
-                    _showSnackBar('Family ID tidak ditemukan');
+                    _showSnackBar('Caregiver ID tidak ditemukan');
                     return false;
                   }
-                : () => _handleFamilyRequestFromNotification(
-                      familyId: familyId,
-                      name: familyName,
+                : () => _handleCaregiverRequestFromNotification(
+                      caregiverId: caregiverId,
+                      name: caregiverName,
                       isAccept: true,
                     ),
-            onReject: familyId == null
+            onReject: caregiverId == null
                 ? () async {
-                    _showSnackBar('Family ID tidak ditemukan');
+                    _showSnackBar('Caregiver ID tidak ditemukan');
                     return false;
                   }
-                : () => _handleFamilyRequestFromNotification(
-                      familyId: familyId,
-                      name: familyName,
+                : () => _handleCaregiverRequestFromNotification(
+                      caregiverId: caregiverId,
+                      name: caregiverName,
                       isAccept: false,
                     ),
           ),
@@ -1190,7 +1190,7 @@ _NotificationVisual _notificationVisual(String routeKey) {
     );
   }
 
-  if (routeKey.contains('family') || routeKey.contains('keluarga')) {
+  if (routeKey.contains('caregiver') || routeKey.contains('keluarga')) {
     return const _NotificationVisual(
       icon: Icons.person_add_alt_1_rounded,
       bg: Color(0xFFEAFBF3),
@@ -1766,14 +1766,14 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-class FamilyDisconnectedDetailPage extends StatelessWidget {
+class CaregiverDisconnectedDetailPage extends StatelessWidget {
   final String initial;
   final String name;
   final String relation;
   final String date;
   final String message;
 
-  const FamilyDisconnectedDetailPage({
+  const CaregiverDisconnectedDetailPage({
     super.key,
     required this.initial,
     required this.name,

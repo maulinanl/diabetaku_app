@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import 'patient_doctor_detail_page.dart';
-import 'patient_family_detail_page.dart';
+import 'patient_caregiver_detail_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../data/services/api_service.dart';
 
@@ -24,7 +24,7 @@ class _PatientConnectionPageState extends State<PatientConnectionPage> {
   String? errorMessage;
 
   List<Map<String, dynamic>> doctors = [];
-  List<Map<String, dynamic>> families = [];
+  List<Map<String, dynamic>> caregivers = [];
   List<Map<String, dynamic>> requests = [];
   List<Map<String, dynamic>> searchedDoctors = [];
 
@@ -72,14 +72,14 @@ class _PatientConnectionPageState extends State<PatientConnectionPage> {
       }
 
       final doctorData = await ApiService.getConnectedDoctors(patientId);
-      final familyData = await ApiService.getConnectedFamilies(patientId);
-      final requestData = await ApiService.getIncomingFamilyRequests(patientId);
+      final caregiverData = await ApiService.getConnectedCaregivers(patientId);
+      final requestData = await ApiService.getIncomingCaregiverRequests(patientId);
 
       if (!mounted) return;
 
       setState(() {
         doctors = doctorData;
-        families = familyData;
+        caregivers = caregiverData;
         requests = requestData;
         isLoading = false;
       });
@@ -129,7 +129,7 @@ class _PatientConnectionPageState extends State<PatientConnectionPage> {
   }
 
   Future<bool> _showConfirmAction({
-    required int familyId,
+    required int caregiverId,
     required String name,
     required bool isAccept,
   }) async {
@@ -156,14 +156,14 @@ class _PatientConnectionPageState extends State<PatientConnectionPage> {
 
     try {
       if (isAccept) {
-        await ApiService.acceptFamilyRequest(
+        await ApiService.acceptCaregiverRequest(
           patientId: patientId,
-          familyId: familyId,
+          caregiverId: caregiverId,
         );
       } else {
-        await ApiService.rejectFamilyRequest(
+        await ApiService.rejectCaregiverRequest(
           patientId: patientId,
-          familyId: familyId,
+          caregiverId: caregiverId,
         );
       }
 
@@ -250,8 +250,8 @@ class _PatientConnectionPageState extends State<PatientConnectionPage> {
 
     if (selectedTab == 1) {
       return _connectionList(
-        title: 'KELUARGA SAYA - ${families.length} TERHUBUNG',
-        data: families,
+        title: 'KELUARGA SAYA - ${caregivers.length} TERHUBUNG',
+        data: caregivers,
         isDoctor: false,
       );
     }
@@ -384,7 +384,7 @@ class _PatientConnectionPageState extends State<PatientConnectionPage> {
         ...data.map((item) {
           final name = isDoctor
               ? (item['doctor_name'] ?? item['full_name'] ?? '-').toString()
-              : (item['family_name'] ?? item['full_name'] ?? '-').toString();
+              : (item['caregiver_name'] ?? item['full_name'] ?? '-').toString();
 
           final info = isDoctor
               ? '${item['specialization_name'] ?? '-'} • ${item['institution'] ?? '-'}'
@@ -421,8 +421,8 @@ class _PatientConnectionPageState extends State<PatientConnectionPage> {
                             status: status,
                             date: date,
                           )
-                        : PatientFamilyDetailPage(
-                            familyId: int.parse(item['family_id'].toString()),
+                        : PatientCaregiverDetailPage(
+                            caregiverId: int.parse(item['caregiver_id'].toString()),
                             initial: initial,
                             name: name,
                             relation: info,
@@ -466,13 +466,13 @@ class _PatientConnectionPageState extends State<PatientConnectionPage> {
         ),
         const SizedBox(height: 12),
         ...requests.map((item) {
-          final familyId = int.tryParse(item['family_id'].toString());
+          final caregiverId = int.tryParse(item['caregiver_id'].toString());
 
-          if (familyId == null) {
+          if (caregiverId == null) {
             return const SizedBox();
           }
 
-          final name = (item['family_name'] ?? item['full_name'] ?? '-')
+          final name = (item['caregiver_name'] ?? item['full_name'] ?? '-')
               .toString();
 
           final relation = (item['relation_name'] ?? '-').toString();
@@ -499,12 +499,12 @@ class _PatientConnectionPageState extends State<PatientConnectionPage> {
                       date: date,
                       initialStatus: status,
                       onAccept: () => _showConfirmAction(
-                        familyId: familyId,
+                        caregiverId: caregiverId,
                         name: name,
                         isAccept: true,
                       ),
                       onReject: () => _showConfirmAction(
-                        familyId: familyId,
+                        caregiverId: caregiverId,
                         name: name,
                         isAccept: false,
                       ),
@@ -517,12 +517,12 @@ class _PatientConnectionPageState extends State<PatientConnectionPage> {
                 }
               },
               onAccept: () => _showConfirmAction(
-                familyId: familyId,
+                caregiverId: caregiverId,
                 name: name,
                 isAccept: true,
               ),
               onReject: () => _showConfirmAction(
-                familyId: familyId,
+                caregiverId: caregiverId,
                 name: name,
                 isAccept: false,
               ),
@@ -1148,7 +1148,7 @@ class _PatientRequestDetailPageState extends State<PatientRequestDetailPage> {
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     children: [
-                      _dataFamilyCard(),
+                      _dataCaregiverCard(),
                       const SizedBox(height: 24),
                       if (isPending) ...[
                         _primaryButton(),
@@ -1256,7 +1256,7 @@ class _PatientRequestDetailPageState extends State<PatientRequestDetailPage> {
     );
   }
 
-  Widget _dataFamilyCard() {
+  Widget _dataCaregiverCard() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),

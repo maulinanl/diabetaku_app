@@ -101,10 +101,10 @@ class ApiService {
         );
       }
 
-      if (data['family'] != null) {
+      if (data['caregiver'] != null) {
         await prefs.setInt(
-          'family_id',
-          int.parse(data['family']['family_id'].toString()),
+          'caregiver_id',
+          int.parse(data['caregiver']['caregiver_id'].toString()),
         );
       }
 
@@ -206,7 +206,7 @@ class ApiService {
     throw Exception(data['message'] ?? 'Registrasi pasien gagal');
   }
 
-  static Future<void> registerFamily({
+  static Future<void> registerCaregiver({
     required String fullName,
     required String email,
     required String phoneNumber,
@@ -215,7 +215,7 @@ class ApiService {
     required String gender,
   }) async {
     final response = await http.post(
-      Uri.parse('$baseUrl/auth/register/family'),
+      Uri.parse('$baseUrl/auth/register/caregiver'),
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
@@ -588,11 +588,11 @@ class ApiService {
     throw Exception(data['message'] ?? 'Gagal menyimpan catatan klinis');
   }
 
-  static Future<List<Map<String, dynamic>>> getPatientFamilies(
+  static Future<List<Map<String, dynamic>>> getPatientCaregivers(
     int patientId,
   ) async {
     final response = await http.get(
-      Uri.parse('$baseUrl/doctor/patients/$patientId/families'),
+      Uri.parse('$baseUrl/doctor/patients/$patientId/caregivers'),
       headers: await _authHeaders(),
     );
 
@@ -1287,11 +1287,11 @@ class ApiService {
     throw Exception(data['message'] ?? 'Gagal mengambil dokter terhubung');
   }
 
-  static Future<List<Map<String, dynamic>>> getConnectedFamilies(
+  static Future<List<Map<String, dynamic>>> getConnectedCaregivers(
     int patientId,
   ) async {
     final response = await http.get(
-      Uri.parse('$baseUrl/patient/connections/families/$patientId'),
+      Uri.parse('$baseUrl/patient/connections/caregiver/$patientId'),
       headers: await _authHeaders(),
     );
 
@@ -1304,7 +1304,7 @@ class ApiService {
     throw Exception(data['message'] ?? 'Gagal mengambil keluarga terhubung');
   }
 
-  static Future<List<Map<String, dynamic>>> getIncomingFamilyRequests(
+  static Future<List<Map<String, dynamic>>> getIncomingCaregiverRequests(
     int patientId,
   ) async {
     final response = await http.get(
@@ -1357,14 +1357,14 @@ class ApiService {
     }
   }
 
-  static Future<void> acceptFamilyRequest({
+  static Future<void> acceptCaregiverRequest({
     required int patientId,
-    required int familyId,
+    required int caregiverId,
   }) async {
     final response = await http.post(
-      Uri.parse('$baseUrl/patient/family-requests/accept'),
+      Uri.parse('$baseUrl/patient/caregiver-requests/accept'),
       headers: await _authHeaders(),
-      body: jsonEncode({'patient_id': patientId, 'family_id': familyId}),
+      body: jsonEncode({'patient_id': patientId, 'caregiver_id': caregiverId}),
     );
 
     final data = jsonDecode(response.body);
@@ -1374,14 +1374,14 @@ class ApiService {
     }
   }
 
-  static Future<void> rejectFamilyRequest({
+  static Future<void> rejectCaregiverRequest({
     required int patientId,
-    required int familyId,
+    required int caregiverId,
   }) async {
     final response = await http.post(
-      Uri.parse('$baseUrl/patient/family-requests/reject'),
+      Uri.parse('$baseUrl/patient/caregiver-requests/reject'),
       headers: await _authHeaders(),
-      body: jsonEncode({'patient_id': patientId, 'family_id': familyId}),
+      body: jsonEncode({'patient_id': patientId, 'caregiver_id': caregiverId}),
     );
 
     final data = jsonDecode(response.body);
@@ -1408,12 +1408,12 @@ class ApiService {
     }
   }
 
-  static Future<void> disconnectFamilyConnection({
+  static Future<void> disconnectCaregiverConnection({
     required int patientId,
-    required int familyId,
+    required int caregiverId,
   }) async {
     final response = await http.delete(
-      Uri.parse('$baseUrl/patient/connections/families/$familyId'),
+      Uri.parse('$baseUrl/patient/connections/caregivers/$caregiverId'),
       headers: await _authHeaders(),
       body: jsonEncode({'patient_id': patientId}),
     );
@@ -1515,9 +1515,9 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> getFamilyProfile(int familyId) async {
+  static Future<Map<String, dynamic>> getCaregiverProfile(int caregiverId) async {
     final response = await http.get(
-      Uri.parse('$baseUrl/family/profile/$familyId'),
+      Uri.parse('$baseUrl/caregiver/profile/$caregiverId'),
       headers: await _authHeaders(),
     );
 
@@ -1530,11 +1530,11 @@ class ApiService {
     throw Exception(data['message'] ?? 'Gagal mengambil profil keluarga');
   }
 
-  static Future<List<Map<String, dynamic>>> getFamilyPatients(
-    int familyId,
+  static Future<List<Map<String, dynamic>>> getCaregiverPatients(
+    int caregiverId,
   ) async {
     final response = await http.get(
-      Uri.parse('$baseUrl/family/patients/$familyId'),
+      Uri.parse('$baseUrl/caregiver/patients/$caregiverId'),
       headers: await _authHeaders(),
     );
 
@@ -1547,11 +1547,11 @@ class ApiService {
     throw Exception(data['message'] ?? 'Gagal mengambil pasien keluarga');
   }
 
-  static Future<Map<String, dynamic>> getFamilyPatientDashboard(
+  static Future<Map<String, dynamic>> getCaregiverPatientDashboard(
     int patientId,
   ) async {
     final response = await http.get(
-      Uri.parse('$baseUrl/family/patients/$patientId/dashboard'),
+      Uri.parse('$baseUrl/caregiver/patients/$patientId/dashboard'),
       headers: await _authHeaders(),
     );
 
@@ -1564,11 +1564,11 @@ class ApiService {
     throw Exception(data['message'] ?? 'Gagal mengambil dashboard pasien');
   }
 
-  static Future<Map<String, dynamic>> getFamilyPatientHealthData(
+  static Future<Map<String, dynamic>> getCaregiverPatientHealthData(
     int patientId,
   ) async {
     final response = await http.get(
-      Uri.parse('$baseUrl/family/patients/$patientId/health-data'),
+      Uri.parse('$baseUrl/caregiver/patients/$patientId/health-data'),
       headers: await _authHeaders(),
     );
 
@@ -1581,11 +1581,11 @@ class ApiService {
     throw Exception(data['message'] ?? 'Gagal mengambil data kesehatan pasien');
   }
 
-  static Future<List<Map<String, dynamic>>> getFamilyPatientRecommendations(
+  static Future<List<Map<String, dynamic>>> getCaregiverPatientRecommendations(
     int patientId,
   ) async {
     final response = await http.get(
-      Uri.parse('$baseUrl/family/patients/$patientId/recommendations'),
+      Uri.parse('$baseUrl/caregiver/patients/$patientId/recommendations'),
       headers: await _authHeaders(),
     );
 
@@ -1597,8 +1597,25 @@ class ApiService {
 
     throw Exception(data['message'] ?? 'Gagal mengambil rekomendasi pasien');
   }
+  static Future<List<Map<String, dynamic>>> getCaregiverPatientActivePrescriptions(
+    int patientId,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/caregiver/patients/$patientId/prescriptions/active'),
+      headers: await _authHeaders(),
+    );
 
-  static Future<void> storeFamilyGlucose({
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(data['data'] ?? []);
+    }
+
+    throw Exception(data['message'] ?? 'Gagal mengambil resep aktif pasien');
+  }
+
+
+  static Future<void> storeCaregiverGlucose({
     required int patientId,
     required String measurementType,
     required double glucoseValue,
@@ -1607,7 +1624,7 @@ class ApiService {
     final userId = await _getUserId();
 
     final response = await http.post(
-      Uri.parse('$baseUrl/family/patients/$patientId/glucose'),
+      Uri.parse('$baseUrl/caregiver/patients/$patientId/glucose'),
       headers: await _authHeaders(),
       body: jsonEncode({
         'input_by_user_id': userId,
@@ -1624,7 +1641,7 @@ class ApiService {
     }
   }
 
-  static Future<void> storeFamilyPhysiological({
+  static Future<void> storeCaregiverPhysiological({
     required int patientId,
     int? systolic,
     int? diastolic,
@@ -1635,7 +1652,7 @@ class ApiService {
     final userId = await _getUserId();
 
     final response = await http.post(
-      Uri.parse('$baseUrl/family/patients/$patientId/physiological'),
+      Uri.parse('$baseUrl/caregiver/patients/$patientId/physiological'),
       headers: await _authHeaders(),
       body: jsonEncode({
         'input_by_user_id': userId,
@@ -1654,7 +1671,7 @@ class ApiService {
     }
   }
 
-  static Future<void> storeFamilyActivity({
+  static Future<void> storeCaregiverActivity({
     required int patientId,
     required int activityTypeId,
     required int durationMinutes,
@@ -1664,7 +1681,7 @@ class ApiService {
     final userId = await _getUserId();
 
     final response = await http.post(
-      Uri.parse('$baseUrl/family/patients/$patientId/activity'),
+      Uri.parse('$baseUrl/caregiver/patients/$patientId/activity'),
       headers: await _authHeaders(),
       body: jsonEncode({
         'input_by_user_id': userId,
@@ -1682,7 +1699,7 @@ class ApiService {
     }
   }
 
-  static Future<void> storeFamilyMeal({
+  static Future<void> storeCaregiverMeal({
     required int patientId,
     required int mealTypeId,
     double? carbohydrateGram,
@@ -1693,7 +1710,7 @@ class ApiService {
     final userId = await _getUserId();
 
     final response = await http.post(
-      Uri.parse('$baseUrl/family/patients/$patientId/meal'),
+      Uri.parse('$baseUrl/caregiver/patients/$patientId/meal'),
       headers: await _authHeaders(),
       body: jsonEncode({
         'input_by_user_id': userId,
@@ -1712,11 +1729,11 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> getFamilyPatientHistories(
+  static Future<Map<String, dynamic>> getCaregiverPatientHistories(
     int patientId,
   ) async {
     final response = await http.get(
-      Uri.parse('$baseUrl/family/patients/$patientId/histories'),
+      Uri.parse('$baseUrl/caregiver/patients/$patientId/histories'),
       headers: await _authHeaders(),
     );
 
@@ -1744,22 +1761,22 @@ class ApiService {
     throw Exception(data['message'] ?? 'Gagal mengambil tipe relasi');
   }
 
-  static Future<List<Map<String, dynamic>>> findFamilyPatient({
+  static Future<List<Map<String, dynamic>>> findCaregiverPatient({
     required String email,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    final familyId = prefs.getInt('family_id');
+    final caregiverId = prefs.getInt('caregiver_id');
 
-    if (familyId == null) {
-      throw Exception('Family ID tidak ditemukan. Coba login ulang.');
+    if (caregiverId == null) {
+      throw Exception('Caregiver ID tidak ditemukan. Coba login ulang.');
     }
 
     final response = await http.post(
-      Uri.parse('$baseUrl/family/find-patient'),
+      Uri.parse('$baseUrl/caregiver/find-patient'),
       headers: await _authHeaders(),
       body: jsonEncode({
         'email': email.trim().toLowerCase(),
-        'family_id': familyId,
+        'caregivery_id': caregiverId,
       }),
     );
 
@@ -1772,16 +1789,16 @@ class ApiService {
     throw Exception(data['message'] ?? 'Gagal mencari pasien');
   }
 
-  static Future<void> requestFamilyConnection({
-    required int familyId,
+  static Future<void> requestCaregiverConnection({
+    required int caregiverId,
     required int patientId,
     required int relationTypeId,
   }) async {
     final response = await http.post(
-      Uri.parse('$baseUrl/family/request-connection'),
+      Uri.parse('$baseUrl/caregiver/request-connection'),
       headers: await _authHeaders(),
       body: jsonEncode({
-        'family_id': familyId,
+        'caregiver_id': caregiverId,
         'patient_id': patientId,
         'relation_type_id': relationTypeId,
       }),
@@ -1794,7 +1811,7 @@ class ApiService {
     }
   }
 
-  static Future<void> storeFamilyMedication({
+  static Future<void> storeCaregiverMedication({
     required int patientId,
     int? prescriptionId,
     int? scheduleId,
@@ -1805,7 +1822,7 @@ class ApiService {
     final userId = await _getUserId();
 
     final response = await http.post(
-      Uri.parse('$baseUrl/family/patients/$patientId/medication'),
+      Uri.parse('$baseUrl/caregiver/patients/$patientId/medication'),
       headers: await _authHeaders(),
       body: jsonEncode({
         'input_by_user_id': userId,
@@ -1824,14 +1841,14 @@ class ApiService {
     }
   }
 
-  static Future<void> updateFamilyProfile({
-    required int familyId,
+  static Future<void> updateCaregiverProfile({
+    required int caregiverId,
     required String fullName,
     required String phoneNumber,
     required String gender,
   }) async {
     final response = await http.put(
-      Uri.parse('$baseUrl/family/profile/$familyId'),
+      Uri.parse('$baseUrl/caregiver/profile/$caregiverId'),
       headers: await _authHeaders(),
       body: jsonEncode({
         'full_name': fullName,
@@ -2047,11 +2064,11 @@ class ApiService {
     throw Exception(data['message'] ?? 'Gagal mengambil aturan minum');
   }
 
-  static Future<Map<String, dynamic>> getFamilyPatientDetail(
+  static Future<Map<String, dynamic>> getCaregiverPatientDetail(
     int patientId,
   ) async {
     final response = await http.get(
-      Uri.parse('$baseUrl/family/patient-detail/$patientId'),
+      Uri.parse('$baseUrl/caregiver/patient-detail/$patientId'),
       headers: await _authHeaders(),
     );
 
@@ -2064,18 +2081,18 @@ class ApiService {
     throw Exception(data['message'] ?? 'Gagal mengambil detail pasien');
   }
 
-  static Future<void> disconnectFamilyPatient({required int patientId}) async {
+  static Future<void> disconnectCaregiverPatient({required int patientId}) async {
     final prefs = await SharedPreferences.getInstance();
-    final familyId = prefs.getInt('family_id');
+    final caregiverId = prefs.getInt('caregiver_id');
 
-    if (familyId == null) {
-      throw Exception('Family ID tidak ditemukan. Coba login ulang.');
+    if (caregiverId == null) {
+      throw Exception('Caregiver ID tidak ditemukan. Coba login ulang.');
     }
 
     final response = await http.delete(
-      Uri.parse('$baseUrl/family/patients/$patientId/disconnect'),
+      Uri.parse('$baseUrl/caregiver/patients/$patientId/disconnect'),
       headers: await _authHeaders(),
-      body: jsonEncode({'family_id': familyId}),
+      body: jsonEncode({'caregiver_id': caregiverId}),
     );
 
     final data = jsonDecode(response.body);

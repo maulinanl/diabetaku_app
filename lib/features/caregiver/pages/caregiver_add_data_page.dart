@@ -3,27 +3,27 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
-import 'family_activity_form_page.dart';
-import 'family_glucose_form_page.dart';
-import 'family_meal_form_page.dart';
-import 'family_physiological_form_page.dart';
-import 'family_medication_form_page.dart';
+import 'caregiver_activity_form_page.dart';
+import 'caregiver_glucose_form_page.dart';
+import 'caregiver_meal_form_page.dart';
+import 'caregiver_physiological_form_page.dart';
+import 'caregiver_medication_form_page.dart';
 
-class FamilyAddDataPage extends StatefulWidget {
+class CaregiverAddDataPage extends StatefulWidget {
   final bool showBackButton;
   final VoidCallback? onGoConnection;
 
-  const FamilyAddDataPage({
+  const CaregiverAddDataPage({
     super.key,
     this.showBackButton = true,
     this.onGoConnection,
   });
 
   @override
-  State<FamilyAddDataPage> createState() => _FamilyAddDataPageState();
+  State<CaregiverAddDataPage> createState() => _CaregiverAddDataPageState();
 }
 
-class _FamilyAddDataPageState extends State<FamilyAddDataPage> {
+class _CaregiverAddDataPageState extends State<CaregiverAddDataPage> {
   int selectedPatientIndex = 0;
 
   bool isLoading = true;
@@ -31,14 +31,6 @@ class _FamilyAddDataPageState extends State<FamilyAddDataPage> {
 
   List<Map<String, dynamic>> patients = [];
 
-  /// patientId -> category -> status
-  /// contoh:
-  /// {
-  ///   1: {
-  ///     'glucose': 'Valid',
-  ///     'physiological': 'Belum Ada Data',
-  ///   }
-  /// }
   Map<int, Map<String, String>> healthStatus = {};
 
   final items = const [
@@ -63,8 +55,8 @@ class _FamilyAddDataPageState extends State<FamilyAddDataPage> {
       'icon': Icons.restaurant_outlined,
     },
     {
-      'title': 'Kepatuhan Obat',
-      'subtitle': 'Checklist obat pasien',
+      'title': 'Obat Pasien',
+      'subtitle': 'Catat obat yang diminum',
       'icon': Icons.medication_outlined,
     },
   ];
@@ -83,13 +75,13 @@ class _FamilyAddDataPageState extends State<FamilyAddDataPage> {
       });
 
       final prefs = await SharedPreferences.getInstance();
-      final familyId = prefs.getInt('family_id');
+      final caregiverId = prefs.getInt('caregiver_id');
 
-      if (familyId == null) {
-        throw Exception('Family ID tidak ditemukan. Coba login ulang.');
+      if (caregiverId == null) {
+        throw Exception('Caregiver ID tidak ditemukan. Coba login ulang.');
       }
 
-      final data = await ApiService.getFamilyPatients(familyId);
+      final data = await ApiService.getCaregiverPatients(caregiverId);
 
       final acceptedPatients = data.where((item) {
         final status = item['status']?.toString();
@@ -102,7 +94,7 @@ class _FamilyAddDataPageState extends State<FamilyAddDataPage> {
         final patientId = int.parse(patient['patient_id'].toString());
 
         try {
-          final histories = await ApiService.getFamilyPatientHistories(
+          final histories = await ApiService.getCaregiverPatientHistories(
             patientId,
           );
 
@@ -115,11 +107,11 @@ class _FamilyAddDataPageState extends State<FamilyAddDataPage> {
           };
         } catch (_) {
           loadedStatus[patientId] = {
-            'glucose': 'Belum Ada Data',
-            'physiological': 'Belum Ada Data',
-            'activity': 'Belum Ada Data',
-            'meal': 'Belum Ada Data',
-            'medication': 'Belum Ada Data',
+            'glucose': 'Belum Input',
+            'physiological': 'Belum Input',
+            'activity': 'Belum Input',
+            'meal': 'Belum Input',
+            'medication': 'Belum Input',
           };
         }
       }
@@ -144,7 +136,7 @@ class _FamilyAddDataPageState extends State<FamilyAddDataPage> {
 
   String _getCategoryStatus(dynamic records) {
     if (records == null || records is! List || records.isEmpty) {
-      return 'Belum Ada Data';
+      return 'Belum Input';
     }
 
     final todayRecords = records.where((item) {
@@ -160,7 +152,7 @@ class _FamilyAddDataPageState extends State<FamilyAddDataPage> {
     }).toList();
 
     if (todayRecords.isEmpty) {
-      return 'Belum Ada Data';
+      return 'Belum Input';
     }
 
     final hasWaiting = todayRecords.any((item) {
@@ -177,7 +169,7 @@ class _FamilyAddDataPageState extends State<FamilyAddDataPage> {
 
     if (hasValid) return 'Valid';
 
-    return 'Belum Ada Data';
+    return 'Belum Input';
   }
 
   bool _isToday(dynamic value) {
@@ -194,24 +186,24 @@ class _FamilyAddDataPageState extends State<FamilyAddDataPage> {
   }
 
   String _statusForCard(int index) {
-    if (patients.isEmpty) return 'Belum Ada Data';
+    if (patients.isEmpty) return 'Belum Input';
 
     final patientId = _patientId(patients[selectedPatientIndex]);
     final status = healthStatus[patientId] ?? {};
 
     switch (index) {
       case 0:
-        return status['glucose'] ?? 'Belum Ada Data';
+        return status['glucose'] ?? 'Belum Input';
       case 1:
-        return status['physiological'] ?? 'Belum Ada Data';
+        return status['physiological'] ?? 'Belum Input';
       case 2:
-        return status['activity'] ?? 'Belum Ada Data';
+        return status['activity'] ?? 'Belum Input';
       case 3:
-        return status['meal'] ?? 'Belum Ada Data';
+        return status['meal'] ?? 'Belum Input';
       case 4:
-        return status['medication'] ?? 'Belum Ada Data';
+        return status['medication'] ?? 'Belum Input';
       default:
-        return 'Belum Ada Data';
+        return 'Belum Input';
     }
   }
 
@@ -268,35 +260,35 @@ class _FamilyAddDataPageState extends State<FamilyAddDataPage> {
     late Widget page;
 
     if (index == 0) {
-      page = FamilyGlucoseFormPage(
+      page = CaregiverGlucoseFormPage(
         patientId: patientId,
         patientInitial: patientInitial,
         patientName: patientName,
         patientInfo: patientInfo,
       );
     } else if (index == 1) {
-      page = FamilyPhysiologicalFormPage(
+      page = CaregiverPhysiologicalFormPage(
         patientId: patientId,
         patientInitial: patientInitial,
         patientName: patientName,
         patientInfo: patientInfo,
       );
     } else if (index == 2) {
-      page = FamilyActivityFormPage(
+      page = CaregiverActivityFormPage(
         patientId: patientId,
         patientInitial: patientInitial,
         patientName: patientName,
         patientInfo: patientInfo,
       );
     } else if (index == 3) {
-      page = FamilyMealFormPage(
+      page = CaregiverMealFormPage(
         patientId: patientId,
         patientInitial: patientInitial,
         patientName: patientName,
         patientInfo: patientInfo,
       );
     } else {
-      page = FamilyMedicationFormPage(
+      page = CaregiverMedicationFormPage(
         patientId: patientId,
         patientInitial: patientInitial,
         patientName: patientName,

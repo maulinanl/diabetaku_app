@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/navigation/app_navigator.dart';
 import '../../features/doctor/pages/doctor_notification_page.dart';
-import '../../features/family/pages/family_notification_page.dart';
+import '../../features/caregiver/pages/caregiver_notification_page.dart';
 import '../../features/patient/pages/patient_notification_page.dart';
 import 'api_service.dart';
 
@@ -213,7 +213,7 @@ class PushNotificationService {
     if (roleId == 2) {
       page = DoctorNotificationPage(initialNotificationId: notificationId);
     } else if (roleId == 4) {
-      page = FamilyNotificationPage(initialNotificationId: notificationId);
+      page = CaregiverNotificationPage(initialNotificationId: notificationId);
     } else {
       page = PatientNotificationPage(initialNotificationId: notificationId);
     }

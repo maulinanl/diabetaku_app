@@ -6,5 +6,5 @@ class AppRoutes {
 
   static const doctorDashboard = "/doctor";
   static const patientDashboard = "/patient";
-  static const familyDashboard = "/family";
+  static const caregiverDashboard = "/caregiver";
 }

@@ -3,18 +3,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
-import 'family_history_detail_page.dart';
-import 'family_recommendation_detail_page.dart';
-import 'family_connection_page.dart';
+import 'caregiver_history_detail_page.dart';
+import 'caregiver_recommendation_detail_page.dart';
+import 'caregiver_connection_page.dart';
 
-class FamilyHistoryPage extends StatefulWidget {
-  const FamilyHistoryPage({super.key});
+class CaregiverHistoryPage extends StatefulWidget {
+  const CaregiverHistoryPage({super.key});
 
   @override
-  State<FamilyHistoryPage> createState() => _FamilyHistoryPageState();
+  State<CaregiverHistoryPage> createState() => _CaregiverHistoryPageState();
 }
 
-class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
+class _CaregiverHistoryPageState extends State<CaregiverHistoryPage> {
   int mainTab = 0;
   int selectedPatientIndex = 0;
   int selectedFilter = 0;
@@ -49,15 +49,15 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
       });
 
       final prefs = await SharedPreferences.getInstance();
-      final familyId = prefs.getInt('family_id');
+      final caregiverId = prefs.getInt('caregiver_id');
 
-      if (familyId == null) {
-        throw Exception('Family ID tidak ditemukan. Coba login ulang.');
+      if (caregiverId == null) {
+        throw Exception('Caregiver ID tidak ditemukan. Coba login ulang.');
       }
 
-      final familyPatients = await ApiService.getFamilyPatients(familyId);
+      final caregiverPatients = await ApiService.getCaregiverPatients(caregiverId);
 
-      if (familyPatients.isEmpty) {
+      if (caregiverPatients.isEmpty) {
         if (!mounted) return;
         setState(() {
           patients = [];
@@ -69,26 +69,26 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
       }
 
       final patientId = int.parse(
-        familyPatients.first['patient_id'].toString(),
+        caregiverPatients.first['patient_id'].toString(),
       );
 
       final results = await Future.wait([
-        ApiService.getFamilyPatientHistories(patientId),
-        ApiService.getFamilyPatientRecommendations(patientId),
+        ApiService.getCaregiverPatientHistories(patientId),
+        ApiService.getCaregiverPatientRecommendations(patientId),
       ]);
 
       final loadedHistories = _mapHealthHistories(
         results[0] as Map<String, dynamic>,
       );
 
-      final loadedRecommendations = List<Map<String, dynamic>>.from(
-        results[1] as List,
+      final loadedRecommendations = _groupRecommendations(
+        List<Map<String, dynamic>>.from(results[1] as List),
       );
 
       if (!mounted) return;
 
       setState(() {
-        patients = familyPatients;
+        patients = caregiverPatients;
         histories = loadedHistories;
         recommendations = loadedRecommendations;
         selectedPatientIndex = 0;
@@ -115,16 +115,16 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
       final patientId = int.parse(patients[index]['patient_id'].toString());
 
       final results = await Future.wait([
-        ApiService.getFamilyPatientHistories(patientId),
-        ApiService.getFamilyPatientRecommendations(patientId),
+        ApiService.getCaregiverPatientHistories(patientId),
+        ApiService.getCaregiverPatientRecommendations(patientId),
       ]);
 
       final loadedHistories = _mapHealthHistories(
         results[0] as Map<String, dynamic>,
       );
 
-      final loadedRecommendations = List<Map<String, dynamic>>.from(
-        results[1] as List,
+      final loadedRecommendations = _groupRecommendations(
+        List<Map<String, dynamic>>.from(results[1] as List),
       );
 
       if (!mounted) return;
@@ -144,6 +144,66 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
         isLoading = false;
       });
     }
+  }
+
+  List<Map<String, dynamic>> _groupRecommendations(
+    List<Map<String, dynamic>> rawRecommendations,
+  ) {
+    final Map<String, List<Map<String, dynamic>>> grouped = {};
+
+    for (final item in rawRecommendations) {
+      final clinicalNoteId = item['clinical_note_id']?.toString().trim();
+      final recommendationId = item['recommendation_id']?.toString().trim();
+
+      final key = clinicalNoteId != null && clinicalNoteId.isNotEmpty
+          ? 'note_$clinicalNoteId'
+          : recommendationId != null && recommendationId.isNotEmpty
+              ? 'recommendation_$recommendationId'
+              : 'item_${grouped.length}';
+
+      grouped.putIfAbsent(key, () => []);
+      grouped[key]!.add(Map<String, dynamic>.from(item));
+    }
+
+    final result = grouped.values.map((items) {
+      final first = items.first;
+      final categories = items
+          .map((e) => e['category']?.toString() ?? 'Rekomendasi')
+          .where((e) => e.trim().isNotEmpty)
+          .toSet()
+          .toList();
+
+      final texts = items
+          .map((e) =>
+              e['recommendation_text']?.toString() ??
+              e['description']?.toString() ??
+              '')
+          .where((e) => e.trim().isNotEmpty)
+          .toList();
+
+      return <String, dynamic>{
+        ...first,
+        'items': items,
+        'category_summary': categories.isEmpty
+            ? 'Rekomendasi'
+            : categories.join(', '),
+        'recommendation_text': texts.isEmpty
+            ? first['recommendation_text']?.toString() ??
+                first['description']?.toString() ??
+                '-'
+            : texts.join('\n'),
+      };
+    }).toList();
+
+    result.sort((a, b) {
+      final dateA = DateTime.tryParse(a['created_at']?.toString() ?? '');
+      final dateB = DateTime.tryParse(b['created_at']?.toString() ?? '');
+
+      if (dateA == null || dateB == null) return 0;
+      return dateB.compareTo(dateA);
+    });
+
+    return result;
   }
 
   List<Map<String, dynamic>> _mapHealthHistories(Map<String, dynamic> data) {
@@ -421,7 +481,7 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => const FamilyConnectionPage(),
+                              builder: (_) => const CaregiverConnectionPage(),
                             ),
                           );
                         },
@@ -666,7 +726,7 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
                           context,
                           MaterialPageRoute(
                             builder: (_) =>
-                                FamilyHistoryDetailPage(history: item),
+                                CaregiverHistoryDetailPage(history: item),
                           ),
                         );
                       },
@@ -716,6 +776,7 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
                 '-';
 
             final status =
+                item['category_summary']?.toString() ??
                 item['category']?.toString() ??
                 item['status']?.toString() ??
                 'Rekomendasi';
@@ -728,7 +789,7 @@ class _FamilyHistoryPageState extends State<FamilyHistoryPage> {
                     context,
                     MaterialPageRoute(
                       builder: (_) =>
-                          FamilyRecommendationDetailPage(item: item),
+                          CaregiverRecommendationDetailPage(item: item),
                     ),
                   );
                 },
@@ -1037,17 +1098,17 @@ class _HistoryCard extends StatelessWidget {
   }
 
   Widget _inputBadge(String role, String name) {
-    final isFamily = role == 'Keluarga';
-    final text = isFamily && name != '-' ? '$role • $name' : role;
+    final isCaregiver = role == 'Keluarga';
+    final text = isCaregiver && name != '-' ? '$role • $name' : role;
 
     return Container(
       constraints: const BoxConstraints(maxWidth: 170),
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
-        color: isFamily ? const Color(0xFFFFF4DA) : AppColors.veryLightBlue,
+        color: isCaregiver ? const Color(0xFFFFF4DA) : AppColors.veryLightBlue,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isFamily
+          color: isCaregiver
               ? Colors.orange.withValues(alpha: 0.18)
               : AppColors.primaryBlue.withValues(alpha: 0.18),
         ),
@@ -1056,9 +1117,9 @@ class _HistoryCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            isFamily ? Icons.family_restroom_rounded : Icons.person_rounded,
+            isCaregiver ? Icons.family_restroom_rounded : Icons.person_rounded,
             size: 11,
-            color: isFamily ? Colors.orange : AppColors.primaryBlue,
+            color: isCaregiver ? Colors.orange : AppColors.primaryBlue,
           ),
           const SizedBox(width: 4),
           Flexible(
@@ -1066,7 +1127,7 @@ class _HistoryCard extends StatelessWidget {
               text,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: isFamily ? Colors.orange : AppColors.primaryBlue,
+                color: isCaregiver ? Colors.orange : AppColors.primaryBlue,
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
               ),

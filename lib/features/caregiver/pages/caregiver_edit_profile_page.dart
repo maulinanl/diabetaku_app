@@ -5,14 +5,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 
-class FamilyEditProfilePage extends StatefulWidget {
-  const FamilyEditProfilePage({super.key});
+class CaregiverEditProfilePage extends StatefulWidget {
+  const CaregiverEditProfilePage({super.key});
 
   @override
-  State<FamilyEditProfilePage> createState() => _FamilyEditProfilePageState();
+  State<CaregiverEditProfilePage> createState() => _CaregiverEditProfilePageState();
 }
 
-class _FamilyEditProfilePageState extends State<FamilyEditProfilePage> {
+class _CaregiverEditProfilePageState extends State<CaregiverEditProfilePage> {
   final nameCtr = TextEditingController();
   final emailCtr = TextEditingController();
   final phoneCtr = TextEditingController();
@@ -25,7 +25,7 @@ class _FamilyEditProfilePageState extends State<FamilyEditProfilePage> {
   String? errorMessage;
   bool canSaveProfile = false;
 
-  int? familyId;
+  int? caregiverId;
 
   String originalName = '';
   String originalPhone = '';
@@ -75,13 +75,13 @@ void _checkFormChanged() {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      final storedFamilyId = prefs.getInt('family_id');
+      final storedCaregiverId = prefs.getInt('caregiver_id');
 
-      if (storedFamilyId == null) {
-        throw Exception('Family ID tidak ditemukan. Coba login ulang.');
+      if (storedCaregiverId == null) {
+        throw Exception('Caregiver ID tidak ditemukan. Coba login ulang.');
       }
 
-      final data = await ApiService.getFamilyProfile(storedFamilyId);
+      final data = await ApiService.getCaregiverProfile(storedCaregiverId);
 
       if (!mounted) return;
 
@@ -91,7 +91,7 @@ void _checkFormChanged() {
       final loadedGender = data['gender']?.toString() ?? '';
 
       setState(() {
-        familyId = storedFamilyId;
+        caregiverId = storedCaregiverId;
 
         originalName = loadedName.trim();
         originalPhone = loadedPhone.trim();
@@ -122,7 +122,7 @@ void _checkFormChanged() {
   Future<void> _saveProfile() async {
   FocusScope.of(context).unfocus();
 
-  if (!_isChanged() || familyId == null) return;
+  if (!_isChanged() || caregiverId == null) return;
 
   final phone = phoneCtr.text.trim();
 
@@ -136,8 +136,8 @@ void _checkFormChanged() {
   setState(() => isSaving = true);
 
   try {
-    await ApiService.updateFamilyProfile(
-      familyId: familyId!,
+    await ApiService.updateCaregiverProfile(
+      caregiverId: caregiverId!,
       fullName: nameCtr.text.trim(),
       phoneNumber: phone,
       gender: gender?.trim() ?? '',
@@ -185,8 +185,14 @@ void _checkFormChanged() {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(12, topPad + 12, 20, 18),
-      color: AppColors.primaryBlue,
+      padding: EdgeInsets.fromLTRB(12, topPad + 12, 20, 20),
+      decoration: const BoxDecoration(
+        color: AppColors.primaryBlue,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(22),
+          bottomRight: Radius.circular(22),
+        ),
+      ),
       child: Row(
         children: [
           IconButton(
@@ -200,7 +206,7 @@ void _checkFormChanged() {
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
-                fontSize: 18,
+                fontSize: 21,
               ),
             ),
           ),
@@ -427,8 +433,9 @@ void _checkFormChanged() {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
-        return Container(
-          padding: const EdgeInsets.all(24),
+        return SafeArea(
+          child: Container(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
           decoration: const BoxDecoration(
             color: AppColors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
@@ -520,6 +527,7 @@ void _checkFormChanged() {
               }),
             ],
           ),
+        ),
         );
       },
     );

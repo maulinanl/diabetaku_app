@@ -22,14 +22,14 @@ class RecommendationFormPage extends StatefulWidget {
 
 class _RecommendationFormPageState extends State<RecommendationFormPage> {
   String selectedCategory = 'Obat';
-  bool sendToFamily = true;
+  bool sendToCaregiver = true;
   bool _isSending = false;
 
   final List<Map<String, String>> addedRecommendations = [];
 
-  List<Map<String, dynamic>> families = [];
-  final Set<int> selectedFamilyUserIds = {};
-  bool isLoadingFamilies = true;
+  List<Map<String, dynamic>> caregivers = [];
+  final Set<int> selectedCaregiverUserIds = {};
+  bool isLoadingCaregivers = true;
 
   String _getInitials(String name) {
     final parts = name.trim().split(' ');
@@ -113,9 +113,9 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
                       const SizedBox(height: 16),
                       _buildAddedRecommendation(),
                       const SizedBox(height: 16),
-                      _buildFamilySwitch(),
+                      _buildCaregiverSwitch(),
                       const SizedBox(height: 16),
-                      if (sendToFamily) _buildRecipientSection(),
+                      if (sendToCaregiver) _buildRecipientSection(),
                       const SizedBox(height: 24),
                       CustomButton(
                         text: _isSending ? 'Mengirim...' : 'Kirim Rekomendasi',
@@ -352,11 +352,11 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
   }
 
   Widget _buildRecipientSection() {
-    if (isLoadingFamilies) {
+    if (isLoadingCaregivers) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (families.isEmpty) {
+    if (caregivers.isEmpty) {
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.all(14),
@@ -396,10 +396,10 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
               OutlinedButton(
                 onPressed: () {
                   setState(() {
-                    selectedFamilyUserIds
+                    selectedCaregiverUserIds
                       ..clear()
                       ..addAll(
-                        families.map((e) => int.parse(e['user_id'].toString())),
+                        caregivers.map((e) => int.parse(e['user_id'].toString())),
                       );
                   });
                 },
@@ -409,11 +409,11 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
           ),
           const SizedBox(height: 10),
 
-          ...families.map((family) {
-            final userId = int.parse(family['user_id'].toString());
-            final name = family['full_name']?.toString() ?? '-';
-            final relation = family['relation_name']?.toString() ?? 'Keluarga';
-            final selected = selectedFamilyUserIds.contains(userId);
+          ...caregivers.map((caregiver) {
+            final userId = int.parse(caregiver['user_id'].toString());
+            final name = caregiver['full_name']?.toString() ?? '-';
+            final relation = caregiver['relation_name']?.toString() ?? 'Keluarga';
+            final selected = selectedCaregiverUserIds.contains(userId);
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -425,9 +425,9 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
                 onTap: () {
                   setState(() {
                     if (selected) {
-                      selectedFamilyUserIds.remove(userId);
+                      selectedCaregiverUserIds.remove(userId);
                     } else {
-                      selectedFamilyUserIds.add(userId);
+                      selectedCaregiverUserIds.add(userId);
                     }
                   });
                 },
@@ -538,7 +538,7 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
     );
   }
 
-  Widget _buildFamilySwitch() {
+  Widget _buildCaregiverSwitch() {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -573,11 +573,11 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
             ),
           ),
           Switch(
-            value: sendToFamily,
+            value: sendToCaregiver,
             activeThumbColor: AppColors.primaryBlue,
             onChanged: (value) {
               setState(() {
-                sendToFamily = value;
+                sendToCaregiver = value;
               });
             },
           ),
@@ -589,22 +589,22 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
   @override
   void initState() {
     super.initState();
-    _fetchFamilies();
+    _fetchCaregivers();
   }
 
-  Future<void> _fetchFamilies() async {
+  Future<void> _fetchCaregivers() async {
     try {
-      final data = await ApiService.getPatientFamilies(widget.patientId);
+      final data = await ApiService.getPatientCaregivers(widget.patientId);
 
       setState(() {
-        families = data;
-        selectedFamilyUserIds.addAll(
+        caregivers = data;
+        selectedCaregiverUserIds.addAll(
           data.map((e) => int.parse(e['user_id'].toString())),
         );
-        isLoadingFamilies = false;
+        isLoadingCaregivers = false;
       });
     } catch (_) {
-      setState(() => isLoadingFamilies = false);
+      setState(() => isLoadingCaregivers = false);
     }
   }
 
@@ -625,8 +625,8 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
     try {
       final recipientUserIds = <int>[int.parse(patientUserId.toString())];
 
-      if (sendToFamily) {
-        recipientUserIds.addAll(selectedFamilyUserIds);
+      if (sendToCaregiver) {
+        recipientUserIds.addAll(selectedCaregiverUserIds);
       }
 
       await ApiService.storeRecommendations(
@@ -795,18 +795,18 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
 
                   _successRecipient('$patientName (Pasien)', Icons.person),
 
-                  if (sendToFamily)
-                    ...families
-                        .where((family) {
+                  if (sendToCaregiver)
+                    ...caregivers
+                        .where((caregiver) {
                           final userId = int.parse(
-                            family['user_id'].toString(),
+                            caregiver['user_id'].toString(),
                           );
-                          return selectedFamilyUserIds.contains(userId);
+                          return selectedCaregiverUserIds.contains(userId);
                         })
-                        .map((family) {
-                          final name = family['full_name']?.toString() ?? '-';
+                        .map((caregiver) {
+                          final name = caregiver['full_name']?.toString() ?? '-';
                           final relation =
-                              family['relation_name']?.toString() ?? 'Keluarga';
+                              caregiver['relation_name']?.toString() ?? 'Keluarga';
 
                           return Padding(
                             padding: const EdgeInsets.only(top: 8),

@@ -3,16 +3,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
-import 'family_patient_detail_page.dart';
+import 'caregiver_patient_detail_page.dart';
 
-class FamilyConnectionPage extends StatefulWidget {
-  const FamilyConnectionPage({super.key});
+class CaregiverConnectionPage extends StatefulWidget {
+  const CaregiverConnectionPage({super.key});
 
   @override
-  State<FamilyConnectionPage> createState() => _FamilyConnectionPageState();
+  State<CaregiverConnectionPage> createState() => _CaregiverConnectionPageState();
 }
 
-class _FamilyConnectionPageState extends State<FamilyConnectionPage> {
+class _CaregiverConnectionPageState extends State<CaregiverConnectionPage> {
   int mainTab = 0;
 
   final searchCtr = TextEditingController();
@@ -20,9 +20,10 @@ class _FamilyConnectionPageState extends State<FamilyConnectionPage> {
   bool isLoading = true;
   bool isSearching = false;
   bool isSubmitting = false;
+  bool hasSearched = false;
   String? errorMessage;
 
-  int? familyId;
+  int? caregiverId;
 
   List<Map<String, dynamic>> connectedPatients = [];
   List<Map<String, dynamic>> searchResults = [];
@@ -34,7 +35,10 @@ class _FamilyConnectionPageState extends State<FamilyConnectionPage> {
     _loadInitialData();
 
     searchCtr.addListener(() {
-      setState(() {});
+      setState(() {
+        hasSearched = false;
+        searchResults = [];
+      });
     });
   }
 
@@ -52,19 +56,19 @@ class _FamilyConnectionPageState extends State<FamilyConnectionPage> {
       });
 
       final prefs = await SharedPreferences.getInstance();
-      final storedFamilyId = prefs.getInt('family_id');
+      final storedCaregiverId = prefs.getInt('caregiver_id');
 
-      if (storedFamilyId == null) {
-        throw Exception('Family ID tidak ditemukan. Coba login ulang.');
+      if (storedCaregiverId == null) {
+        throw Exception('Caregiver ID tidak ditemukan. Coba login ulang.');
       }
 
-      final patients = await ApiService.getFamilyPatients(storedFamilyId);
+      final patients = await ApiService.getCaregiverPatients(storedCaregiverId);
       final relations = await ApiService.getRelationTypes();
 
       if (!mounted) return;
 
       setState(() {
-        familyId = storedFamilyId;
+        caregiverId = storedCaregiverId;
         connectedPatients = patients;
         relationTypes = relations;
         isLoading = false;
@@ -83,7 +87,18 @@ class _FamilyConnectionPageState extends State<FamilyConnectionPage> {
     final email = searchCtr.text.trim();
 
     if (email.isEmpty) {
-      setState(() => searchResults = []);
+      setState(() {
+        searchResults = [];
+        hasSearched = false;
+      });
+      return;
+    }
+
+    if (!email.contains('@')) {
+      setState(() {
+        searchResults = [];
+        hasSearched = false;
+      });
       return;
     }
 
@@ -92,21 +107,26 @@ class _FamilyConnectionPageState extends State<FamilyConnectionPage> {
 
       setState(() {
         isSearching = true;
+        hasSearched = false;
         searchResults = [];
       });
 
-      final result = await ApiService.findFamilyPatient(email: email);
+      final result = await ApiService.findCaregiverPatient(email: email);
 
       if (!mounted) return;
 
       setState(() {
         searchResults = result;
+        hasSearched = true;
         isSearching = false;
       });
     } catch (e) {
       if (!mounted) return;
 
-      setState(() => isSearching = false);
+      setState(() {
+        isSearching = false;
+        hasSearched = true;
+      });
 
       _showSnackBar(message: e.toString().replaceFirst('Exception: ', ''));
     }
@@ -116,13 +136,13 @@ class _FamilyConnectionPageState extends State<FamilyConnectionPage> {
     required int patientId,
     required Map<String, dynamic> relation,
   }) async {
-    if (familyId == null) return;
+    if (caregiverId == null) return;
 
     try {
       setState(() => isSubmitting = true);
 
-      await ApiService.requestFamilyConnection(
-        familyId: familyId!,
+      await ApiService.requestCaregiverConnection(
+        caregiverId: caregiverId!,
         patientId: patientId,
         relationTypeId: int.parse(relation['relation_type_id'].toString()),
       );
@@ -331,7 +351,7 @@ class _FamilyConnectionPageState extends State<FamilyConnectionPage> {
                   final changed = await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => FamilyPatientDetailPage(
+                      builder: (_) => CaregiverPatientDetailPage(
                         patientId: int.parse(item['patient_id'].toString()),
                         initial: _initial(name),
                         name: name,
@@ -368,6 +388,8 @@ class _FamilyConnectionPageState extends State<FamilyConnectionPage> {
           _emptySearch()
         else if (isSearching)
           const Center(child: CircularProgressIndicator())
+        else if (!keyword.contains('@') || !hasSearched)
+          _typingEmailHint()
         else if (searchResults.isEmpty)
           _notFound()
         else ...[
@@ -397,7 +419,7 @@ class _FamilyConnectionPageState extends State<FamilyConnectionPage> {
                   final changed = await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => FamilyPatientSearchDetailPage(
+                      builder: (_) => CaregiverPatientSearchDetailPage(
                         patient: item,
                         relationTypes: relationTypes,
                         isConnected: connected,
@@ -451,7 +473,10 @@ class _FamilyConnectionPageState extends State<FamilyConnectionPage> {
                 color: AppColors.dark3,
                 onPressed: () {
                   searchCtr.clear();
-                  setState(() => searchResults = []);
+                  setState(() {
+                    searchResults = [];
+                    hasSearched = false;
+                  });
                 },
               ),
             IconButton(
@@ -561,6 +586,41 @@ class _FamilyConnectionPageState extends State<FamilyConnectionPage> {
           'Masukkan email pasien yang ingin kamu dampingi.',
           textAlign: TextAlign.center,
           style: TextStyle(color: AppColors.dark2, fontSize: 12),
+        ),
+      ],
+    );
+  }
+
+  Widget _typingEmailHint() {
+    return const Column(
+      children: [
+        SizedBox(height: 60),
+        Icon(
+          Icons.alternate_email_rounded,
+          size: 64,
+          color: AppColors.dark3,
+        ),
+        SizedBox(height: 14),
+        Text(
+          'Lengkapi email pasien',
+          style: TextStyle(
+            color: AppColors.dark1,
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        SizedBox(height: 8),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 18),
+          child: Text(
+            'Ketik email lengkap pasien terlebih dahulu, lalu tekan ikon cari.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppColors.dark2,
+              fontSize: 12,
+              height: 1.45,
+            ),
+          ),
         ),
       ],
     );
@@ -851,7 +911,7 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-class FamilyPatientSearchDetailPage extends StatefulWidget {
+class CaregiverPatientSearchDetailPage extends StatefulWidget {
   final Map<String, dynamic> patient;
   final List<Map<String, dynamic>> relationTypes;
   final bool isConnected;
@@ -859,7 +919,7 @@ class FamilyPatientSearchDetailPage extends StatefulWidget {
   final bool isSubmitting;
   final Future<void> Function(Map<String, dynamic> relation) onSubmit;
 
-  const FamilyPatientSearchDetailPage({
+  const CaregiverPatientSearchDetailPage({
     super.key,
     required this.patient,
     required this.relationTypes,
@@ -870,12 +930,12 @@ class FamilyPatientSearchDetailPage extends StatefulWidget {
   });
 
   @override
-  State<FamilyPatientSearchDetailPage> createState() =>
-      _FamilyPatientSearchDetailPageState();
+  State<CaregiverPatientSearchDetailPage> createState() =>
+      _CaregiverPatientSearchDetailPageState();
 }
 
-class _FamilyPatientSearchDetailPageState
-    extends State<FamilyPatientSearchDetailPage> {
+class _CaregiverPatientSearchDetailPageState
+    extends State<CaregiverPatientSearchDetailPage> {
   Map<String, dynamic>? selectedRelation;
   bool isSubmitting = false;
 

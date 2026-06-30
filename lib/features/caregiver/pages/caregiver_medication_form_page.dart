@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 
-class FamilyMedicationFormPage extends StatefulWidget {
+class CaregiverMedicationFormPage extends StatefulWidget {
   final int patientId;
   final String patientInitial;
   final String patientName;
   final String patientInfo;
 
-  const FamilyMedicationFormPage({
+  const CaregiverMedicationFormPage({
     super.key,
     required this.patientId,
     required this.patientInitial,
@@ -18,11 +18,11 @@ class FamilyMedicationFormPage extends StatefulWidget {
   });
 
   @override
-  State<FamilyMedicationFormPage> createState() =>
-      _FamilyMedicationFormPageState();
+  State<CaregiverMedicationFormPage> createState() =>
+      _CaregiverMedicationFormPageState();
 }
 
-class _FamilyMedicationFormPageState extends State<FamilyMedicationFormPage> {
+class _CaregiverMedicationFormPageState extends State<CaregiverMedicationFormPage> {
   final noteCtr = TextEditingController();
 
   String selectedSchedule = 'Semua';
@@ -142,7 +142,7 @@ class _FamilyMedicationFormPageState extends State<FamilyMedicationFormPage> {
       final now = DateTime.now();
 
       for (final item in checkedMedicines) {
-        await ApiService.storeFamilyMedication(
+        await ApiService.storeCaregiverMedication(
           patientId: widget.patientId,
           prescriptionId: int.parse(item['prescription_id'].toString()),
           scheduleId: int.parse(item['prescription_schedule_id'].toString()),

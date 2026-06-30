@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 
-class FamilyHistoryDetailPage extends StatelessWidget {
+class CaregiverHistoryDetailPage extends StatelessWidget {
   final Map<String, dynamic> history;
 
-  const FamilyHistoryDetailPage({super.key, required this.history});
+  const CaregiverHistoryDetailPage({super.key, required this.history});
 
   @override
   Widget build(BuildContext context) {

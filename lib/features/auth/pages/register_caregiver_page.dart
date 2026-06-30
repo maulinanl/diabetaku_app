@@ -4,14 +4,14 @@ import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 import '../../auth/pages/email_verification_page.dart';
 
-class RegisterFamilyPage extends StatefulWidget {
-  const RegisterFamilyPage({super.key});
+class RegisterCaregiverPage extends StatefulWidget {
+  const RegisterCaregiverPage({super.key});
 
   @override
-  State<RegisterFamilyPage> createState() => _RegisterFamilyPageState();
+  State<RegisterCaregiverPage> createState() => _RegisterCaregiverPageState();
 }
 
-class _RegisterFamilyPageState extends State<RegisterFamilyPage> {
+class _RegisterCaregiverPageState extends State<RegisterCaregiverPage> {
   final nameCtr = TextEditingController();
   final emailCtr = TextEditingController();
   final phoneCtr = TextEditingController();
@@ -102,12 +102,12 @@ class _RegisterFamilyPageState extends State<RegisterFamilyPage> {
     super.dispose();
   }
 
-  Future<void> _registerFamily() async {
+  Future<void> _registerCaregiver() async {
     FocusScope.of(context).unfocus();
     setState(() => isRegistering = true);
 
     try {
-      await ApiService.registerFamily(
+      await ApiService.registerCaregiver(
         fullName: nameCtr.text.trim(),
         email: emailCtr.text.trim(),
         phoneNumber: phoneCtr.text.trim(),
@@ -123,7 +123,7 @@ class _RegisterFamilyPageState extends State<RegisterFamilyPage> {
         MaterialPageRoute(
           builder: (_) => EmailVerificationPage(
             email: emailCtr.text.trim(),
-            roleType: VerificationRoleType.family,
+            roleType: VerificationRoleType.caregiver,
           ),
         ),
       );
@@ -223,7 +223,7 @@ class _RegisterFamilyPageState extends State<RegisterFamilyPage> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: isValid && !isRegistering ? _registerFamily : null,
+                  onPressed: isValid && !isRegistering ? _registerCaregiver : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryBlue,
                     disabledBackgroundColor: const Color(0xFFAFCBEA),

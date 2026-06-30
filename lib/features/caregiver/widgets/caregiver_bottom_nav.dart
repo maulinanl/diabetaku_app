@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 
-class FamilyBottomNavBar extends StatelessWidget {
+class CaregiverBottomNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
   final VoidCallback onAddTap;
 
-  const FamilyBottomNavBar({
+  const CaregiverBottomNavBar({
     super.key,
     required this.currentIndex,
     required this.onTap,

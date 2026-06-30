@@ -4,16 +4,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 
-class PatientFamilyDetailPage extends StatefulWidget {
-  final int familyId;
+class PatientCaregiverDetailPage extends StatefulWidget {
+  final int caregiverId;
   final String initial;
   final String name;
   final String relation;
   final String date;
 
-  const PatientFamilyDetailPage({
+  const PatientCaregiverDetailPage({
     super.key,
-    required this.familyId,
+    required this.caregiverId,
     required this.initial,
     required this.name,
     required this.relation,
@@ -21,11 +21,11 @@ class PatientFamilyDetailPage extends StatefulWidget {
   });
 
   @override
-  State<PatientFamilyDetailPage> createState() =>
-      _PatientFamilyDetailPageState();
+  State<PatientCaregiverDetailPage> createState() =>
+      _PatientCaregiverDetailPageState();
 }
 
-class _PatientFamilyDetailPageState extends State<PatientFamilyDetailPage> {
+class _PatientCaregiverDetailPageState extends State<PatientCaregiverDetailPage> {
   bool isProcessing = false;
 
   Future<int> _getPatientId() async {
@@ -39,15 +39,15 @@ class _PatientFamilyDetailPageState extends State<PatientFamilyDetailPage> {
     return patientId;
   }
 
-  Future<void> _disconnectFamily() async {
+  Future<void> _disconnectCaregiver() async {
     setState(() => isProcessing = true);
 
     try {
       final patientId = await _getPatientId();
 
-      await ApiService.disconnectFamilyConnection(
+      await ApiService.disconnectCaregiverConnection(
         patientId: patientId,
-        familyId: widget.familyId,
+        caregiverId: widget.caregiverId,
       );
 
       if (!mounted) return;
@@ -110,8 +110,8 @@ class _PatientFamilyDetailPageState extends State<PatientFamilyDetailPage> {
       decoration: const BoxDecoration(
         color: AppColors.primaryBlue,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(22),
-          bottomRight: Radius.circular(22),
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
         ),
       ),
       child: Column(
@@ -287,7 +287,7 @@ class _PatientFamilyDetailPageState extends State<PatientFamilyDetailPage> {
                 child: ElevatedButton(
                   onPressed: () {
                     Navigator.pop(sheetContext);
-                    _disconnectFamily();
+                    _disconnectCaregiver();
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.red,

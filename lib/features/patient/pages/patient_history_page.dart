@@ -363,8 +363,8 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
       decoration: const BoxDecoration(
         color: AppColors.primaryBlue,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(22),
-          bottomRight: Radius.circular(22),
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
         ),
       ),
       child: Column(
@@ -1141,16 +1141,16 @@ class _HealthHistoryCard extends StatelessWidget {
   }
 
   Widget _inputBadge(String role, String name) {
-    final isFamily = role == 'Keluarga';
-    final text = isFamily ? '$role • $name' : role;
+    final isCaregiver = role == 'Keluarga';
+    final text = isCaregiver ? '$role • $name' : role;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
-        color: isFamily ? const Color(0xFFFFF4DA) : AppColors.veryLightBlue,
+        color: isCaregiver ? const Color(0xFFFFF4DA) : AppColors.veryLightBlue,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isFamily
+          color: isCaregiver
               ? Colors.orange.withValues(alpha: 0.18)
               : AppColors.primaryBlue.withValues(alpha: 0.18),
         ),
@@ -1159,9 +1159,9 @@ class _HealthHistoryCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            isFamily ? Icons.family_restroom_rounded : Icons.person_rounded,
+            isCaregiver ? Icons.family_restroom_rounded : Icons.person_rounded,
             size: 11,
-            color: isFamily ? Colors.orange : AppColors.primaryBlue,
+            color: isCaregiver ? Colors.orange : AppColors.primaryBlue,
           ),
           const SizedBox(width: 4),
           Flexible(
@@ -1169,7 +1169,7 @@ class _HealthHistoryCard extends StatelessWidget {
               text,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: isFamily ? Colors.orange : AppColors.primaryBlue,
+                color: isCaregiver ? Colors.orange : AppColors.primaryBlue,
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
               ),

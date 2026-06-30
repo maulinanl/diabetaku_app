@@ -1,27 +1,23 @@
-// ganti seluruh file FamilyMainPage kamu dengan versi ini
-// bagian import tetap sama
-
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
-import '../widgets/family_bottom_nav.dart';
-import 'family_add_data_page.dart';
-import 'family_connection_page.dart';
-import 'family_history_page.dart';
-import 'family_notification_page.dart';
-import 'family_profile_page.dart';
-import 'family_recommendation_detail_page.dart';
+import '../widgets/caregiver_bottom_nav.dart';
+import 'caregiver_add_data_page.dart';
+import 'caregiver_connection_page.dart';
+import 'caregiver_history_page.dart';
+import 'caregiver_notification_page.dart';
+import 'caregiver_profile_page.dart';
 
-class FamilyMainPage extends StatefulWidget {
-  const FamilyMainPage({super.key});
+class CaregiverMainPage extends StatefulWidget {
+  const CaregiverMainPage({super.key});
 
   @override
-  State<FamilyMainPage> createState() => _FamilyMainPageState();
+  State<CaregiverMainPage> createState() => _CaregiverMainPageState();
 }
 
-class _FamilyMainPageState extends State<FamilyMainPage> {
+class _CaregiverMainPageState extends State<CaregiverMainPage> {
   int currentIndex = 0;
   int selectedPatientIndex = 0;
 
@@ -29,12 +25,14 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
   bool hasUnreadNotification = false;
   String? errorMessage;
 
-  int? familyId;
-  String familyName = '-';
+  int? caregiverId;
+  String caregiverName = '-';
 
   List<Map<String, dynamic>> patients = [];
   Map<String, dynamic>? dashboardData;
   List<Map<String, dynamic>> recommendations = [];
+  List<Map<String, dynamic>> selectedPatientPrescriptions = [];
+  int allPatientsActivePrescriptionCount = 0;
   Map<String, dynamic> healthHistories = {};
   List<Map<String, dynamic>> pendingValidations = [];
 
@@ -43,7 +41,7 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
 
   final healthChecklistTypes = const [
     ['Glukosa', Icons.opacity, 'glucose'],
-    ['Obat', Icons.medication_outlined, 'medication'],
+    ['Fisiologis', Icons.monitor_heart_outlined, 'physiological'],
     ['Aktivitas', Icons.directions_run, 'activity'],
     ['Makan', Icons.restaurant_outlined, 'meal'],
   ];
@@ -51,7 +49,7 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
   @override
   void initState() {
     super.initState();
-    _loadFamilyHome();
+    _loadCaregiverHome();
   }
 
   List<Map<String, dynamic>> _acceptedPatientsOnly(
@@ -63,7 +61,7 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
     }).toList();
   }
 
-  Future<void> _loadFamilyHome() async {
+  Future<void> _loadCaregiverHome() async {
   setState(() {
     isLoading = true;
     errorMessage = null;
@@ -71,17 +69,17 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
 
   try {
     final prefs = await SharedPreferences.getInstance();
-    final storedFamilyId = prefs.getInt('family_id');
+    final storedCaregiverId = prefs.getInt('caregiver_id');
     final storedUserId = prefs.getInt('user_id');
     final storedName = prefs.getString('full_name') ?? '-';
 
-    if (storedFamilyId == null) {
-      throw Exception('Family ID tidak ditemukan. Coba login ulang.');
+    if (storedCaregiverId == null) {
+      throw Exception('Caregiver ID tidak ditemukan. Coba login ulang.');
     }
 
     final baseResults = await Future.wait([
-      ApiService.getFamilyProfile(storedFamilyId),
-      ApiService.getFamilyPatients(storedFamilyId),
+      ApiService.getCaregiverProfile(storedCaregiverId),
+      ApiService.getCaregiverPatients(storedCaregiverId),
       if (storedUserId != null) ApiService.getNotifications(storedUserId),
     ]);
 
@@ -92,6 +90,8 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
     Map<String, dynamic>? loadedDashboard;
     List<Map<String, dynamic>> loadedRecommendations = [];
     Map<String, dynamic> loadedHealthHistories = {};
+    List<Map<String, dynamic>> loadedSelectedPrescriptions = [];
+    int loadedAllPatientsPrescriptionCount = 0;
     List<Map<String, dynamic>> loadedNotifications = storedUserId != null
         ? List<Map<String, dynamic>>.from(baseResults[2] as List)
         : [];
@@ -102,9 +102,10 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
       );
 
       final patientResults = await Future.wait([
-        ApiService.getFamilyPatientDashboard(firstPatientId),
-        ApiService.getFamilyPatientRecommendations(firstPatientId),
+        ApiService.getCaregiverPatientDashboard(firstPatientId),
+        ApiService.getCaregiverPatientRecommendations(firstPatientId),
         ApiService.getPatientHealthHistory(firstPatientId),
+        ApiService.getCaregiverPatientActivePrescriptions(firstPatientId),
       ]);
 
       loadedDashboard = patientResults[0] as Map<String, dynamic>;
@@ -114,17 +115,40 @@ class _FamilyMainPageState extends State<FamilyMainPage> {
       loadedHealthHistories = Map<String, dynamic>.from(
         patientResults[2] as Map,
       );
+      loadedSelectedPrescriptions = List<Map<String, dynamic>>.from(
+        patientResults[3] as List,
+      );
+
+      final activePrescriptionIds = <String>{};
+      for (final patient in acceptedPatients) {
+        final id = int.tryParse(patient['patient_id'].toString());
+        if (id == null) continue;
+
+        try {
+          final prescriptions = await ApiService.getCaregiverPatientActivePrescriptions(id);
+          for (final item in prescriptions) {
+            final prescriptionId = item['prescription_id']?.toString();
+            if (prescriptionId != null && prescriptionId.isNotEmpty) {
+              activePrescriptionIds.add(prescriptionId);
+            }
+          }
+        } catch (_) {}
+      }
+
+      loadedAllPatientsPrescriptionCount = activePrescriptionIds.length;
     }
 
     if (!mounted) return;
 
     setState(() {
-      familyId = storedFamilyId;
-      familyName = profile['full_name']?.toString() ?? storedName;
+      caregiverId = storedCaregiverId;
+      caregiverName = profile['full_name']?.toString() ?? storedName;
       patients = acceptedPatients;
       dashboardData = loadedDashboard;
       recommendations = loadedRecommendations;
       healthHistories = loadedHealthHistories;
+      selectedPatientPrescriptions = loadedSelectedPrescriptions;
+      allPatientsActivePrescriptionCount = loadedAllPatientsPrescriptionCount;
       selectedPatientIndex = 0;
 
       hasUnreadNotification = loadedNotifications.any((n) {
@@ -148,9 +172,10 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
   final patientId = int.parse(patients[index]['patient_id'].toString());
 
   final patientResults = await Future.wait([
-    ApiService.getFamilyPatientDashboard(patientId),
-    ApiService.getFamilyPatientRecommendations(patientId),
+    ApiService.getCaregiverPatientDashboard(patientId),
+    ApiService.getCaregiverPatientRecommendations(patientId),
     ApiService.getPatientHealthHistory(patientId),
+    ApiService.getCaregiverPatientActivePrescriptions(patientId),
   ]);
 
   if (!mounted) return;
@@ -160,6 +185,7 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
     dashboardData = patientResults[0] as Map<String, dynamic>;
     recommendations = List<Map<String, dynamic>>.from(patientResults[1] as List);
     healthHistories = Map<String, dynamic>.from(patientResults[2] as Map);
+    selectedPatientPrescriptions = List<Map<String, dynamic>>.from(patientResults[3] as List);
   });
 }
 
@@ -169,7 +195,7 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
       backgroundColor: AppColors.background,
       extendBody: true,
       body: _buildPage(),
-      bottomNavigationBar: FamilyBottomNavBar(
+      bottomNavigationBar: CaregiverBottomNavBar(
         currentIndex: currentIndex,
         onTap: (index) => setState(() => currentIndex = index),
         onAddTap: () => setState(() => currentIndex = 4),
@@ -178,18 +204,18 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
   }
 
   Widget _buildPage() {
-    if (currentIndex == 0) return _familyHomeContent();
-    if (currentIndex == 1) return const FamilyConnectionPage();
-    if (currentIndex == 2) return const FamilyHistoryPage();
-    if (currentIndex == 3) return const FamilyProfilePage();
+    if (currentIndex == 0) return _CaregiverHomeContent();
+    if (currentIndex == 1) return const CaregiverConnectionPage();
+    if (currentIndex == 2) return const CaregiverHistoryPage();
+    if (currentIndex == 3) return const CaregiverProfilePage();
 
-    return FamilyAddDataPage(
+    return CaregiverAddDataPage(
       showBackButton: false,
       onGoConnection: () => setState(() => currentIndex = 1),
     );
   }
 
-  Widget _familyHomeContent() {
+  Widget _CaregiverHomeContent() {
     if (isLoading) return const Center(child: CircularProgressIndicator());
     if (errorMessage != null) return _errorState();
     if (patients.isEmpty) return _emptyPatientState();
@@ -205,13 +231,15 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
               child: Container(
                 color: AppColors.background,
                 child: RefreshIndicator(
-                  onRefresh: _loadFamilyHome,
+                  onRefresh: _loadCaregiverHome,
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.fromLTRB(20, 18, 20, 120),
                     child: Column(
                       children: [
-                        _recommendationCard(),
+                        _nextMedicationCard(),
+                        const SizedBox(height: 12),
+                        _medicationOverviewCard(),
                         const SizedBox(height: 12),
                         _summaryCards(),
                         const SizedBox(height: 14),
@@ -273,7 +301,7 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
               children: [
                 const Expanded(
                   child: Text(
-                    'Kepatuhan pasien — Hari ini',
+                    'Kelengkapan data pasien — Hari ini',
                     style: TextStyle(
                       color: AppColors.primaryBlue,
                       fontSize: 13,
@@ -378,7 +406,7 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
   Map<String, String> _buildConsistencyStatus() {
     final result = <String, Set<String>>{};
 
-    for (final type in ['glucose', 'medication', 'activity', 'meal']) {
+    for (final type in ['glucose', 'physiological', 'activity', 'meal']) {
       final records = List<Map<String, dynamic>>.from(
         healthHistories[type] ?? [],
       );
@@ -653,34 +681,129 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
     );
   }
 
-  Widget _recommendationCard() {
-  if (recommendations.isEmpty) {
+  List<Map<String, dynamic>> get _sortedSelectedPrescriptions {
+    final data = List<Map<String, dynamic>>.from(selectedPatientPrescriptions);
+    data.sort((a, b) {
+      final timeA = _reminderTimeValue(a);
+      final timeB = _reminderTimeValue(b);
+      return timeA.compareTo(timeB);
+    });
+    return data;
+  }
+
+  int _reminderTimeValue(Map<String, dynamic> item) {
+    final raw = (item['reminder_time'] ?? item['default_reminder_time'] ?? '').toString();
+    final parts = raw.split(':');
+    if (parts.length < 2) return 9999;
+    final hour = int.tryParse(parts[0]) ?? 99;
+    final minute = int.tryParse(parts[1]) ?? 99;
+    return hour * 60 + minute;
+  }
+
+  String _formatMedicationTime(dynamic raw) {
+    final value = raw?.toString() ?? '';
+    if (value.isEmpty || value == 'null') return '-';
+    final parts = value.split(':');
+    if (parts.length >= 2) return '${parts[0].padLeft(2, '0')}:${parts[1].padLeft(2, '0')}';
+    return value;
+  }
+
+  Widget _nextMedicationCard() {
+    final prescriptions = _sortedSelectedPrescriptions;
+
+    if (prescriptions.isEmpty) {
+      return _smallInfoCard(
+        icon: Icons.medication_outlined,
+        title: 'Belum ada jadwal obat aktif',
+        subtitle: 'Jadwal obat pasien akan muncul dari resep aktif dokter.',
+        onTap: () {},
+      );
+    }
+
+    final nowMinutes = DateTime.now().hour * 60 + DateTime.now().minute;
+    Map<String, dynamic> next = prescriptions.first;
+
+    for (final item in prescriptions) {
+      if (_reminderTimeValue(item) >= nowMinutes) {
+        next = item;
+        break;
+      }
+    }
+
+    final medName = next['medication_name']?.toString() ?? 'Obat';
+    final session = next['session_name']?.toString() ?? 'Sesi minum';
+    final time = _formatMedicationTime(
+      next['reminder_time'] ?? next['default_reminder_time'],
+    );
+    final dose = next['dose_per_session']?.toString() ?? next['dosage']?.toString() ?? '-';
+
     return _smallInfoCard(
-      icon: Icons.description_outlined,
-      title: 'Belum ada rekomendasi',
-      subtitle: 'Dokter belum memberikan rekomendasi',
-      onTap: () {},
+      icon: Icons.alarm_rounded,
+      title: 'Jadwal obat terdekat',
+      subtitle: '$medName • $session • $time • $dose',
+      onTap: () => setState(() => currentIndex = 4),
     );
   }
 
-  final latest = recommendations.first;
-
-  return _smallInfoCard(
-    icon: Icons.description_outlined,
-    title: latest['category']?.toString() ?? 'Rekomendasi',
-    subtitle: latest['recommendation_text']?.toString() ?? '-',
-    onTap: () {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => FamilyRecommendationDetailPage(
-            item: latest,
+  Widget _medicationOverviewCard() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: _cardDecoration(),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.veryLightBlue,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.medication_liquid_outlined,
+              color: AppColors.primaryBlue,
+              size: 20,
+            ),
           ),
-        ),
-      );
-    },
-  );
-}
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Akumulasi resep obat',
+                  style: TextStyle(
+                    color: AppColors.primaryBlue,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                SizedBox(height: 3),
+                Text(
+                  'Total resep aktif dari semua pasien dampingan',
+                  style: TextStyle(color: AppColors.dark2, fontSize: 10),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.lightBlue,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              '$allPatientsActivePrescriptionCount resep',
+              style: const TextStyle(
+                color: AppColors.primaryBlue,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _summaryCards() {
     final latestGlucose =
@@ -826,7 +949,7 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
             ),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: _loadFamilyHome,
+              onPressed: _loadCaregiverHome,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryBlue,
                 foregroundColor: Colors.white,
@@ -935,7 +1058,7 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
         children: [
           Expanded(
             child: Text(
-              '$greeting\n$familyName',
+              '$greeting\n$caregiverName',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 18,
@@ -957,8 +1080,8 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
 
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => const FamilyNotificationPage()),
-        ).then((_) => _loadFamilyHome());
+          MaterialPageRoute(builder: (_) => const CaregiverNotificationPage()),
+        ).then((_) => _loadCaregiverHome());
       },
       child: Stack(
         clipBehavior: Clip.none,
@@ -1046,7 +1169,7 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
             children: [
               Expanded(
                 child: Text(
-                  '$greeting\n$familyName',
+                  '$greeting\n$caregiverName',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 18,

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 
-class FamilyRecommendationDetailPage extends StatelessWidget {
+class CaregiverRecommendationDetailPage extends StatelessWidget {
   final Map<String, dynamic> item;
 
-  const FamilyRecommendationDetailPage({
+  const CaregiverRecommendationDetailPage({
     super.key,
     required this.item,
   });
@@ -33,6 +33,21 @@ class FamilyRecommendationDetailPage extends StatelessWidget {
       item['patient_name']?.toString() ??
       item['full_name']?.toString() ??
       'Pasien';
+
+  List<Map<String, dynamic>> get recommendationItems {
+    final raw = item['items'];
+    if (raw is List) {
+      return List<Map<String, dynamic>>.from(raw);
+    }
+    return [item];
+  }
+
+  String get categorySummary =>
+      item['category_summary']?.toString() ??
+      recommendationItems
+          .map((e) => e['category']?.toString() ?? 'Rekomendasi')
+          .toSet()
+          .join(', ');
 
   @override
   Widget build(BuildContext context) {
@@ -180,7 +195,7 @@ class FamilyRecommendationDetailPage extends StatelessWidget {
           const SizedBox(height: 12),
           _infoRow('Dokter', doctorName),
           _infoRow('Tanggal', date),
-          _infoRow('Kategori', category),
+          _infoRow('Kategori', categorySummary),
           _infoRow('Untuk Pasien', targetPatient),
         ],
       ),
@@ -210,35 +225,43 @@ class FamilyRecommendationDetailPage extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.veryLightBlue.withValues(alpha: 0.55),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.light1),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _smallBadge(
-                  text: category,
-                  bg: AppColors.lightBlue,
-                  color: AppColors.primaryBlue,
-                  icon: _categoryIcon(category),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  recommendationText,
-                  style: const TextStyle(
-                    color: AppColors.dark1,
-                    fontSize: 13,
-                    height: 1.35,
+          ...recommendationItems.map((rec) {
+            final recCategory = rec['category']?.toString() ?? 'Rekomendasi';
+            final recText = rec['recommendation_text']?.toString() ??
+                rec['description']?.toString() ??
+                '-';
+
+            return Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.veryLightBlue.withValues(alpha: 0.55),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.light1),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _smallBadge(
+                    text: recCategory,
+                    bg: AppColors.lightBlue,
+                    color: AppColors.primaryBlue,
+                    icon: _categoryIcon(recCategory),
                   ),
-                ),
-              ],
-            ),
-          ),
+                  const SizedBox(height: 10),
+                  Text(
+                    recText,
+                    style: const TextStyle(
+                      color: AppColors.dark1,
+                      fontSize: 13,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
         ],
       ),
     );

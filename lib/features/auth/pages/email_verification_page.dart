@@ -6,7 +6,7 @@ import '../../../data/services/api_service.dart';
 import 'admin_verification_waiting_page.dart';
 import 'login_page.dart';
 
-enum VerificationRoleType { doctor, patient, family }
+enum VerificationRoleType { doctor, patient, caregiver }
 
 class EmailVerificationPage extends StatefulWidget {
   final String email;
@@ -40,7 +40,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
         return 'Email berhasil diverifikasi. Menunggu verifikasi admin.';
       case VerificationRoleType.patient:
         return 'Email berhasil diverifikasi. Silakan login.';
-      case VerificationRoleType.family:
+      case VerificationRoleType.caregiver:
         return 'Email berhasil diverifikasi. Silakan login.';
     }
   }

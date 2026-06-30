@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 
-class FamilyPatientDetailPage extends StatefulWidget {
+class CaregiverPatientDetailPage extends StatefulWidget {
   final int patientId;
   final String initial;
   final String name;
   final String relation;
   final String date;
 
-  const FamilyPatientDetailPage({
+  const CaregiverPatientDetailPage({
     super.key,
     required this.patientId,
     required this.initial,
@@ -19,11 +19,11 @@ class FamilyPatientDetailPage extends StatefulWidget {
   });
 
   @override
-  State<FamilyPatientDetailPage> createState() =>
-      _FamilyPatientDetailPageState();
+  State<CaregiverPatientDetailPage> createState() =>
+      _CaregiverPatientDetailPageState();
 }
 
-class _FamilyPatientDetailPageState extends State<FamilyPatientDetailPage> {
+class _CaregiverPatientDetailPageState extends State<CaregiverPatientDetailPage> {
   bool isLoading = true;
   bool isProcessing = false;
   String? errorMessage;
@@ -43,7 +43,7 @@ class _FamilyPatientDetailPageState extends State<FamilyPatientDetailPage> {
         errorMessage = null;
       });
 
-      final data = await ApiService.getFamilyPatientDetail(widget.patientId);
+      final data = await ApiService.getCaregiverPatientDetail(widget.patientId);
 
       if (!mounted) return;
 
@@ -65,7 +65,7 @@ class _FamilyPatientDetailPageState extends State<FamilyPatientDetailPage> {
     setState(() => isProcessing = true);
 
     try {
-      await ApiService.disconnectFamilyPatient(patientId: widget.patientId);
+      await ApiService.disconnectCaregiverPatient(patientId: widget.patientId);
 
       if (!mounted) return;
 

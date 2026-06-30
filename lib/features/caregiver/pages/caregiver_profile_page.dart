@@ -4,16 +4,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 import '../../auth/pages/login_page.dart';
-import 'family_edit_profile_page.dart';
+import 'caregiver_edit_profile_page.dart';
 
-class FamilyProfilePage extends StatefulWidget {
-  const FamilyProfilePage({super.key});
+class CaregiverProfilePage extends StatefulWidget {
+  const CaregiverProfilePage({super.key});
 
   @override
-  State<FamilyProfilePage> createState() => _FamilyProfilePageState();
+  State<CaregiverProfilePage> createState() => _CaregiverProfilePageState();
 }
 
-class _FamilyProfilePageState extends State<FamilyProfilePage> {
+class _CaregiverProfilePageState extends State<CaregiverProfilePage> {
   bool isLoading = true;
   String? errorMessage;
 
@@ -35,13 +35,13 @@ class _FamilyProfilePageState extends State<FamilyProfilePage> {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      final familyId = prefs.getInt('family_id');
+      final caregiverId = prefs.getInt('caregiver_id');
 
-      if (familyId == null) {
-        throw Exception('Family ID tidak ditemukan. Coba login ulang.');
+      if (caregiverId == null) {
+        throw Exception('Caregiver ID tidak ditemukan. Coba login ulang.');
       }
 
-      final data = await ApiService.getFamilyProfile(familyId);
+      final data = await ApiService.getCaregiverProfile(caregiverId);
 
       if (!mounted) return;
 
@@ -297,7 +297,7 @@ class _FamilyProfilePageState extends State<FamilyProfilePage> {
                   await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const FamilyEditProfilePage(),
+                      builder: (_) => const CaregiverEditProfilePage(),
                     ),
                   );
                   _loadProfile();

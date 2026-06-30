@@ -4,13 +4,13 @@ import 'package:flutter/services.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 
-class FamilyGlucoseFormPage extends StatefulWidget {
+class CaregiverPhysiologicalFormPage extends StatefulWidget {
   final int patientId;
   final String patientInitial;
   final String patientName;
   final String patientInfo;
 
-  const FamilyGlucoseFormPage({
+  const CaregiverPhysiologicalFormPage({
     super.key,
     required this.patientId,
     required this.patientInitial,
@@ -19,24 +19,65 @@ class FamilyGlucoseFormPage extends StatefulWidget {
   });
 
   @override
-  State<FamilyGlucoseFormPage> createState() => _FamilyGlucoseFormPageState();
+  State<CaregiverPhysiologicalFormPage> createState() =>
+      _CaregiverPhysiologicalFormPageState();
 }
 
-class _FamilyGlucoseFormPageState extends State<FamilyGlucoseFormPage> {
-  final glucoseCtr = TextEditingController();
-  final noteCtr = TextEditingController();
-
-  int selectedType = 0;
-  bool isSaving = false;
+class _CaregiverPhysiologicalFormPageState
+    extends State<CaregiverPhysiologicalFormPage> {
+  final systolicCtr = TextEditingController();
+  final diastolicCtr = TextEditingController();
+  final weightCtr = TextEditingController();
+  final heightCtr = TextEditingController();
 
   DateTime selectedDate = DateTime.now();
   TimeOfDay selectedTime = TimeOfDay.now();
 
-  final types = ['Puasa', 'Dua Jam Setelah Makan', 'Sewaktu'];
+  bool isSaving = false;
+  bool isLoadingHeight = true;
 
   bool get isValid {
-    final value = double.tryParse(glucoseCtr.text.trim());
-    return value != null && value > 0;
+    return systolicCtr.text.trim().isNotEmpty ||
+        diastolicCtr.text.trim().isNotEmpty ||
+        weightCtr.text.trim().isNotEmpty;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    for (final c in [systolicCtr, diastolicCtr, weightCtr]) {
+      c.addListener(() => setState(() {}));
+    }
+
+    _loadPatientHeight();
+  }
+
+  Future<void> _loadPatientHeight() async {
+    try {
+      final data = await ApiService.getCaregiverPatientDashboard(widget.patientId);
+      final profile = data['profile'] ?? {};
+      final height = profile['height_cm'];
+
+      if (!mounted) return;
+
+      setState(() {
+        heightCtr.text = height == null ? '' : height.toString();
+        isLoadingHeight = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => isLoadingHeight = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    systolicCtr.dispose();
+    diastolicCtr.dispose();
+    weightCtr.dispose();
+    heightCtr.dispose();
+    super.dispose();
   }
 
   DateTime get measuredAt {
@@ -49,25 +90,39 @@ class _FamilyGlucoseFormPageState extends State<FamilyGlucoseFormPage> {
     );
   }
 
-  @override
-  void initState() {
-    super.initState();
-    glucoseCtr.addListener(() => setState(() {}));
+  double? get bmi {
+    final weight = double.tryParse(weightCtr.text.trim());
+    final heightCm = double.tryParse(heightCtr.text.trim());
+
+    if (weight == null || heightCm == null || heightCm <= 0) return null;
+
+    final heightM = heightCm / 100;
+    return double.parse((weight / (heightM * heightM)).toStringAsFixed(1));
   }
 
-  @override
-  void dispose() {
-    glucoseCtr.dispose();
-    noteCtr.dispose();
-    super.dispose();
-  }
+  Future<void> _save() async {
+    FocusScope.of(context).unfocus();
 
-  String _formatDate(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
-  }
+    setState(() => isSaving = true);
 
-  String _formatTime(TimeOfDay time) {
-    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+    try {
+      await ApiService.storeCaregiverPhysiological(
+        patientId: widget.patientId,
+        systolic: int.tryParse(systolicCtr.text.trim()),
+        diastolic: int.tryParse(diastolicCtr.text.trim()),
+        weightKg: double.tryParse(weightCtr.text.trim()),
+        bmi: bmi,
+        measuredAt: measuredAt,
+      );
+
+      if (!mounted) return;
+      _showSuccessSheet();
+    } catch (e) {
+      if (!mounted) return;
+      _showSnackBar(e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => isSaving = false);
+    }
   }
 
   Future<void> _pickDate() async {
@@ -81,6 +136,9 @@ class _FamilyGlucoseFormPageState extends State<FamilyGlucoseFormPage> {
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
               primary: AppColors.primaryBlue,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: AppColors.dark1,
             ),
           ),
           child: child!,
@@ -102,6 +160,9 @@ class _FamilyGlucoseFormPageState extends State<FamilyGlucoseFormPage> {
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
               primary: AppColors.primaryBlue,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: AppColors.dark1,
             ),
           ),
           child: child!,
@@ -114,33 +175,12 @@ class _FamilyGlucoseFormPageState extends State<FamilyGlucoseFormPage> {
     }
   }
 
-  Future<void> _saveData() async {
-    if (!isValid || isSaving) return;
+  String _formatDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  }
 
-    FocusScope.of(context).unfocus();
-    setState(() => isSaving = true);
-
-    try {
-      await ApiService.storeFamilyGlucose(
-        patientId: widget.patientId,
-        measurementType: types[selectedType],
-        glucoseValue: double.parse(glucoseCtr.text.trim()),
-        measuredAt: measuredAt,
-      );
-
-      if (!mounted) return;
-      _showSuccessSheet(context);
-    } catch (e) {
-      if (!mounted) return;
-
-      _showStyledSnackBar(
-        message: e.toString().replaceFirst('Exception: ', ''),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => isSaving = false);
-      }
-    }
+  String _formatTime(TimeOfDay time) {
+    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -151,7 +191,6 @@ class _FamilyGlucoseFormPageState extends State<FamilyGlucoseFormPage> {
         backgroundColor: AppColors.primaryBlue,
         foregroundColor: Colors.white,
         centerTitle: true,
-        elevation: 0,
         title: const Text('Tambah Data'),
       ),
       body: SingleChildScrollView(
@@ -161,113 +200,103 @@ class _FamilyGlucoseFormPageState extends State<FamilyGlucoseFormPage> {
           children: [
             _patientCard(),
             const SizedBox(height: 18),
-
-            const Text(
-              'Glukosa Darah',
-              style: TextStyle(
-                color: AppColors.primaryBlue,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-
+            _sectionTitle('Data Fisiologis'),
             const SizedBox(height: 14),
 
             _label('Tanggal dan waktu*'),
             Row(
               children: [
                 Expanded(
-                  child: _dateTimeBox(
+                  child: _pickerBox(
                     text: _formatDate(selectedDate),
-                    icon: Icons.calendar_today_outlined,
-                    onTap: _pickDate,
+                    icon: Icons.calendar_month_rounded,
+                    onTap: isSaving ? null : _pickDate,
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: _dateTimeBox(
+                  child: _pickerBox(
                     text: _formatTime(selectedTime),
-                    icon: Icons.access_time,
-                    onTap: _pickTime,
+                    icon: Icons.access_time_rounded,
+                    onTap: isSaving ? null : _pickTime,
                   ),
                 ),
               ],
             ),
 
             const SizedBox(height: 14),
-
-            _label('Tipe pengukuran*'),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: List.generate(types.length, (index) {
-                final selected = selectedType == index;
-
-                return GestureDetector(
-                  onTap: () => setState(() => selectedType = index),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 9,
-                    ),
-                    decoration: BoxDecoration(
-                      color: selected ? AppColors.primaryBlue : AppColors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: selected
-                            ? AppColors.primaryBlue
-                            : AppColors.light1,
-                      ),
-                    ),
-                    child: Text(
-                      types[index],
-                      style: TextStyle(
-                        color: selected ? Colors.white : AppColors.primaryBlue,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+            _label('Tekanan Darah'),
+            Row(
+              children: [
+                Expanded(
+                  child: _input(
+                    controller: systolicCtr,
+                    hint: 'Sistolik',
+                    keyboardType: TextInputType.number,
                   ),
-                );
-              }),
-            ),
-
-            const SizedBox(height: 14),
-
-            _label('Nilai Glukosa*'),
-            _input(
-              controller: glucoseCtr,
-              hint: 'Masukkan nilai glukosa mg/dL',
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _input(
+                    controller: diastolicCtr,
+                    hint: 'Diastolik',
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
               ],
             ),
 
             const SizedBox(height: 14),
-
-            _label('Catatan opsional'),
+            _label('Berat Badan (kg)'),
             _input(
-              controller: noteCtr,
-              hint: 'Contoh: Setelah makan nasi padang',
-              maxLines: 3,
+              controller: weightCtr,
+              hint: 'Masukkan berat badan',
+              keyboardType: TextInputType.number,
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 14),
+            _label('Tinggi Badan (cm)'),
+            _input(
+              controller: heightCtr,
+              hint: isLoadingHeight
+                  ? 'Mengambil tinggi badan...'
+                  : 'Tinggi badan pasien',
+              keyboardType: TextInputType.number,
+              readOnly: true,
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Tinggi badan diambil dari profil pasien dan tidak dapat diubah oleh keluarga.',
+              style: TextStyle(
+                color: AppColors.dark2,
+                fontSize: 11,
+                height: 1.3,
+              ),
+            ),
 
+            if (bmi != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                'BMI: $bmi',
+                style: const TextStyle(
+                  color: AppColors.primaryBlue,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
               height: 46,
               child: ElevatedButton(
-                onPressed: isValid && !isSaving ? _saveData : null,
+                onPressed: isValid && !isSaving ? _save : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryBlue,
                   disabledBackgroundColor: const Color(0xFFAFCBEA),
                   foregroundColor: Colors.white,
                   elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
-                  ),
                 ),
                 child: isSaving
                     ? const SizedBox(
@@ -281,9 +310,7 @@ class _FamilyGlucoseFormPageState extends State<FamilyGlucoseFormPage> {
                     : const Text('Simpan'),
               ),
             ),
-
             const SizedBox(height: 12),
-
             Center(
               child: TextButton(
                 onPressed: isSaving ? null : () => Navigator.pop(context),
@@ -346,6 +373,17 @@ class _FamilyGlucoseFormPageState extends State<FamilyGlucoseFormPage> {
     );
   }
 
+  Widget _sectionTitle(String text) {
+    return Text(
+      text,
+      style: const TextStyle(
+        color: AppColors.primaryBlue,
+        fontSize: 15,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+  }
+
   Widget _label(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 7),
@@ -360,25 +398,25 @@ class _FamilyGlucoseFormPageState extends State<FamilyGlucoseFormPage> {
     );
   }
 
-  Widget _dateTimeBox({
+  Widget _pickerBox({
     required String text,
     required IconData icon,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: BorderRadius.circular(8),
       child: Container(
         height: 48,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
           color: AppColors.white,
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(color: AppColors.light1),
         ),
         child: Row(
           children: [
-            Icon(icon, color: AppColors.primaryBlue, size: 17),
+            Icon(icon, size: 17, color: AppColors.primaryBlue),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -399,24 +437,33 @@ class _FamilyGlucoseFormPageState extends State<FamilyGlucoseFormPage> {
   Widget _input({
     required TextEditingController controller,
     required String hint,
-    int maxLines = 1,
     TextInputType? keyboardType,
-    List<TextInputFormatter>? inputFormatters,
+    bool readOnly = false,
   }) {
     return TextField(
       controller: controller,
-      maxLines: maxLines,
+      enabled: !isSaving,
+      readOnly: readOnly,
       keyboardType: keyboardType,
-      inputFormatters: inputFormatters,
+      inputFormatters: readOnly
+          ? []
+          : [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(color: AppColors.dark3, fontSize: 12),
         filled: true,
-        fillColor: AppColors.white,
+        fillColor: readOnly ? AppColors.veryLightBlue : AppColors.white,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 12,
           vertical: 13,
         ),
+        suffixIcon: readOnly
+            ? const Icon(
+                Icons.lock_outline,
+                size: 18,
+                color: AppColors.dark2,
+              )
+            : null,
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6),
           borderSide: const BorderSide(color: AppColors.light1),
@@ -425,16 +472,18 @@ class _FamilyGlucoseFormPageState extends State<FamilyGlucoseFormPage> {
           borderRadius: BorderRadius.circular(6),
           borderSide: const BorderSide(color: AppColors.primaryBlue),
         ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: const BorderSide(color: AppColors.light1),
+        ),
       ),
     );
   }
 
-  void _showSuccessSheet(BuildContext context) {
+  void _showSuccessSheet() {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      isDismissible: false,
-      enableDrag: false,
       builder: (sheetContext) {
         return Container(
           padding: const EdgeInsets.all(24),
@@ -472,7 +521,7 @@ class _FamilyGlucoseFormPageState extends State<FamilyGlucoseFormPage> {
                 child: ElevatedButton(
                   onPressed: () {
                     Navigator.pop(sheetContext);
-                    Navigator.pop(context);
+                    Navigator.pop(context, true);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryBlue,
@@ -489,21 +538,13 @@ class _FamilyGlucoseFormPageState extends State<FamilyGlucoseFormPage> {
     );
   }
 
-  void _showStyledSnackBar({required String message}) {
+  void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         backgroundColor: AppColors.red,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        content: Row(
-          children: [
-            const Icon(Icons.info_outline, color: Colors.white),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(message, style: const TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
+        content: Text(message),
       ),
     );
   }

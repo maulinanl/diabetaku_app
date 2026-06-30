@@ -4,13 +4,13 @@ import 'package:flutter/services.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 
-class FamilyActivityFormPage extends StatefulWidget {
+class CaregiverMealFormPage extends StatefulWidget {
   final int patientId;
   final String patientInitial;
   final String patientName;
   final String patientInfo;
 
-  const FamilyActivityFormPage({
+  const CaregiverMealFormPage({
     super.key,
     required this.patientId,
     required this.patientInitial,
@@ -19,39 +19,47 @@ class FamilyActivityFormPage extends StatefulWidget {
   });
 
   @override
-  State<FamilyActivityFormPage> createState() => _FamilyActivityFormPageState();
+  State<CaregiverMealFormPage> createState() => _CaregiverMealFormPageState();
 }
 
-class _FamilyActivityFormPageState extends State<FamilyActivityFormPage> {
-  int selectedActivity = 0;
-  int selectedIntensity = 0;
+class _CaregiverMealFormPageState extends State<CaregiverMealFormPage> {
+  int selectedMealType = 0;
 
-  final activities = const [
-    'Jalan Kaki',
-    'Lari',
-    'Bersepeda',
-    'Senam',
-    'Yoga',
-  ];
+  final mealTypes = const ['Sarapan', 'Makan Siang', 'Makan Malam', 'Snack'];
 
-  final intensities = const ['Ringan', 'Sedang', 'Berat'];
-
-  final durationController = TextEditingController();
-  final noteController = TextEditingController();
+  final carbController = TextEditingController();
+  final caloriesController = TextEditingController();
+  final foodController = TextEditingController();
 
   DateTime selectedDate = DateTime.now();
   TimeOfDay selectedTime = TimeOfDay.now();
 
   bool isSaving = false;
 
-  int get activityTypeId => selectedActivity + 1;
-
-  bool get isValid {
-    final duration = int.tryParse(durationController.text.trim());
-    return duration != null && duration > 0;
+  int get mealTypeId {
+    switch (selectedMealType) {
+      case 0:
+        return 1;
+      case 1:
+        return 2;
+      case 2:
+        return 3;
+      case 3:
+        return 4;
+      default:
+        return 1;
+    }
   }
 
-  DateTime get activityDate {
+  bool get isValid {
+    final carb = double.tryParse(carbController.text.trim());
+
+    return carb != null &&
+        carb > 0 &&
+        foodController.text.trim().isNotEmpty;
+  }
+
+  DateTime get mealDate {
     return DateTime(
       selectedDate.year,
       selectedDate.month,
@@ -64,14 +72,21 @@ class _FamilyActivityFormPageState extends State<FamilyActivityFormPage> {
   @override
   void initState() {
     super.initState();
-    durationController.addListener(() => setState(() {}));
-    noteController.addListener(() => setState(() {}));
+
+    for (final controller in [
+      carbController,
+      caloriesController,
+      foodController,
+    ]) {
+      controller.addListener(() => setState(() {}));
+    }
   }
 
   @override
   void dispose() {
-    durationController.dispose();
-    noteController.dispose();
+    carbController.dispose();
+    caloriesController.dispose();
+    foodController.dispose();
     super.dispose();
   }
 
@@ -134,18 +149,22 @@ class _FamilyActivityFormPageState extends State<FamilyActivityFormPage> {
     setState(() => isSaving = true);
 
     try {
-      await ApiService.storeFamilyActivity(
+      await ApiService.storeCaregiverMeal(
         patientId: widget.patientId,
-        activityTypeId: activityTypeId,
-        durationMinutes: int.parse(durationController.text.trim()),
-        intensity: intensities[selectedIntensity],
-        activityDate: activityDate,
+        mealTypeId: mealTypeId,
+        carbohydrateGram: double.parse(carbController.text.trim()),
+        calories: caloriesController.text.trim().isEmpty
+            ? null
+            : double.tryParse(caloriesController.text.trim()),
+        description: foodController.text.trim(),
+        mealDate: mealDate,
       );
 
       if (!mounted) return;
       _showSuccessSheet(context);
     } catch (e) {
       if (!mounted) return;
+
       _showStyledSnackBar(
         message: e.toString().replaceFirst('Exception: ', ''),
       );
@@ -174,16 +193,14 @@ class _FamilyActivityFormPageState extends State<FamilyActivityFormPage> {
           children: [
             _patientCard(),
             const SizedBox(height: 18),
-
             const Text(
-              'Aktivitas Fisik',
+              'Pola Makan',
               style: TextStyle(
                 color: AppColors.primaryBlue,
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
               ),
             ),
-
             const SizedBox(height: 14),
 
             _label('Tanggal dan waktu*'),
@@ -209,38 +226,72 @@ class _FamilyActivityFormPageState extends State<FamilyActivityFormPage> {
 
             const SizedBox(height: 14),
 
-            _label('Jenis aktivitas*'),
-            _choiceWrap(
-              data: activities,
-              selectedIndex: selectedActivity,
-              onTap: (index) => setState(() => selectedActivity = index),
+            _label('Tipe makan*'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: List.generate(mealTypes.length, (index) {
+                final selected = selectedMealType == index;
+
+                return GestureDetector(
+                  onTap: () => setState(() => selectedMealType = index),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 9,
+                    ),
+                    decoration: BoxDecoration(
+                      color: selected ? AppColors.primaryBlue : AppColors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: selected
+                            ? AppColors.primaryBlue
+                            : AppColors.light1,
+                      ),
+                    ),
+                    child: Text(
+                      mealTypes[index],
+                      style: TextStyle(
+                        color: selected ? Colors.white : AppColors.primaryBlue,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                );
+              }),
             ),
 
             const SizedBox(height: 14),
 
-            _label('Durasi (menit)*'),
+            _label('Estimasi karbohidrat (gram)*'),
             _input(
-              hint: 'Masukkan durasi aktivitas',
-              controller: durationController,
+              hint: 'Masukkan estimasi karbohidrat',
+              controller: carbController,
               keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+              ],
             ),
 
             const SizedBox(height: 14),
 
-            _label('Intensitas*'),
-            _choiceWrap(
-              data: intensities,
-              selectedIndex: selectedIntensity,
-              onTap: (index) => setState(() => selectedIntensity = index),
-            ),
-
-            const SizedBox(height: 14),
-
-            _label('Catatan opsional'),
+            _label('Estimasi kalori'),
             _input(
-              hint: 'Contoh: Jalan pagi keliling kompleks',
-              controller: noteController,
+              hint: 'Opsional, contoh: 450',
+              controller: caloriesController,
+              keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+              ],
+            ),
+
+            const SizedBox(height: 14),
+
+            _label('Deskripsi makanan*'),
+            _input(
+              hint: 'Contoh: Nasi putih, ayam goreng, sayur bayam',
+              controller: foodController,
               maxLines: 3,
             ),
 
@@ -337,42 +388,6 @@ class _FamilyActivityFormPageState extends State<FamilyActivityFormPage> {
     );
   }
 
-  Widget _choiceWrap({
-    required List<String> data,
-    required int selectedIndex,
-    required ValueChanged<int> onTap,
-  }) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: List.generate(data.length, (index) {
-        final selected = selectedIndex == index;
-
-        return GestureDetector(
-          onTap: () => onTap(index),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-            decoration: BoxDecoration(
-              color: selected ? AppColors.primaryBlue : AppColors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: selected ? AppColors.primaryBlue : AppColors.light1,
-              ),
-            ),
-            child: Text(
-              data[index],
-              style: TextStyle(
-                color: selected ? Colors.white : AppColors.primaryBlue,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        );
-      }),
-    );
-  }
-
   Widget _label(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 7),
@@ -440,7 +455,10 @@ class _FamilyActivityFormPageState extends State<FamilyActivityFormPage> {
         hintStyle: const TextStyle(color: AppColors.dark3, fontSize: 12),
         filled: true,
         fillColor: AppColors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 13,
+        ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6),
           borderSide: const BorderSide(color: AppColors.light1),
@@ -459,55 +477,57 @@ class _FamilyActivityFormPageState extends State<FamilyActivityFormPage> {
       backgroundColor: Colors.transparent,
       isDismissible: false,
       enableDrag: false,
-      builder: (sheetContext) => Container(
-        padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircleAvatar(
-              radius: 36,
-              backgroundColor: Color(0xFFEAFBF3),
-              child: Icon(Icons.check, color: Color(0xFF10C878), size: 36),
-            ),
-            const SizedBox(height: 18),
-            const Text(
-              'Data berhasil disimpan',
-              style: TextStyle(
-                color: AppColors.primaryBlue,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+      builder: (sheetContext) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircleAvatar(
+                radius: 36,
+                backgroundColor: Color(0xFFEAFBF3),
+                child: Icon(Icons.check, color: Color(0xFF10C878), size: 36),
               ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Data menunggu konfirmasi pasien sebelum masuk ke riwayat kesehatan.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.dark2, fontSize: 13),
-            ),
-            const SizedBox(height: 22),
-            SizedBox(
-              width: double.infinity,
-              height: 46,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(sheetContext);
-                  Navigator.pop(context);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryBlue,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
+              const SizedBox(height: 18),
+              const Text(
+                'Data berhasil disimpan',
+                style: TextStyle(
+                  color: AppColors.primaryBlue,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
                 ),
-                child: const Text('Kembali'),
               ),
-            ),
-          ],
-        ),
-      ),
+              const SizedBox(height: 8),
+              const Text(
+                'Data menunggu konfirmasi pasien sebelum masuk ke riwayat kesehatan.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.dark2, fontSize: 13),
+              ),
+              const SizedBox(height: 22),
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryBlue,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                  ),
+                  child: const Text('Kembali'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

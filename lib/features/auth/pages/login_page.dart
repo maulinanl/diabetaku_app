@@ -3,7 +3,7 @@ import '../../../core/theme/app_colors.dart';
 import 'role_selection_page.dart';
 import '../../doctor/pages/doctor_main_page.dart';
 import '../../patient/pages/patient_main_page.dart';
-import '../../family/pages/family_main_page.dart';
+import '../../caregiver/pages/caregiver_main_page.dart';
 import 'forgot_password_page.dart';
 import '../../../data/services/api_service.dart';
 import 'email_verification_page.dart';
@@ -78,7 +78,7 @@ class _LoginPageState extends State<LoginPage> {
       } else if (roleId == 4) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const FamilyMainPage()),
+          MaterialPageRoute(builder: (_) => const CaregiverMainPage()),
         );
       } else {
         _showStyledSnackBar(message: 'Role pengguna tidak dikenali');
@@ -101,7 +101,7 @@ class _LoginPageState extends State<LoginPage> {
       if (roleIdFromError == 2) {
         roleType = VerificationRoleType.doctor;
       } else if (roleIdFromError == 4) {
-        roleType = VerificationRoleType.family;
+        roleType = VerificationRoleType.caregiver;
       }
 
       if (status == 'email_unverified') {
