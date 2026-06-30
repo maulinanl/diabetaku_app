@@ -165,7 +165,16 @@ class _CaregiverActivityFormPageState extends State<CaregiverActivityFormPage> {
         foregroundColor: Colors.white,
         centerTitle: true,
         elevation: 0,
-        title: const Text('Tambah Data'),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.only(
+            bottomLeft: Radius.circular(24),
+            bottomRight: Radius.circular(24),
+          ),
+        ),
+        title: const Text(
+          'Tambah Data',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),

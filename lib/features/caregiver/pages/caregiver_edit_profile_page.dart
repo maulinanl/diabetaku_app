@@ -189,8 +189,8 @@ void _checkFormChanged() {
       decoration: const BoxDecoration(
         color: AppColors.primaryBlue,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(22),
-          bottomRight: Radius.circular(22),
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
         ),
       ),
       child: Row(
@@ -205,8 +205,8 @@ void _checkFormChanged() {
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 21,
+                fontWeight: FontWeight.w700,
+                fontSize: 20,
               ),
             ),
           ),

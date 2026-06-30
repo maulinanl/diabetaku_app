@@ -104,7 +104,7 @@ class _CaregiverMainPageState extends State<CaregiverMainPage> {
       final patientResults = await Future.wait([
         ApiService.getCaregiverPatientDashboard(firstPatientId),
         ApiService.getCaregiverPatientRecommendations(firstPatientId),
-        ApiService.getPatientHealthHistory(firstPatientId),
+        ApiService.getCaregiverPatientHistories(firstPatientId),
         ApiService.getCaregiverPatientActivePrescriptions(firstPatientId),
       ]);
 
@@ -174,7 +174,7 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
   final patientResults = await Future.wait([
     ApiService.getCaregiverPatientDashboard(patientId),
     ApiService.getCaregiverPatientRecommendations(patientId),
-    ApiService.getPatientHealthHistory(patientId),
+    ApiService.getCaregiverPatientHistories(patientId),
     ApiService.getCaregiverPatientActivePrescriptions(patientId),
   ]);
 
@@ -221,7 +221,7 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
     if (patients.isEmpty) return _emptyPatientState();
 
     return Container(
-      color: AppColors.primaryBlue,
+      color: AppColors.background,
       child: SafeArea(
         top: false,
         child: Column(
@@ -1046,12 +1046,12 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(22, topPad + 24, 22, 22),
+      padding: EdgeInsets.fromLTRB(24, topPad + 28, 24, 32),
       decoration: const BoxDecoration(
         color: AppColors.primaryBlue,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(22),
-          bottomRight: Radius.circular(22),
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
         ),
       ),
       child: Row(
@@ -1155,12 +1155,12 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(22, topPad + 24, 22, 22),
+      padding: EdgeInsets.fromLTRB(24, topPad + 28, 24, 32),
       decoration: const BoxDecoration(
         color: AppColors.primaryBlue,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(22),
-          bottomRight: Radius.circular(22),
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
         ),
       ),
       child: Column(
@@ -1172,8 +1172,8 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
                   '$greeting\n$caregiverName',
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 18,
-                    height: 1.35,
+                    fontSize: 20,
+                    height: 1.3,
                     fontWeight: FontWeight.w700,
                   ),
                 ),

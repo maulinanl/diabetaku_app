@@ -94,7 +94,7 @@ class _CaregiverProfilePageState extends State<CaregiverProfilePage> {
     }
 
     return Container(
-      color: AppColors.primaryBlue,
+      color: AppColors.background,
       child: SafeArea(
         top: false,
         child: Column(
@@ -180,12 +180,12 @@ class _CaregiverProfilePageState extends State<CaregiverProfilePage> {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(20, topPad + 22, 20, 26),
+      padding: EdgeInsets.fromLTRB(20, topPad + 24, 20, 28),
       decoration: const BoxDecoration(
         color: AppColors.primaryBlue,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(22),
-          bottomRight: Radius.circular(22),
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
         ),
       ),
       child: Column(
@@ -208,8 +208,8 @@ class _CaregiverProfilePageState extends State<CaregiverProfilePage> {
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 19,
-              fontWeight: FontWeight.bold,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 4),

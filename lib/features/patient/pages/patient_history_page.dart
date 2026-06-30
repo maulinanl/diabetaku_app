@@ -300,7 +300,7 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: AppColors.primaryBlue,
+      color: AppColors.background,
       child: SafeArea(
         top: false,
         child: Column(
@@ -359,7 +359,7 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(24, topPad + 30, 24, 26),
+      padding: EdgeInsets.fromLTRB(28, topPad + 28, 28, 28),
       decoration: const BoxDecoration(
         color: AppColors.primaryBlue,
         borderRadius: BorderRadius.only(
@@ -373,7 +373,7 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
             'Riwayat',
             style: TextStyle(
               color: Colors.white,
-              fontSize: 21,
+              fontSize: 22,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -1601,8 +1601,8 @@ class PatientHealthDetailPage extends StatelessWidget {
     decoration: const BoxDecoration(
       color: AppColors.primaryBlue,
       borderRadius: BorderRadius.only(
-        bottomLeft: Radius.circular(22),
-        bottomRight: Radius.circular(22),
+        bottomLeft: Radius.circular(24),
+        bottomRight: Radius.circular(24),
       ),
     ),
     child: Column(

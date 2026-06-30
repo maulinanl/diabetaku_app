@@ -319,7 +319,7 @@ class _PatientHomePageState extends State<PatientHomePage> {
     }
 
     return Container(
-      color: AppColors.primaryBlue,
+      color: AppColors.background,
       child: SafeArea(
         top: false,
         child: Column(
@@ -355,7 +355,7 @@ class _PatientHomePageState extends State<PatientHomePage> {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(22, topPad + 24, 22, 22),
+      padding: EdgeInsets.fromLTRB(24, topPad + 28, 24, 32),
       decoration: const BoxDecoration(
         color: AppColors.primaryBlue,
         borderRadius: BorderRadius.only(
@@ -373,8 +373,8 @@ class _PatientHomePageState extends State<PatientHomePage> {
                   '$greeting\n$patientName',
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 18,
-                    height: 1.35,
+                    fontSize: 20,
+                    height: 1.3,
                     fontWeight: FontWeight.w700,
                   ),
                 ),

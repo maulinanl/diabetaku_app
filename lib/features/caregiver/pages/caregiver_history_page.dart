@@ -396,7 +396,7 @@ class _CaregiverHistoryPageState extends State<CaregiverHistoryPage> {
     }).toList();
 
     return Container(
-      color: AppColors.primaryBlue,
+      color: AppColors.background,
       child: SafeArea(
         top: false,
         child: Column(
@@ -545,12 +545,12 @@ class _CaregiverHistoryPageState extends State<CaregiverHistoryPage> {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(24, topPad + 30, 24, 26),
+      padding: EdgeInsets.fromLTRB(28, topPad + 28, 28, 28),
       decoration: const BoxDecoration(
         color: AppColors.primaryBlue,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(22),
-          bottomRight: Radius.circular(22),
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
         ),
       ),
       child: Column(
@@ -559,8 +559,8 @@ class _CaregiverHistoryPageState extends State<CaregiverHistoryPage> {
             'Riwayat',
             style: TextStyle(
               color: Colors.white,
-              fontSize: 21,
-              fontWeight: FontWeight.bold,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 28),

@@ -245,7 +245,7 @@ class ApiService {
       }
     }
 
-    throw Exception(data['message'] ?? 'Registrasi keluarga gagal');
+    throw Exception(data['message'] ?? 'Registrasi pendamping gagal');
   }
 
   static Future<String?> getToken() async {
@@ -602,7 +602,7 @@ class ApiService {
       return List<Map<String, dynamic>>.from(data['data']);
     }
 
-    throw Exception(data['message'] ?? 'Gagal mengambil data keluarga pasien');
+    throw Exception(data['message'] ?? 'Gagal mengambil data pendamping pasien');
   }
 
   static Future<List<Map<String, dynamic>>> getDoctorConnectionRequests(
@@ -1291,7 +1291,7 @@ class ApiService {
     int patientId,
   ) async {
     final response = await http.get(
-      Uri.parse('$baseUrl/patient/connections/caregiver/$patientId'),
+      Uri.parse('$baseUrl/patient/connections/caregivers/$patientId'),
       headers: await _authHeaders(),
     );
 
@@ -1301,7 +1301,7 @@ class ApiService {
       return List<Map<String, dynamic>>.from(data['data']);
     }
 
-    throw Exception(data['message'] ?? 'Gagal mengambil keluarga terhubung');
+    throw Exception(data['message'] ?? 'Gagal mengambil pendamping terhubung');
   }
 
   static Future<List<Map<String, dynamic>>> getIncomingCaregiverRequests(
@@ -1421,7 +1421,7 @@ class ApiService {
     final data = jsonDecode(response.body);
 
     if (response.statusCode != 200) {
-      throw Exception(data['message'] ?? 'Gagal memutus relasi keluarga');
+      throw Exception(data['message'] ?? 'Gagal memutus relasi pendamping');
     }
   }
 
@@ -1527,7 +1527,7 @@ class ApiService {
       return Map<String, dynamic>.from(data['data'] ?? {});
     }
 
-    throw Exception(data['message'] ?? 'Gagal mengambil profil keluarga');
+    throw Exception(data['message'] ?? 'Gagal mengambil profil pendamping');
   }
 
   static Future<List<Map<String, dynamic>>> getCaregiverPatients(
@@ -1544,7 +1544,7 @@ class ApiService {
       return List<Map<String, dynamic>>.from(data['data']);
     }
 
-    throw Exception(data['message'] ?? 'Gagal mengambil pasien keluarga');
+    throw Exception(data['message'] ?? 'Gagal mengambil pasien dampingan');
   }
 
   static Future<Map<String, dynamic>> getCaregiverPatientDashboard(
@@ -1860,7 +1860,7 @@ class ApiService {
     final data = jsonDecode(response.body);
 
     if (response.statusCode != 200) {
-      throw Exception(data['message'] ?? 'Gagal memperbarui profil keluarga');
+      throw Exception(data['message'] ?? 'Gagal memperbarui profil pendamping');
     }
   }
 

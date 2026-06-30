@@ -129,7 +129,7 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
     }
 
     return Container(
-      color: AppColors.primaryBlue,
+      color: AppColors.background,
       child: SafeArea(
         top: false,
         child: Column(
@@ -190,7 +190,7 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(20, topPad + 22, 20, 26),
+      padding: EdgeInsets.fromLTRB(20, topPad + 24, 20, 28),
       decoration: const BoxDecoration(
         color: AppColors.primaryBlue,
         borderRadius: BorderRadius.only(
@@ -218,8 +218,8 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 19,
-              fontWeight: FontWeight.bold,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 4),

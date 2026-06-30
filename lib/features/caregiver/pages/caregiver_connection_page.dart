@@ -253,8 +253,8 @@ class _CaregiverConnectionPageState extends State<CaregiverConnectionPage> {
       decoration: const BoxDecoration(
         color: AppColors.primaryBlue,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(22),
-          bottomRight: Radius.circular(22),
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
         ),
       ),
       child: const Center(
@@ -262,8 +262,8 @@ class _CaregiverConnectionPageState extends State<CaregiverConnectionPage> {
           'Koneksi',
           style: TextStyle(
             color: Colors.white,
-            fontSize: 21,
-            fontWeight: FontWeight.bold,
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ),
@@ -1032,8 +1032,8 @@ class _CaregiverPatientSearchDetailPageState
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 21,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
