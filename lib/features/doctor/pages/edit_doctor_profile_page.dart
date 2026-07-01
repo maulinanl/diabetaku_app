@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/profile_badge.dart';
 import '../../../data/services/api_service.dart';
 
 class EditDoctorProfilePage extends StatefulWidget {
@@ -20,6 +21,13 @@ class _EditDoctorProfilePageState extends State<EditDoctorProfilePage> {
   late TextEditingController institutionController;
 
   bool isSaving = false;
+
+  String get emailBadge {
+    if (!widget.profile.containsKey('email_verified_at')) return 'Terverifikasi';
+
+    final verifiedAt = widget.profile['email_verified_at'];
+    return verifiedAt == null ? 'Belum Verifikasi' : 'Terverifikasi';
+  }
 
   late String gender;
   late int specializationId;
@@ -158,7 +166,9 @@ class _EditDoctorProfilePageState extends State<EditDoctorProfilePage> {
                     _textField(
                       label: 'Email',
                       controller: emailController,
+                      keyboardType: TextInputType.emailAddress,
                       enabled: false,
+                      suffix: ProfileBadge.emailVerification(emailBadge),
                     ),
                     _textField(
                       label: 'Nomor Telepon',
@@ -266,15 +276,18 @@ class _EditDoctorProfilePageState extends State<EditDoctorProfilePage> {
   Widget _textField({
     required String label,
     required TextEditingController controller,
+    TextInputType? keyboardType,
     bool enabled = true,
+    Widget? suffix,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
         controller: controller,
         enabled: enabled,
+        keyboardType: keyboardType,
         style: const TextStyle(color: AppColors.dark1, fontSize: 14),
-        decoration: _inputDecoration(label, enabled: enabled),
+        decoration: _inputDecoration(label, enabled: enabled, suffix: suffix),
       ),
     );
   }
@@ -299,7 +312,11 @@ class _EditDoctorProfilePageState extends State<EditDoctorProfilePage> {
     );
   }
 
-  InputDecoration _inputDecoration(String label, {bool enabled = true}) {
+  InputDecoration _inputDecoration(
+    String label, {
+    bool enabled = true,
+    Widget? suffix,
+  }) {
     return InputDecoration(
       labelText: label,
       labelStyle: const TextStyle(color: AppColors.dark2, fontSize: 14),
@@ -322,6 +339,15 @@ class _EditDoctorProfilePageState extends State<EditDoctorProfilePage> {
         borderRadius: BorderRadius.circular(6),
         borderSide: const BorderSide(color: AppColors.primaryBlue, width: 1.4),
       ),
+      suffixIcon: suffix == null
+          ? null
+          : Padding(
+              padding: const EdgeInsets.only(right: 10),
+              child: Center(widthFactor: 1, child: suffix),
+            ),
+      suffixIconConstraints: suffix == null
+          ? null
+          : const BoxConstraints(minWidth: 0, minHeight: 0),
     );
   }
 

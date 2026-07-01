@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'core/theme/app_colors.dart';
+import 'core/theme/app_theme.dart';
 import 'firebase_options.dart';
 import 'data/services/push_notification_service.dart';
 import 'data/services/medication_reminder_service.dart';
@@ -51,6 +52,7 @@ class DiabetAkuApp extends StatelessWidget {
       navigatorKey: AppNavigator.navigatorKey,
       title: 'diabetAku',
       debugShowCheckedModeBanner: false,
+      theme: AppTheme.lightTheme,
       home: const SplashPage(),
     );
   }

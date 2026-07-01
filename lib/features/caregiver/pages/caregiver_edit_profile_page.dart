@@ -3,13 +3,15 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/profile_badge.dart';
 import '../../../data/services/api_service.dart';
 
 class CaregiverEditProfilePage extends StatefulWidget {
   const CaregiverEditProfilePage({super.key});
 
   @override
-  State<CaregiverEditProfilePage> createState() => _CaregiverEditProfilePageState();
+  State<CaregiverEditProfilePage> createState() =>
+      _CaregiverEditProfilePageState();
 }
 
 class _CaregiverEditProfilePageState extends State<CaregiverEditProfilePage> {
@@ -52,19 +54,20 @@ class _CaregiverEditProfilePageState extends State<CaregiverEditProfilePage> {
     phoneCtr.dispose();
     super.dispose();
   }
+
   bool _isChanged() {
-  return nameCtr.text.trim() != originalName ||
-      phoneCtr.text.trim() != originalPhone ||
-      (gender ?? '').trim() != originalGender;
-}
+    return nameCtr.text.trim() != originalName ||
+        phoneCtr.text.trim() != originalPhone ||
+        (gender ?? '').trim() != originalGender;
+  }
 
-void _checkFormChanged() {
-  if (!mounted) return;
+  void _checkFormChanged() {
+    if (!mounted) return;
 
-  setState(() {
-    canSaveProfile = _isChanged();
-  });
-}
+    setState(() {
+      canSaveProfile = _isChanged();
+    });
+  }
 
   Future<void> _loadProfile() async {
     setState(() {
@@ -107,8 +110,6 @@ void _checkFormChanged() {
         canSaveProfile = false;
         isLoading = false;
       });
-
-      _checkFormChanged();
     } catch (e) {
       if (!mounted) return;
 
@@ -120,43 +121,59 @@ void _checkFormChanged() {
   }
 
   Future<void> _saveProfile() async {
-  FocusScope.of(context).unfocus();
+    FocusScope.of(context).unfocus();
 
-  if (!_isChanged() || caregiverId == null) return;
+    if (!_isChanged() || caregiverId == null) return;
 
-  final phone = phoneCtr.text.trim();
+    final name = nameCtr.text.trim();
+    final phone = phoneCtr.text.trim();
+    final selectedGender = gender?.trim() ?? '';
 
-  if (phone.isNotEmpty && (phone.length < 10 || phone.length > 15)) {
-    _showSnackBar(
-      message: 'Nomor telepon harus 10-15 digit',
-    );
-    return;
-  }
+    if (name.isEmpty) {
+      _showStyledSnackBar(message: 'Nama lengkap wajib diisi');
+      return;
+    }
 
-  setState(() => isSaving = true);
+    if (selectedGender.isEmpty) {
+      _showStyledSnackBar(message: 'Jenis kelamin wajib dipilih');
+      return;
+    }
 
-  try {
-    await ApiService.updateCaregiverProfile(
-      caregiverId: caregiverId!,
-      fullName: nameCtr.text.trim(),
-      phoneNumber: phone,
-      gender: gender?.trim() ?? '',
-    );
+    if (phone.isNotEmpty && (phone.length < 10 || phone.length > 15)) {
+      _showStyledSnackBar(message: 'Nomor telepon harus 10-15 digit');
+      return;
+    }
 
-    if (!mounted) return;
-    Navigator.pop(context, true);
-  } catch (e) {
-    if (!mounted) return;
+    setState(() => isSaving = true);
 
-    _showSnackBar(
-      message: e.toString().replaceFirst('Exception: ', ''),
-    );
-  } finally {
-    if (mounted) {
+    try {
+      await ApiService.updateCaregiverProfile(
+        caregiverId: caregiverId!,
+        fullName: name,
+        phoneNumber: phone,
+        gender: selectedGender,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        originalName = name;
+        originalPhone = phone;
+        originalGender = selectedGender;
+        canSaveProfile = false;
+        isSaving = false;
+      });
+
+      _showSuccessSheet(context);
+    } catch (e) {
+      if (!mounted) return;
+
       setState(() => isSaving = false);
+      _showStyledSnackBar(
+        message: e.toString().replaceFirst('Exception: ', ''),
+      );
     }
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -166,7 +183,7 @@ void _checkFormChanged() {
         top: false,
         child: Column(
           children: [
-            _header(context),
+            _buildHeader(context),
             Expanded(
               child: isLoading
                   ? const Center(child: CircularProgressIndicator())
@@ -180,7 +197,7 @@ void _checkFormChanged() {
     );
   }
 
-  Widget _header(BuildContext context) {
+  Widget _buildHeader(BuildContext context) {
     final topPad = MediaQuery.of(context).padding.top;
 
     return Container(
@@ -218,53 +235,41 @@ void _checkFormChanged() {
 
   Widget _formContent() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+      padding: const EdgeInsets.all(20),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionTitle(Icons.person, 'Data Diri'),
-
-          _label('Nama Lengkap'),
-          _input(controller: nameCtr, hint: 'Masukkan nama lengkap'),
-
-          _label('Email'),
-          _input(
-            controller: emailCtr,
-            hint: 'Email',
-            enabled: false,
-            suffix: _miniBadge(emailBadge),
+          _textField(
+            label: 'Nama Lengkap',
+            controller: nameCtr,
           ),
-
-          _label('Nomor Telepon'),
-          _input(
+          _textField(
+            label: 'Email',
+            controller: emailCtr,
+            keyboardType: TextInputType.emailAddress,
+            enabled: false,
+            suffix: ProfileBadge.emailVerification(emailBadge),
+          ),
+          _textField(
+            label: 'Nomor Telepon',
             controller: phoneCtr,
-            hint: 'Masukkan nomor telepon',
             keyboardType: TextInputType.phone,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           ),
-
-          _label('Jenis Kelamin'),
           _selectField(
-            hint: 'Pilih jenis kelamin',
-            value: gender,
-            items: const ['Laki-laki', 'Perempuan'],
-            onSelected: (value) {
-              gender = value;
-              _checkFormChanged();
-            },
+            label: 'Jenis Kelamin',
+            value: gender ?? 'Pilih jenis kelamin',
+            onTap: _showGenderSheet,
           ),
-
-          const SizedBox(height: 26),
-
+          const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
-            height: 48,
+            height: 46,
             child: ElevatedButton(
               onPressed: canSaveProfile && !isSaving ? _saveProfile : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryBlue,
                 disabledBackgroundColor: const Color(0xFFAFCBEA),
-                disabledForegroundColor: Colors.white,
+                disabledForegroundColor: AppColors.white,
                 foregroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
@@ -286,14 +291,11 @@ void _checkFormChanged() {
                     ),
             ),
           ),
-
           TextButton(
             onPressed: isSaving ? null : () => Navigator.pop(context),
-            child: const Center(
-              child: Text(
-                'Batal',
-                style: TextStyle(color: AppColors.primaryBlue),
-              ),
+            child: const Text(
+              'Batal',
+              style: TextStyle(color: AppColors.primaryBlue),
             ),
           ),
         ],
@@ -301,120 +303,97 @@ void _checkFormChanged() {
     );
   }
 
-  Widget _sectionTitle(IconData icon, String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10, top: 4),
-      child: Row(
-        children: [
-          Icon(icon, color: AppColors.primaryBlue, size: 16),
-          const SizedBox(width: 6),
-          Text(
-            title,
-            style: const TextStyle(
-              color: AppColors.primaryBlue,
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _label(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 12, bottom: 8),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: AppColors.dark2,
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
-
-  Widget _input({
+  Widget _textField({
+    required String label,
     required TextEditingController controller,
-    required String hint,
-    TextInputType keyboardType = TextInputType.text,
+    TextInputType? keyboardType,
     List<TextInputFormatter>? inputFormatters,
     bool enabled = true,
     Widget? suffix,
   }) {
-    return TextFormField(
-      controller: controller,
-      enabled: enabled && !isSaving,
-      keyboardType: keyboardType,
-      inputFormatters: inputFormatters,
-      onChanged: (_) => _checkFormChanged(),
-      decoration: _inputDecoration(
-        hint: hint,
-        suffixIcon: suffix == null
-            ? null
-            : Padding(
-                padding: const EdgeInsets.only(right: 10),
-                child: Center(widthFactor: 1, child: suffix),
-              ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: TextFormField(
+        controller: controller,
+        enabled: enabled && !isSaving,
+        keyboardType: keyboardType,
+        inputFormatters: inputFormatters,
+        onChanged: (_) => _checkFormChanged(),
+        style: const TextStyle(color: AppColors.dark1, fontSize: 14),
+        decoration: _inputDecoration(
+          label,
+          enabled: enabled && !isSaving,
+          suffixIcon: suffix == null
+              ? null
+              : Padding(
+                  padding: const EdgeInsets.only(right: 10),
+                  child: Center(widthFactor: 1, child: suffix),
+                ),
+        ),
       ),
     );
   }
 
   Widget _selectField({
-    required String hint,
-    required String? value,
-    required List<String> items,
-    required ValueChanged<String> onSelected,
+    required String label,
+    required String value,
+    required VoidCallback? onTap,
   }) {
-    return InkWell(
-      onTap: isSaving
-          ? null
-          : () => _showOptionSheet(
-                title: 'Jenis Kelamin',
-                items: items,
-                selectedValue: value,
-                onSelected: onSelected,
-              ),
-      borderRadius: BorderRadius.circular(6),
-      child: InputDecorator(
-        decoration: _inputDecoration(),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                value ?? hint,
-                style: TextStyle(
-                  color: value == null ? AppColors.dark4 : AppColors.dark1,
-                  fontSize: 13,
+    final isPlaceholder = value == 'Pilih jenis kelamin';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: InkWell(
+        onTap: isSaving ? null : onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: InputDecorator(
+          decoration: _inputDecoration(label),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    color: isPlaceholder ? AppColors.dark4 : AppColors.dark1,
+                    fontSize: 14,
+                  ),
                 ),
               ),
-            ),
-            const Icon(
-              Icons.keyboard_arrow_down_rounded,
-              color: AppColors.primaryBlue,
-            ),
-          ],
+              const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: AppColors.primaryBlue,
+                size: 20,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  InputDecoration _inputDecoration({String? hint, Widget? suffixIcon}) {
+  InputDecoration _inputDecoration(
+    String label, {
+    bool enabled = true,
+    Widget? suffixIcon,
+  }) {
     return InputDecoration(
-      hintText: hint,
+      labelText: label,
+      labelStyle: const TextStyle(color: AppColors.dark2, fontSize: 14),
       suffixIcon: suffixIcon,
-      hintStyle: const TextStyle(color: AppColors.dark4, fontSize: 13),
       filled: true,
-      fillColor: AppColors.white,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+      fillColor: enabled ? AppColors.white : AppColors.light2,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(6),
+        borderSide: const BorderSide(color: AppColors.light2),
+      ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(6),
-        borderSide: const BorderSide(color: AppColors.light1),
+        borderSide: const BorderSide(color: AppColors.light2),
       ),
       disabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(6),
-        borderSide: const BorderSide(color: AppColors.light1),
+        borderSide: const BorderSide(color: AppColors.light2),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(6),
@@ -423,134 +402,113 @@ void _checkFormChanged() {
     );
   }
 
-  void _showOptionSheet({
+  void _showGenderSheet() {
+    _showOptionSheet<String>(
+      title: 'Pilih Jenis Kelamin',
+      items: const ['Laki-laki', 'Perempuan'],
+      itemLabel: (item) => item,
+      isSelected: (item) => item == gender,
+      onSelected: (item) {
+        setState(() => gender = item);
+        _checkFormChanged();
+      },
+    );
+  }
+
+  void _showOptionSheet<T>({
     required String title,
-    required List<String> items,
-    required String? selectedValue,
-    required ValueChanged<String> onSelected,
+    required List<T> items,
+    required String Function(T item) itemLabel,
+    required bool Function(T item) isSelected,
+    required void Function(T item) onSelected,
+    double? maxHeightFactor,
   }) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (sheetContext) {
-        return SafeArea(
-          child: Container(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
-          decoration: const BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 44,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.light1,
-                  borderRadius: BorderRadius.circular(20),
-                ),
+        final content = Column(
+          mainAxisSize: maxHeightFactor == null
+              ? MainAxisSize.min
+              : MainAxisSize.max,
+          children: [
+            Container(
+              width: 42,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.light1,
+                borderRadius: BorderRadius.circular(20),
               ),
-              const SizedBox(height: 22),
-              CircleAvatar(
-                radius: 34,
-                backgroundColor: AppColors.lightBlue,
-                child: Icon(
-                  title == 'Jenis Kelamin'
-                      ? Icons.wc_outlined
-                      : Icons.check_circle_outline,
-                  color: AppColors.primaryBlue,
-                  size: 32,
-                ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              title,
+              style: const TextStyle(
+                color: AppColors.primaryBlue,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
               ),
-              const SizedBox(height: 16),
-              Text(
-                'Pilih $title',
-                style: const TextStyle(
-                  color: AppColors.primaryBlue,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 14),
-              ...items.map((item) {
-                final selected = item == selectedValue;
+            ),
+            const SizedBox(height: 12),
+            Flexible(
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: items.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 2),
+                itemBuilder: (context, index) {
+                  final item = items[index];
+                  final selected = isSelected(item);
 
-                return InkWell(
-                  onTap: () {
-                    onSelected(item);
-                    Navigator.pop(sheetContext);
-                  },
-                  borderRadius: BorderRadius.circular(10),
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 13,
-                    ),
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? AppColors.veryLightBlue
-                          : AppColors.white,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      itemLabel(item),
+                      style: TextStyle(
                         color: selected
-                            ? AppColors.lightBlue
-                            : AppColors.light1,
+                            ? AppColors.primaryBlue
+                            : AppColors.dark1,
+                        fontSize: 14,
+                        fontWeight: selected
+                            ? FontWeight.w600
+                            : FontWeight.w400,
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            item,
-                            style: TextStyle(
-                              color: selected
-                                  ? AppColors.primaryBlue
-                                  : AppColors.dark1,
-                              fontSize: 13,
-                              fontWeight:
-                                  selected ? FontWeight.w600 : FontWeight.w400,
-                            ),
-                          ),
-                        ),
-                        if (selected)
-                          const Icon(
-                            Icons.check_circle,
+                    trailing: selected
+                        ? const Icon(
+                            Icons.check,
                             color: AppColors.primaryBlue,
-                            size: 18,
-                          ),
-                      ],
-                    ),
-                  ),
-                );
-              }),
-            ],
+                            size: 20,
+                          )
+                        : null,
+                    onTap: () {
+                      onSelected(item);
+                      Navigator.pop(sheetContext);
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+
+        return Container(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+          decoration: const BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
-        ),
+          child: maxHeightFactor == null
+              ? content
+              : SizedBox(
+                  height: MediaQuery.of(context).size.height * maxHeightFactor,
+                  child: content,
+                ),
         );
       },
     );
   }
 
-  Widget _miniBadge(String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppColors.veryLightBlue,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.lightBlue),
-      ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: AppColors.primaryBlue,
-          fontSize: 9,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
 
   Widget _errorState() {
     return Center(
@@ -582,7 +540,85 @@ void _checkFormChanged() {
     );
   }
 
-  void _showSnackBar({required String message, bool isError = true}) {
+  void _showSuccessSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return Container(
+          padding: const EdgeInsets.fromLTRB(24, 14, 24, 24),
+          decoration: const BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.light1,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              const SizedBox(height: 22),
+              const CircleAvatar(
+                radius: 34,
+                backgroundColor: Color(0xFFE7F8EF),
+                child: Icon(Icons.check, color: Colors.green, size: 34),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Profil berhasil diperbarui',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.primaryBlue,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Data profil pendamping telah tersimpan.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.dark2,
+                  fontSize: 13,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 22),
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    Navigator.pop(context, true);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryBlue,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                  child: const Text(
+                    'Kembali ke Profil',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showStyledSnackBar({required String message, bool isError = true}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         backgroundColor: isError ? AppColors.red : AppColors.primaryBlue,

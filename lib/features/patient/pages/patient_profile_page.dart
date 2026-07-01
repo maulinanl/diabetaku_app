@@ -6,6 +6,7 @@ import '../../../data/services/medication_reminder_service.dart';
 import '../../auth/pages/login_page.dart';
 import '../../auth/pages/change_password_page.dart';
 import 'patient_edit_profile_page.dart';
+import '../../../core/widgets/profile_badge.dart';
 
 class PatientProfilePage extends StatefulWidget {
   const PatientProfilePage({super.key});
@@ -98,11 +99,6 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
     return age;
   }
 
-  String _formatDmType(String value) {
-    if (value.toLowerCase().contains('dm')) return value;
-    return 'DM $value';
-  }
-
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
@@ -185,7 +181,8 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
     final name = profile?['full_name']?.toString() ?? '-';
     final gender = profile?['gender']?.toString() ?? '-';
     final age = _calculateAge(profile?['date_of_birth']?.toString());
-    final dmType = _formatDmType(profile?['diabetes_type']?.toString() ?? '-');
+    final dmType = profile?['diabetes_type']?.toString() ?? '-';
+    final verification = _emailVerificationText(profile);
     final initials = _getInitials(name);
 
     return Container(
@@ -229,30 +226,32 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
             style: const TextStyle(color: Colors.white, fontSize: 12),
           ),
           const SizedBox(height: 12),
-          _dmBadge(dmType),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ProfileBadge.diabetesType(dmType),
+              ProfileBadge.headerVerification(verification),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _dmBadge(String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
-      ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
+  String _emailVerificationText(Map<String, dynamic>? data) {
+    if (data == null) return 'Terverifikasi';
+
+    // Beberapa response lama belum mengirim email_verified_at untuk pasien.
+    // Karena pasien yang sudah masuk aplikasi sudah melewati verifikasi email,
+    // fallback-nya tetap ditampilkan sebagai Terverifikasi.
+    if (!data.containsKey('email_verified_at')) return 'Terverifikasi';
+
+    final verifiedAt = data['email_verified_at'];
+    return verifiedAt == null ? 'Belum Verifikasi' : 'Terverifikasi';
   }
+
 
   Widget _statCard(String value, String label) {
     return Container(
@@ -343,7 +342,7 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
             Icons.email_outlined,
             'Email',
             profile?['email']?.toString() ?? '-',
-            badge: 'Terverifikasi',
+            badge: _emailVerificationText(profile),
           ),
           _profileItem(
             Icons.phone_outlined,
@@ -384,7 +383,7 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
           _profileItem(
             Icons.opacity,
             'Tipe DM',
-            _formatDmType(profile?['diabetes_type']?.toString() ?? '-'),
+            formatDiabetesBadgeText(profile?['diabetes_type']),
           ),
           _profileItem(
             Icons.calendar_today_outlined,
@@ -451,7 +450,7 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
                     ),
                     if (badge != null) ...[
                       const SizedBox(width: 6),
-                      _miniBadge(badge),
+                      _statusBadge(badge),
                     ],
                   ],
                 ),
@@ -463,21 +462,36 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
     );
   }
 
-  Widget _miniBadge(String text) {
+  Widget _statusBadge(String text) {
+    final isVerified = text.toLowerCase() == 'terverifikasi';
+    final bg = isVerified ? AppColors.veryLightBlue : Colors.orange.shade50;
+    final color = isVerified ? AppColors.primaryBlue : Colors.orange.shade700;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColors.veryLightBlue,
+        color: bg,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.lightBlue),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
       ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: AppColors.primaryBlue,
-          fontSize: 9,
-          fontWeight: FontWeight.w600,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isVerified ? Icons.verified : Icons.pending,
+            size: 10,
+            color: color,
+          ),
+          const SizedBox(width: 3),
+          Text(
+            text,
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }

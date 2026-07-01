@@ -23,6 +23,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
 
   bool obscurePassword = true;
   bool obscureConfirm = true;
+  bool isLoading = false;
 
   bool get isValid =>
       passwordController.text.trim().length >= 8 &&
@@ -113,90 +114,124 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+
     return Scaffold(
       backgroundColor: AppColors.background,
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(28, 12, 28, 24),
-          child: Column(
-            children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.arrow_back, color: AppColors.dark2),
-                ),
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'Atur Ulang Kata Sandi',
-                style: TextStyle(
-                  color: AppColors.primaryBlue,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Masukkan kata sandi setidaknya 8 karakter',
-                style: TextStyle(color: AppColors.dark2, fontSize: 12),
-              ),
-              const SizedBox(height: 24),
-              TextFormField(
-                controller: passwordController,
-                obscureText: obscurePassword,
-                decoration: _inputDecoration(
-                  label: 'Kata Sandi',
-                  hint: 'Masukkan kata sandi baru',
-                  obscure: obscurePassword,
-                  onToggle: () {
-                    setState(() {
-                      obscurePassword = !obscurePassword;
-                    });
-                  },
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: confirmController,
-                obscureText: obscureConfirm,
-                decoration: _inputDecoration(
-                  label: 'Konfirmasi Kata Sandi',
-                  hint: 'Konfirmasi kata sandi',
-                  obscure: obscureConfirm,
-                  onToggle: () {
-                    setState(() {
-                      obscureConfirm = !obscureConfirm;
-                    });
-                  },
-                ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: ElevatedButton(
-                  onPressed: isValid ? _resetPassword : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryBlue,
-                    disabledBackgroundColor: const Color(0xFFAFCBEA),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: EdgeInsets.fromLTRB(28, 12, 28, 24 + bottomInset),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Column(
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(
+                          Icons.arrow_back,
+                          color: AppColors.dark2,
+                        ),
+                      ),
                     ),
-                  ),
-                  child: const Text('Atur Ulang Kata Sandi'),
+                    const SizedBox(height: 18),
+                    const Text(
+                      'Atur Ulang Kata Sandi',
+                      style: TextStyle(
+                        color: AppColors.primaryBlue,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Masukkan kata sandi setidaknya 8 karakter',
+                      style: TextStyle(color: AppColors.dark2, fontSize: 12),
+                    ),
+                    const SizedBox(height: 24),
+                    TextFormField(
+                      controller: passwordController,
+                      obscureText: obscurePassword,
+                      textInputAction: TextInputAction.next,
+                      decoration: _inputDecoration(
+                        label: 'Kata Sandi',
+                        hint: 'Masukkan kata sandi baru',
+                        obscure: obscurePassword,
+                        onToggle: () {
+                          setState(() {
+                            obscurePassword = !obscurePassword;
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: confirmController,
+                      obscureText: obscureConfirm,
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (_) {
+                        if (isValid && !isLoading) {
+                          _resetPassword();
+                        }
+                      },
+                      decoration: _inputDecoration(
+                        label: 'Konfirmasi Kata Sandi',
+                        hint: 'Konfirmasi kata sandi',
+                        obscure: obscureConfirm,
+                        onToggle: () {
+                          setState(() {
+                            obscureConfirm = !obscureConfirm;
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 46,
+                      child: ElevatedButton(
+                        onPressed:
+                            isValid && !isLoading ? _resetPassword : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryBlue,
+                          disabledBackgroundColor: const Color(0xFFAFCBEA),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                        ),
+                        child: isLoading
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text('Atur Ulang Kata Sandi'),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
   }
 
   Future<void> _resetPassword() async {
+    FocusScope.of(context).unfocus();
+    setState(() => isLoading = true);
+
     try {
       await ApiService.resetPassword(
         token: widget.token,
@@ -214,6 +249,10 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
       );
+    } finally {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
     }
   }
 

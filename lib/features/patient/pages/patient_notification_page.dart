@@ -407,6 +407,13 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
     required String name,
     required bool isAccept,
   }) async {
+    final confirmed = await _showCaregiverRequestConfirmSheet(
+      name: name,
+      isAccept: isAccept,
+    );
+
+    if (confirmed != true) return false;
+
     try {
       final prefs = await SharedPreferences.getInstance();
       final patientId = prefs.getInt('patient_id');
@@ -429,11 +436,9 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
 
       if (!mounted) return false;
 
-      _showSnackBar(
-        isAccept
-            ? '$name berhasil diterima sebagai pendamping.'
-            : 'Permintaan koneksi dari $name berhasil ditolak.',
-        isError: false,
+      await _showCaregiverRequestResultSheet(
+        name: name,
+        isAccept: isAccept,
       );
 
       await _loadNotifications();
@@ -444,6 +449,52 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
       _showSnackBar(e.toString().replaceFirst('Exception: ', ''));
       return false;
     }
+  }
+
+  Future<bool> _showCaregiverRequestConfirmSheet({
+    required String name,
+    required bool isAccept,
+  }) async {
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      useRootNavigator: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return _CaregiverRequestActionSheet(
+          title: isAccept ? 'Terima Permintaan?' : 'Tolak Permintaan?',
+          message: isAccept
+              ? 'Apakah kamu yakin ingin menerima $name sebagai pendamping?'
+              : 'Apakah kamu yakin ingin menolak permintaan koneksi dari $name?',
+          primaryText: isAccept ? 'Terima Permintaan' : 'Tolak Permintaan',
+          primaryColor: isAccept ? AppColors.primaryBlue : AppColors.red,
+          icon: isAccept ? Icons.check_circle_outline : Icons.cancel_outlined,
+          onPrimaryTap: () => Navigator.pop(context, true),
+        );
+      },
+    );
+
+    return result == true;
+  }
+
+  Future<void> _showCaregiverRequestResultSheet({
+    required String name,
+    required bool isAccept,
+  }) async {
+    if (!mounted) return;
+
+    await showModalBottomSheet(
+      context: context,
+      useRootNavigator: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return _CaregiverRequestSuccessSheet(
+          title: isAccept ? 'Berhasil Diterima' : 'Berhasil Ditolak',
+          message: isAccept
+              ? '$name berhasil ditambahkan sebagai pendamping.'
+              : 'Permintaan koneksi dari $name berhasil ditolak.',
+        );
+      },
+    );
   }
 
   void _showSnackBar(String message, {bool isError = true}) {
@@ -782,26 +833,35 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
             Expanded(
               child: Container(
                 color: AppColors.background,
-                child: isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : errorMessage != null
-                    ? _errorState()
-                    : RefreshIndicator(
-                        onRefresh: _loadNotifications,
-                        child: ListView(
-                          padding: EdgeInsets.zero,
-                          children: [
-                            _tabBar(),
-                            if (hasUnreadNotification) _markAllReadButton(),
-                            if (filtered.isEmpty)
-                              _emptyState()
-                            else ...[
-                              ..._groupedNotifications(filtered),
-                              const SizedBox(height: 24),
-                            ],
+                child: Stack(
+                  children: [
+                    RefreshIndicator(
+                      onRefresh: _loadNotifications,
+                      child: ListView(
+                        padding: EdgeInsets.zero,
+                        children: [
+                          _tabBar(),
+                          if (hasUnreadNotification) _markAllReadButton(),
+                          if (filtered.isEmpty)
+                            _emptyState()
+                          else ...[
+                            ..._groupedNotifications(filtered),
+                            const SizedBox(height: 24),
                           ],
-                        ),
+                        ],
                       ),
+                    ),
+                    if (errorMessage != null && notifications.isEmpty)
+                      Positioned.fill(child: _errorState()),
+                    if (isLoading)
+                      const Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: LinearProgressIndicator(minHeight: 2),
+                      ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -1230,6 +1290,214 @@ _NotificationVisual _notificationVisual(String routeKey) {
     bg: AppColors.veryLightBlue,
     color: AppColors.primaryBlue,
   );
+}
+
+
+class _CaregiverRequestActionSheet extends StatelessWidget {
+  final String title;
+  final String message;
+  final String primaryText;
+  final Color primaryColor;
+  final IconData icon;
+  final VoidCallback onPrimaryTap;
+
+  const _CaregiverRequestActionSheet({
+    required this.title,
+    required this.message,
+    required this.primaryText,
+    required this.primaryColor,
+    required this.icon,
+    required this.onPrimaryTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 44,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 22),
+              decoration: BoxDecoration(
+                color: AppColors.light2,
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            Container(
+              width: 54,
+              height: 54,
+              decoration: BoxDecoration(
+                color: primaryColor.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: primaryColor, size: 30),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.dark1,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.dark2,
+                fontSize: 13,
+                height: 1.45,
+              ),
+            ),
+            const SizedBox(height: 22),
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: ElevatedButton(
+                onPressed: onPrimaryTap,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: Text(
+                  primaryText,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: 44,
+              child: TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text(
+                  'Batal',
+                  style: TextStyle(
+                    color: AppColors.dark2,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CaregiverRequestSuccessSheet extends StatelessWidget {
+  final String title;
+  final String message;
+
+  const _CaregiverRequestSuccessSheet({
+    required this.title,
+    required this.message,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 44,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 22),
+              decoration: BoxDecoration(
+                color: AppColors.light2,
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            Container(
+              width: 54,
+              height: 54,
+              decoration: const BoxDecoration(
+                color: AppColors.veryLightBlue,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.check_circle_outline,
+                color: AppColors.primaryBlue,
+                size: 30,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.dark1,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.dark2,
+                fontSize: 13,
+                height: 1.45,
+              ),
+            ),
+            const SizedBox(height: 22),
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryBlue,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text(
+                  'Mengerti',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _NotificationVisual {

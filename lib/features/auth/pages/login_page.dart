@@ -197,13 +197,27 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+  Future<void> _navigateAfterKeyboardDismiss(Widget page) async {
+    FocusScope.of(context).unfocus();
+    await Future.delayed(const Duration(milliseconds: 100));
+    if (!mounted) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => page),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(28, 28, 28, 24),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: EdgeInsets.fromLTRB(28, 28, 28, 24 + bottomInset),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -269,7 +283,9 @@ class _LoginPageState extends State<LoginPage> {
 
               TextFormField(
                 controller: emailController,
-                decoration: _inputDecoration(hint: 'Email atau phone'),
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                decoration: _inputDecoration(hint: 'Email'),
               ),
 
               const SizedBox(height: 18),
@@ -310,11 +326,8 @@ class _LoginPageState extends State<LoginPage> {
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const ForgotPasswordPage(),
-                      ),
+                    _navigateAfterKeyboardDismiss(
+                      const ForgotPasswordPage(),
                     );
                   },
                   child: const Text('Lupa kata sandi?'),
@@ -377,11 +390,8 @@ class _LoginPageState extends State<LoginPage> {
                 height: 50,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const RoleSelectionPage(),
-                      ),
+                    _navigateAfterKeyboardDismiss(
+                      const RoleSelectionPage(),
                     );
                   },
                   style: ElevatedButton.styleFrom(

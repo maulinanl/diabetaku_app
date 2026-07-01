@@ -10,6 +10,7 @@ import '../../features/doctor/pages/doctor_notification_page.dart';
 import '../../features/caregiver/pages/caregiver_notification_page.dart';
 import '../../features/patient/pages/patient_notification_page.dart';
 import 'api_service.dart';
+import 'medication_reminder_service.dart';
 
 class PushNotificationService {
   static final FlutterLocalNotificationsPlugin _localNotifications =
@@ -140,6 +141,8 @@ class PushNotificationService {
         message.data['message'] ??
         '';
 
+    await _syncMedicationRemindersIfPrescriptionChanged(message.data);
+
     await _localNotifications.show(
       id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
       title: title,
@@ -157,6 +160,48 @@ class PushNotificationService {
       ),
       payload: jsonEncode(message.data),
     );
+  }
+
+
+  static bool _isPrescriptionChangedPayload(Map<String, dynamic> data) {
+    final referenceType = (data['reference_type'] ?? '')
+        .toString()
+        .toLowerCase()
+        .replaceAll(' ', '_')
+        .replaceAll('-', '_');
+
+    final typeName = (data['notification_type'] ??
+            data['notification_type_name'] ??
+            data['type'] ??
+            data['title'] ??
+            '')
+        .toString()
+        .toLowerCase();
+
+    return referenceType == 'prescription_created' ||
+        referenceType == 'prescription_updated' ||
+        referenceType == 'prescription_stopped' ||
+        referenceType == 'prescription' ||
+        typeName.contains('resep obat');
+  }
+
+  static Future<void> _syncMedicationRemindersIfPrescriptionChanged(
+    Map<String, dynamic> data, {
+    int? roleId,
+  }) async {
+    if (!_isPrescriptionChangedPayload(data)) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final currentRoleId = roleId ?? prefs.getInt('role_id');
+
+    if (currentRoleId != 3) return;
+
+    try {
+      await MedicationReminderService.syncMedicationReminders();
+      print('MEDICATION REMINDER DISINKRONKAN KARENA RESEP BERUBAH');
+    } catch (e) {
+      print('GAGAL SYNC MEDICATION REMINDER DARI PUSH: $e');
+    }
   }
 
   static void _handleLocalNotificationTap(String? payload) {
@@ -195,6 +240,8 @@ class PushNotificationService {
       print('ROLE ID BELUM ADA, NOTIFICATION CLICK DIABAIKAN');
       return;
     }
+
+    await _syncMedicationRemindersIfPrescriptionChanged(data, roleId: roleId);
 
     final navigator = AppNavigator.navigatorKey.currentState;
 

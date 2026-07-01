@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../auth/pages/change_password_page.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/profile_badge.dart';
 import '../../../data/services/api_service.dart';
 import 'edit_doctor_profile_page.dart';
 import '../../auth/pages/login_page.dart';
@@ -227,7 +228,18 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
             style: const TextStyle(color: Colors.white, fontSize: 12),
           ),
           const SizedBox(height: 12),
-          _verifiedBadge(verification),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ProfileBadge.role(
+                'Dokter',
+                icon: Icons.medical_services_outlined,
+              ),
+              ProfileBadge.headerVerification(verification),
+            ],
+          ),
         ],
       ),
     );
@@ -246,57 +258,6 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
     return 'Terverifikasi';
   }
 
-  Widget _verifiedBadge(String verification) {
-    final status = verification.toLowerCase();
-
-    IconData icon;
-    Color backgroundColor;
-
-    switch (status) {
-      case 'terverifikasi':
-        icon = Icons.verified;
-        backgroundColor = Colors.white.withValues(alpha: 0.18);
-        break;
-
-      case 'menunggu':
-        icon = Icons.pending;
-        backgroundColor = Colors.orange.withValues(alpha: 0.18);
-        break;
-
-      case 'ditolak':
-        icon = Icons.cancel;
-        backgroundColor = Colors.red.withValues(alpha: 0.18);
-        break;
-
-      default:
-        icon = Icons.info_outline;
-        backgroundColor = Colors.white.withValues(alpha: 0.18);
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: Colors.white),
-          const SizedBox(width: 5),
-          Text(
-            verification,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _statusBadge(String text) {
     return Container(

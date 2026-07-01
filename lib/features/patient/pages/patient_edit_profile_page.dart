@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/profile_badge.dart';
 import '../../../data/services/api_service.dart';
 
 class PatientEditProfilePage extends StatefulWidget {
@@ -21,6 +22,15 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
   late TextEditingController heightCtr;
 
   bool isSaving = false;
+
+  String get emailBadge {
+    // Response lama profil pasien belum selalu membawa email_verified_at.
+    // Pasien yang sudah masuk aplikasi sudah melewati verifikasi email.
+    if (!widget.profile.containsKey('email_verified_at')) return 'Terverifikasi';
+
+    final verifiedAt = widget.profile['email_verified_at'];
+    return verifiedAt == null ? 'Belum Verifikasi' : 'Terverifikasi';
+  }
 
   late String gender;
   late String dmType;
@@ -268,7 +278,9 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
                     _textField(
                       label: 'Email',
                       controller: emailCtr,
+                      keyboardType: TextInputType.emailAddress,
                       enabled: false,
+                      suffix: ProfileBadge.emailVerification(emailBadge),
                     ),
                     _textField(
                       label: 'Nomor Telepon',
@@ -401,6 +413,7 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
     required TextEditingController controller,
     TextInputType? keyboardType,
     bool enabled = true,
+    Widget? suffix,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -409,7 +422,16 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
         enabled: enabled && !isSaving,
         keyboardType: keyboardType,
         style: const TextStyle(color: AppColors.dark1, fontSize: 14),
-        decoration: _inputDecoration(label, enabled: enabled && !isSaving),
+        decoration: _inputDecoration(
+          label,
+          enabled: enabled && !isSaving,
+          suffixIcon: suffix == null
+              ? null
+              : Padding(
+                  padding: const EdgeInsets.only(right: 10),
+                  child: Center(widthFactor: 1, child: suffix),
+                ),
+        ),
       ),
     );
   }
@@ -449,10 +471,15 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
     );
   }
 
-  InputDecoration _inputDecoration(String label, {bool enabled = true}) {
+  InputDecoration _inputDecoration(
+    String label, {
+    bool enabled = true,
+    Widget? suffixIcon,
+  }) {
     return InputDecoration(
       labelText: label,
       labelStyle: const TextStyle(color: AppColors.dark2, fontSize: 14),
+      suffixIcon: suffixIcon,
       filled: true,
       fillColor: enabled ? AppColors.white : AppColors.light2,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -474,6 +501,7 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
       ),
     );
   }
+
 
   void _showGenderSheet() {
     _showOptionSheet<String>(

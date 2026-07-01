@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/lazy_indexed_stack.dart';
 import '../../../data/services/api_service.dart';
 import '../widgets/caregiver_bottom_nav.dart';
 import 'caregiver_add_data_page.dart';
@@ -32,7 +33,6 @@ class _CaregiverMainPageState extends State<CaregiverMainPage> {
   Map<String, dynamic>? dashboardData;
   List<Map<String, dynamic>> recommendations = [];
   List<Map<String, dynamic>> selectedPatientPrescriptions = [];
-  int allPatientsActivePrescriptionCount = 0;
   Map<String, dynamic> healthHistories = {};
   List<Map<String, dynamic>> pendingValidations = [];
 
@@ -41,7 +41,7 @@ class _CaregiverMainPageState extends State<CaregiverMainPage> {
 
   final healthChecklistTypes = const [
     ['Glukosa', Icons.opacity, 'glucose'],
-    ['Fisiologis', Icons.monitor_heart_outlined, 'physiological'],
+    ['Minum Obat', Icons.medication_outlined, 'medication'],
     ['Aktivitas', Icons.directions_run, 'activity'],
     ['Makan', Icons.restaurant_outlined, 'meal'],
   ];
@@ -91,7 +91,6 @@ class _CaregiverMainPageState extends State<CaregiverMainPage> {
     List<Map<String, dynamic>> loadedRecommendations = [];
     Map<String, dynamic> loadedHealthHistories = {};
     List<Map<String, dynamic>> loadedSelectedPrescriptions = [];
-    int loadedAllPatientsPrescriptionCount = 0;
     List<Map<String, dynamic>> loadedNotifications = storedUserId != null
         ? List<Map<String, dynamic>>.from(baseResults[2] as List)
         : [];
@@ -119,23 +118,6 @@ class _CaregiverMainPageState extends State<CaregiverMainPage> {
         patientResults[3] as List,
       );
 
-      final activePrescriptionIds = <String>{};
-      for (final patient in acceptedPatients) {
-        final id = int.tryParse(patient['patient_id'].toString());
-        if (id == null) continue;
-
-        try {
-          final prescriptions = await ApiService.getCaregiverPatientActivePrescriptions(id);
-          for (final item in prescriptions) {
-            final prescriptionId = item['prescription_id']?.toString();
-            if (prescriptionId != null && prescriptionId.isNotEmpty) {
-              activePrescriptionIds.add(prescriptionId);
-            }
-          }
-        } catch (_) {}
-      }
-
-      loadedAllPatientsPrescriptionCount = activePrescriptionIds.length;
     }
 
     if (!mounted) return;
@@ -148,7 +130,6 @@ class _CaregiverMainPageState extends State<CaregiverMainPage> {
       recommendations = loadedRecommendations;
       healthHistories = loadedHealthHistories;
       selectedPatientPrescriptions = loadedSelectedPrescriptions;
-      allPatientsActivePrescriptionCount = loadedAllPatientsPrescriptionCount;
       selectedPatientIndex = 0;
 
       hasUnreadNotification = loadedNotifications.any((n) {
@@ -158,6 +139,7 @@ class _CaregiverMainPageState extends State<CaregiverMainPage> {
 
       isLoading = false;
     });
+
   } catch (e) {
     if (!mounted) return;
 
@@ -165,6 +147,28 @@ class _CaregiverMainPageState extends State<CaregiverMainPage> {
       errorMessage = e.toString().replaceFirst('Exception: ', '');
       isLoading = false;
     });
+  }
+}
+
+Future<void> _refreshUnreadNotificationStatus() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getInt('user_id');
+
+    if (userId == null) return;
+
+    final data = await ApiService.getNotifications(userId);
+
+    if (!mounted) return;
+
+    setState(() {
+      hasUnreadNotification = data.any((n) {
+        final isRead = n['is_read'];
+        return isRead == false || isRead == 0 || isRead?.toString() == '0';
+      });
+    });
+  } catch (e) {
+    debugPrint('GAGAL REFRESH STATUS NOTIFIKASI PENDAMPING: $e');
   }
 }
 
@@ -194,26 +198,33 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
     return Scaffold(
       backgroundColor: AppColors.background,
       extendBody: true,
-      body: _buildPage(),
+      body: LazyIndexedStack(
+        index: currentIndex,
+        children: [
+          _CaregiverHomeContent(),
+          const CaregiverConnectionPage(),
+          const CaregiverHistoryPage(),
+          const CaregiverProfilePage(),
+          CaregiverAddDataPage(
+            showBackButton: false,
+            onGoConnection: () => setState(() => currentIndex = 1),
+          ),
+        ],
+      ),
       bottomNavigationBar: CaregiverBottomNavBar(
         currentIndex: currentIndex,
-        onTap: (index) => setState(() => currentIndex = index),
-        onAddTap: () => setState(() => currentIndex = 4),
+        onTap: (index) {
+          if (currentIndex == index) return;
+          setState(() => currentIndex = index);
+        },
+        onAddTap: () {
+          if (currentIndex == 4) return;
+          setState(() => currentIndex = 4);
+        },
       ),
     );
   }
 
-  Widget _buildPage() {
-    if (currentIndex == 0) return _CaregiverHomeContent();
-    if (currentIndex == 1) return const CaregiverConnectionPage();
-    if (currentIndex == 2) return const CaregiverHistoryPage();
-    if (currentIndex == 3) return const CaregiverProfilePage();
-
-    return CaregiverAddDataPage(
-      showBackButton: false,
-      onGoConnection: () => setState(() => currentIndex = 1),
-    );
-  }
 
   Widget _CaregiverHomeContent() {
     if (isLoading) return const Center(child: CircularProgressIndicator());
@@ -238,8 +249,6 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
                     child: Column(
                       children: [
                         _nextMedicationCard(),
-                        const SizedBox(height: 12),
-                        _medicationOverviewCard(),
                         const SizedBox(height: 12),
                         _summaryCards(),
                         const SizedBox(height: 14),
@@ -286,7 +295,11 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
     final checks = healthChecklistTypes.map((item) {
       final type = item[2] as String;
 
-      return {'label': item[0], 'icon': item[1], 'done': _hasRecordToday(type)};
+      return {
+        'label': item[0],
+        'icon': item[1],
+        'done': _hasRecordToday(type),
+      };
     }).toList();
 
     final doneCount = checks.where((item) => item['done'] == true).length;
@@ -328,7 +341,7 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
             ),
             alignment: Alignment.centerLeft,
             child: FractionallySizedBox(
-              widthFactor: checks.isEmpty ? 0 : doneCount / checks.length,
+              widthFactor: checks.isEmpty ? 0.0 : doneCount / checks.length,
               child: Container(
                 decoration: BoxDecoration(
                   color: AppColors.primaryBlue,
@@ -406,7 +419,7 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
   Map<String, String> _buildConsistencyStatus() {
     final result = <String, Set<String>>{};
 
-    for (final type in ['glucose', 'physiological', 'activity', 'meal']) {
+    for (final type in ['glucose', 'medication', 'activity', 'meal']) {
       final records = List<Map<String, dynamic>>.from(
         healthHistories[type] ?? [],
       );
@@ -716,7 +729,6 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
         icon: Icons.medication_outlined,
         title: 'Belum ada jadwal obat aktif',
         subtitle: 'Jadwal obat pasien akan muncul dari resep aktif dokter.',
-        onTap: () {},
       );
     }
 
@@ -741,67 +753,6 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
       icon: Icons.alarm_rounded,
       title: 'Jadwal obat terdekat',
       subtitle: '$medName • $session • $time • $dose',
-      onTap: () => setState(() => currentIndex = 4),
-    );
-  }
-
-  Widget _medicationOverviewCard() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: _cardDecoration(),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.veryLightBlue,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              Icons.medication_liquid_outlined,
-              color: AppColors.primaryBlue,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Akumulasi resep obat',
-                  style: TextStyle(
-                    color: AppColors.primaryBlue,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                SizedBox(height: 3),
-                Text(
-                  'Total resep aktif dari semua pasien dampingan',
-                  style: TextStyle(color: AppColors.dark2, fontSize: 10),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppColors.lightBlue,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              '$allPatientsActivePrescriptionCount resep',
-              style: const TextStyle(
-                color: AppColors.primaryBlue,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -881,55 +832,60 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
     required IconData icon,
     required String title,
     required String subtitle,
-    required VoidCallback onTap,
+    VoidCallback? onTap,
   }) {
+    final content = Container(
+      padding: const EdgeInsets.all(13),
+      decoration: _cardDecoration(),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: AppColors.veryLightBlue,
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Icon(icon, color: AppColors.primaryBlue, size: 19),
+          ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: AppColors.primaryBlue,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  subtitle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.dark2,
+                    fontSize: 10,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (onTap != null)
+            const Icon(Icons.chevron_right, color: AppColors.dark3),
+        ],
+      ),
+    );
+
+    if (onTap == null) return content;
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(13),
-        decoration: _cardDecoration(),
-        child: Row(
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: AppColors.veryLightBlue,
-                borderRadius: BorderRadius.circular(9),
-              ),
-              child: Icon(icon, color: AppColors.primaryBlue, size: 19),
-            ),
-            const SizedBox(width: 11),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: AppColors.primaryBlue,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    subtitle,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AppColors.dark2,
-                      fontSize: 10,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.chevron_right, color: AppColors.dark3),
-          ],
-        ),
-      ),
+      child: content,
     );
   }
 
@@ -1081,7 +1037,7 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const CaregiverNotificationPage()),
-        ).then((_) => _loadCaregiverHome());
+        ).then((_) => _refreshUnreadNotificationStatus());
       },
       child: Stack(
         clipBehavior: Clip.none,

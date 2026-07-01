@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/profile_badge.dart';
 import '../../../data/services/api_service.dart';
+import '../../auth/pages/change_password_page.dart';
 import '../../auth/pages/login_page.dart';
 import 'caregiver_edit_profile_page.dart';
 
@@ -19,7 +21,7 @@ class _CaregiverProfilePageState extends State<CaregiverProfilePage> {
 
   Map<String, dynamic>? profile;
   int totalPatients = 0;
-  int totalMedicationChecklists = 0;
+  int totalMedicationSchedulesToday = 0;
 
   @override
   void initState() {
@@ -49,9 +51,11 @@ class _CaregiverProfilePageState extends State<CaregiverProfilePage> {
         profile = data;
         totalPatients =
             int.tryParse(data['total_patients']?.toString() ?? '0') ?? 0;
-        totalMedicationChecklists =
+        totalMedicationSchedulesToday =
             int.tryParse(
-              data['total_medication_checklists']?.toString() ?? '0',
+              data['total_medication_schedules_today']?.toString() ??
+                  data['total_medication_checklists']?.toString() ??
+                  '0',
             ) ??
             0;
         isLoading = false;
@@ -121,8 +125,8 @@ class _CaregiverProfilePageState extends State<CaregiverProfilePage> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: _statCard(
-                                totalMedicationChecklists.toString(),
-                                'Checklist Obat',
+                                totalMedicationSchedulesToday.toString(),
+                                'Jadwal Obat Hari Ini',
                               ),
                             ),
                           ],
@@ -219,34 +223,25 @@ class _CaregiverProfilePageState extends State<CaregiverProfilePage> {
             style: const TextStyle(color: Colors.white, fontSize: 12),
           ),
           const SizedBox(height: 12),
-          _roleBadge('Pendamping'),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ProfileBadge.role('Pendamping'),
+              ProfileBadge.headerVerification(emailBadge),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _roleBadge(String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
-      ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
 
-  Widget _statCard(String value, String label) {
+
+  Widget _statCard(String value, String label, {String? suffix}) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 18),
+      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 10),
       decoration: _cardDecoration(),
       child: Column(
         children: [
@@ -258,6 +253,14 @@ class _CaregiverProfilePageState extends State<CaregiverProfilePage> {
               fontWeight: FontWeight.bold,
             ),
           ),
+          if (suffix != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              suffix,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.primaryBlue, fontSize: 10),
+            ),
+          ],
           const SizedBox(height: 4),
           Text(
             label,
@@ -374,7 +377,7 @@ class _CaregiverProfilePageState extends State<CaregiverProfilePage> {
                     ),
                     if (badge != null) ...[
                       const SizedBox(width: 6),
-                      _miniBadge(badge),
+                      _statusBadge(badge),
                     ],
                   ],
                 ),
@@ -386,21 +389,36 @@ class _CaregiverProfilePageState extends State<CaregiverProfilePage> {
     );
   }
 
-  Widget _miniBadge(String text) {
+  Widget _statusBadge(String text) {
+    final isVerified = text.toLowerCase() == 'terverifikasi';
+    final bg = isVerified ? AppColors.veryLightBlue : Colors.orange.shade50;
+    final color = isVerified ? AppColors.primaryBlue : Colors.orange.shade700;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColors.veryLightBlue,
+        color: bg,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.lightBlue),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
       ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: AppColors.primaryBlue,
-          fontSize: 9,
-          fontWeight: FontWeight.w600,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isVerified ? Icons.verified : Icons.pending,
+            size: 10,
+            color: color,
+          ),
+          const SizedBox(width: 3),
+          Text(
+            text,
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -414,14 +432,30 @@ class _CaregiverProfilePageState extends State<CaregiverProfilePage> {
             Icons.lock_outline,
             'Ubah kata sandi',
             'Perbarui keamanan akun',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ChangePasswordPage()),
+              );
+            },
           ),
-          _menuTile(Icons.info_outline, 'Tentang aplikasi', 'Versi 1.0.0'),
+          _menuTile(
+            Icons.info_outline,
+            'Tentang aplikasi',
+            'Versi 1.0.0',
+            onTap: () {},
+          ),
         ],
       ),
     );
   }
 
-  Widget _menuTile(IconData icon, String title, String subtitle) {
+  Widget _menuTile(
+    IconData icon,
+    String title,
+    String subtitle, {
+    required VoidCallback onTap,
+  }) {
     return ListTile(
       leading: Container(
         width: 38,
@@ -441,7 +475,7 @@ class _CaregiverProfilePageState extends State<CaregiverProfilePage> {
         style: const TextStyle(color: AppColors.dark3, fontSize: 11),
       ),
       trailing: const Icon(Icons.chevron_right, color: AppColors.dark3),
-      onTap: () {},
+      onTap: onTap,
     );
   }
 

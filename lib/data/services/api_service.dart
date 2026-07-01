@@ -4,7 +4,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://192.168.100.25:8000/api';
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://192.168.100.25:8000/api',
+  );
 
   static Future<void> registerDoctor({
     required String fullName,
@@ -350,6 +353,21 @@ class ApiService {
   static Future<Map<String, dynamic>> getPatientDashboard(int patientId) async {
     final response = await http.get(
       Uri.parse('$baseUrl/doctor/patients/$patientId/dashboard'),
+      headers: await _authHeaders(),
+    );
+
+    final body = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(body['data']);
+    }
+
+    throw Exception(body['message'] ?? 'Gagal mengambil dashboard pasien');
+  }
+
+  static Future<Map<String, dynamic>> getPatientOwnDashboard(int patientId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/patient/dashboard/$patientId'),
       headers: await _authHeaders(),
     );
 

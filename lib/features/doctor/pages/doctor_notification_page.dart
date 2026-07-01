@@ -481,26 +481,37 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
             Expanded(
               child: Container(
                 color: AppColors.background,
-                child: isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : errorMessage != null
-                    ? Center(child: Text(errorMessage!))
-                    : RefreshIndicator(
-                        onRefresh: _loadNotifications,
-                        child: ListView(
-                          padding: EdgeInsets.zero,
-                          children: [
-                            _buildTabs(),
-                            if (hasUnreadNotification) _markAllReadButton(),
-                            if (filtered.isEmpty)
-                              _emptyState()
-                            else ...[
-                              ..._groupedNotifications(filtered),
-                              const SizedBox(height: 24),
-                            ],
+                child: Stack(
+                  children: [
+                    RefreshIndicator(
+                      onRefresh: _loadNotifications,
+                      child: ListView(
+                        padding: EdgeInsets.zero,
+                        children: [
+                          _buildTabs(),
+                          if (hasUnreadNotification) _markAllReadButton(),
+                          if (filtered.isEmpty)
+                            _emptyState()
+                          else ...[
+                            ..._groupedNotifications(filtered),
+                            const SizedBox(height: 24),
                           ],
-                        ),
+                        ],
                       ),
+                    ),
+                    if (errorMessage != null && notifications.isEmpty)
+                      Positioned.fill(
+                        child: Center(child: Text(errorMessage!)),
+                      ),
+                    if (isLoading)
+                      const Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: LinearProgressIndicator(minHeight: 2),
+                      ),
+                  ],
+                ),
               ),
             ),
           ],

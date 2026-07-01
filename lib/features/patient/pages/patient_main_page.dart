@@ -10,6 +10,7 @@ import 'patient_validation_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../data/services/api_service.dart';
 import '../../../data/services/medication_reminder_service.dart';
+import '../../../core/widgets/lazy_indexed_stack.dart';
 
 class PatientMainPage extends StatefulWidget {
   const PatientMainPage({super.key});
@@ -39,26 +40,33 @@ class _PatientMainPageState extends State<PatientMainPage> {
   final pages = const [
     PatientHomePage(),
     PatientConnectionPage(),
-    SizedBox(),
+    PatientAddDataPage(),
     PatientHistoryPage(),
     PatientProfilePage(),
   ];
 
   @override
   Widget build(BuildContext context) {
+    final activeIndex = isAddPage ? 2 : currentIndex;
+
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: isAddPage ? const PatientAddDataPage() : pages[currentIndex],
+      body: LazyIndexedStack(
+        index: activeIndex,
+        children: pages,
+      ),
       bottomNavigationBar: PatientBottomNavBar(
         currentIndex: currentIndex,
         isAddSelected: isAddPage,
         onTap: (index) {
+          if (!isAddPage && currentIndex == index) return;
           setState(() {
             currentIndex = index;
             isAddPage = false;
           });
         },
         onAddTap: () {
+          if (isAddPage) return;
           setState(() {
             isAddPage = true;
           });
@@ -154,7 +162,6 @@ class _PatientHomePageState extends State<PatientHomePage> {
 
     return [
       ['Glukosa', Icons.opacity, items['glucose'] == true],
-      ['Fisiologis', Icons.favorite_border, items['physiological'] == true],
       ['Resep Obat', Icons.medication_outlined, items['medication'] == true],
       ['Aktivitas', Icons.directions_run, items['activity'] == true],
       ['Makan', Icons.restaurant_outlined, items['meal'] == true],
@@ -191,7 +198,7 @@ class _PatientHomePageState extends State<PatientHomePage> {
 
       final results = await Future.wait([
         ApiService.getPatientProfile(storedPatientId),
-        ApiService.getPatientDashboard(storedPatientId),
+        ApiService.getPatientOwnDashboard(storedPatientId),
         ApiService.getPatientHomeSummary(storedPatientId),
         ApiService.getPatientHealthHistory(storedPatientId),
         if (storedUserId != null)
@@ -215,13 +222,7 @@ class _PatientHomePageState extends State<PatientHomePage> {
       setState(() {
         patientId = storedPatientId;
 
-        patientName =
-            loadedProfile['full_name']?.toString() ??
-            loadedProfile['data']?['full_name']?.toString() ??
-            loadedProfile['profile']?['full_name']?.toString() ??
-            loadedProfile['user']?['full_name']?.toString() ??
-            loadedProfile['patient']?['full_name']?.toString() ??
-            storedName;
+        patientName = _resolvePatientName(loadedProfile, storedName);
 
         profileData = loadedProfile;
         dashboardData = loadedDashboard;
@@ -250,6 +251,41 @@ class _PatientHomePageState extends State<PatientHomePage> {
     }
   }
 
+  Future<void> _refreshUnreadNotificationStatus() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getInt('user_id');
+
+      if (userId == null) return;
+
+      final data = await ApiService.getNotifications(userId);
+
+      if (!mounted) return;
+
+      setState(() {
+        notifications = data;
+      });
+    } catch (e) {
+      debugPrint('GAGAL REFRESH STATUS NOTIFIKASI PASIEN: $e');
+    }
+  }
+
+  String _resolvePatientName(Map<String, dynamic> profile, String fallback) {
+    final directName = profile['full_name']?.toString().trim();
+    if (directName != null && directName.isNotEmpty) return directName;
+
+    final nestedKeys = ['data', 'profile', 'user', 'patient'];
+    for (final key in nestedKeys) {
+      final value = profile[key];
+      if (value is Map) {
+        final nestedName = value['full_name']?.toString().trim();
+        if (nestedName != null && nestedName.isNotEmpty) return nestedName;
+      }
+    }
+
+    return fallback.trim().isEmpty ? 'Pasien' : fallback.trim();
+  }
+
   String _dateFieldByType(String type) {
     if (type == 'glucose') return 'measured_at';
     if (type == 'physiological') return 'measured_at';
@@ -262,7 +298,7 @@ class _PatientHomePageState extends State<PatientHomePage> {
   Map<String, String> _buildConsistencyStatus() {
     final result = <String, Set<String>>{};
 
-    for (final type in ['glucose', 'physiological', 'medication', 'activity', 'meal']) {
+    for (final type in ['glucose', 'medication', 'activity', 'meal']) {
       final records = List<Map<String, dynamic>>.from(
         healthHistories[type] ?? [],
       );
@@ -280,7 +316,7 @@ class _PatientHomePageState extends State<PatientHomePage> {
     }
 
     return result.map((key, value) {
-      if (value.length >= 5) return MapEntry(key, 'lengkap');
+      if (value.length >= 4) return MapEntry(key, 'lengkap');
       if (value.isNotEmpty) return MapEntry(key, 'sebagian');
       return MapEntry(key, 'tidak');
     });
@@ -386,7 +422,7 @@ class _PatientHomePageState extends State<PatientHomePage> {
                     MaterialPageRoute(
                       builder: (_) => const PatientNotificationPage(),
                     ),
-                  ).then((_) => _loadData());
+                  ).then((_) => _refreshUnreadNotificationStatus());
                 },
                 child: Stack(
                   clipBehavior: Clip.none,
@@ -539,6 +575,10 @@ class _PatientHomePageState extends State<PatientHomePage> {
   }
 
   Widget _dailyChecklistCard() {
+    final checks = dailyChecks;
+    final completed = checks.where((item) => item[2] == true).length;
+    final total = checks.length;
+
     return Container(
       decoration: _cardDecoration(),
       child: Column(
@@ -558,7 +598,7 @@ class _PatientHomePageState extends State<PatientHomePage> {
                   ),
                 ),
                 Text(
-                  '${homeSummary?['daily_checklist']?['completed'] ?? 0} / ${homeSummary?['daily_checklist']?['total'] ?? 5} selesai',
+                  '$completed / $total selesai',
                   style: const TextStyle(
                     color: AppColors.primaryBlue,
                     fontSize: 11,
@@ -576,10 +616,7 @@ class _PatientHomePageState extends State<PatientHomePage> {
             ),
             alignment: Alignment.centerLeft,
             child: FractionallySizedBox(
-              widthFactor:
-                  ((homeSummary?['daily_checklist']?['completed'] ?? 0) /
-                          (homeSummary?['daily_checklist']?['total'] ?? 5))
-                      .clamp(0.0, 1.0),
+              widthFactor: total == 0 ? 0.0 : (completed / total).clamp(0.0, 1.0),
               child: Container(
                 decoration: BoxDecoration(
                   color: AppColors.primaryBlue,
@@ -593,7 +630,7 @@ class _PatientHomePageState extends State<PatientHomePage> {
             padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: dailyChecks.length,
+            itemCount: checks.length,
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
               mainAxisSpacing: 10,
@@ -601,7 +638,7 @@ class _PatientHomePageState extends State<PatientHomePage> {
               childAspectRatio: 3.2,
             ),
             itemBuilder: (context, index) {
-              final item = dailyChecks[index];
+              final item = checks[index];
               final isDone = item[2] as bool;
 
               return Container(

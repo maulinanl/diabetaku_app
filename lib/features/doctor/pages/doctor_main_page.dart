@@ -8,6 +8,7 @@ import 'doctor_notification_page.dart';
 import 'patient_detail_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../data/services/api_service.dart';
+import '../../../core/widgets/lazy_indexed_stack.dart';
 import '../widgets/doctor_bottom_nav.dart';
 
 class DoctorMainPage extends StatefulWidget {
@@ -51,10 +52,14 @@ class _DoctorMainPageState extends State<DoctorMainPage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       extendBody: false,
-      body: pages[currentIndex],
+      body: LazyIndexedStack(
+        index: currentIndex,
+        children: pages,
+      ),
       bottomNavigationBar: DoctorBottomNavBar(
         currentIndex: currentIndex,
         onTap: (index) {
+          if (currentIndex == index) return;
           setState(() {
             currentIndex = index;
           });

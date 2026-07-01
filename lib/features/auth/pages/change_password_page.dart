@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 
@@ -19,17 +20,25 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   bool obscureConfirm = true;
   bool isSaving = false;
 
-  bool get isFormValid {
-    final current = currentPasswordController.text.trim();
-    final newPass = newPasswordController.text.trim();
-    final confirm = confirmPasswordController.text.trim();
+  String get currentPassword => currentPasswordController.text.trim();
+  String get newPassword => newPasswordController.text.trim();
+  String get confirmPassword => confirmPasswordController.text.trim();
 
-    return current.isNotEmpty &&
-        newPass.length >= 8 &&
-        confirm.isNotEmpty &&
-        newPass == confirm &&
-        current != newPass;
-  }
+  bool get hasMinLength => newPassword.length >= 8;
+  bool get hasDifferentPassword =>
+      currentPassword.isNotEmpty &&
+      newPassword.isNotEmpty &&
+      currentPassword != newPassword;
+  bool get hasSameConfirmation =>
+      newPassword.isNotEmpty &&
+      confirmPassword.isNotEmpty &&
+      newPassword == confirmPassword;
+
+  bool get isFormValid =>
+      currentPassword.isNotEmpty &&
+      hasMinLength &&
+      hasDifferentPassword &&
+      hasSameConfirmation;
 
   @override
   void initState() {
@@ -54,13 +63,14 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   Future<void> _savePassword() async {
     if (!isFormValid || isSaving) return;
 
+    FocusScope.of(context).unfocus();
     setState(() => isSaving = true);
 
     try {
       await ApiService.changePassword(
-        currentPassword: currentPasswordController.text.trim(),
-        newPassword: newPasswordController.text.trim(),
-        confirmPassword: confirmPasswordController.text.trim(),
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+        confirmPassword: confirmPassword,
       );
 
       if (!mounted) return;
@@ -77,8 +87,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
   @override
   Widget build(BuildContext context) {
-    final validation = _passwordValidationState();
-
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -88,11 +96,12 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
             _buildHeader(context),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _formCard(validation),
-                    const SizedBox(height: 20),
+                    _buildFormCard(),
+                    const SizedBox(height: 14),
                     _saveButton(),
                   ],
                 ),
@@ -109,12 +118,12 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(20, topPad + 12, 20, 24),
+      padding: EdgeInsets.fromLTRB(16, topPad + 10, 16, 22),
       decoration: const BoxDecoration(
         color: AppColors.primaryBlue,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(24),
-          bottomRight: Radius.circular(24),
+          bottomLeft: Radius.circular(28),
+          bottomRight: Radius.circular(28),
         ),
       ),
       child: Column(
@@ -139,34 +148,34 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
               const SizedBox(width: 48),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(18),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+                  blurRadius: 14,
+                  offset: const Offset(0, 6),
                 ),
               ],
             ),
             child: Row(
               children: [
                 Container(
-                  width: 48,
-                  height: 48,
+                  width: 54,
+                  height: 54,
                   decoration: BoxDecoration(
                     color: AppColors.veryLightBlue,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                   child: const Icon(
-                    Icons.lock_outline_rounded,
+                    Icons.lock_reset_rounded,
                     color: AppColors.primaryBlue,
-                    size: 26,
+                    size: 30,
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -175,7 +184,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Keamanan Akun',
+                        'Amankan akun kamu',
                         style: TextStyle(
                           color: AppColors.dark1,
                           fontSize: 16,
@@ -184,7 +193,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                       ),
                       SizedBox(height: 5),
                       Text(
-                        'Gunakan kata sandi baru yang kuat dan mudah kamu ingat.',
+                        'Masukkan kata sandi saat ini, lalu buat kata sandi baru yang lebih aman.',
                         style: TextStyle(
                           color: AppColors.dark2,
                           fontSize: 12,
@@ -202,61 +211,42 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     );
   }
 
-  Widget _formCard(_PasswordValidationState validation) {
+  Widget _buildFormCard() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.light1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
+      decoration: _cardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Data Kata Sandi',
-            style: TextStyle(
-              color: AppColors.primaryBlue,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+          _sectionTitle('Data Kata Sandi'),
           const SizedBox(height: 14),
           _passwordField(
-            label: 'Kata Sandi Saat Ini',
+            label: 'Kata sandi saat ini',
+            hint: 'Masukkan kata sandi lama',
             controller: currentPasswordController,
             obscure: obscureCurrent,
-            onToggle: () {
-              setState(() => obscureCurrent = !obscureCurrent);
-            },
-          ),
-          _passwordField(
-            label: 'Kata Sandi Baru',
-            controller: newPasswordController,
-            obscure: obscureNew,
-            onToggle: () {
-              setState(() => obscureNew = !obscureNew);
-            },
-          ),
-          _passwordField(
-            label: 'Konfirmasi Kata Sandi Baru',
-            controller: confirmPasswordController,
-            obscure: obscureConfirm,
-            onToggle: () {
-              setState(() => obscureConfirm = !obscureConfirm);
-            },
-            bottomPadding: 0,
+            icon: Icons.lock_outline_rounded,
+            onToggle: () => setState(() => obscureCurrent = !obscureCurrent),
           ),
           const SizedBox(height: 14),
-          _validationInfo(validation),
+          _passwordField(
+            label: 'Kata sandi baru',
+            hint: 'Minimal 8 karakter',
+            controller: newPasswordController,
+            obscure: obscureNew,
+            icon: Icons.enhanced_encryption_outlined,
+            onToggle: () => setState(() => obscureNew = !obscureNew),
+          ),
+          const SizedBox(height: 14),
+          _passwordField(
+            label: 'Konfirmasi kata sandi baru',
+            hint: 'Ulangi kata sandi baru',
+            controller: confirmPasswordController,
+            obscure: obscureConfirm,
+            icon: Icons.verified_user_outlined,
+            onToggle: () => setState(() => obscureConfirm = !obscureConfirm),
+          ),
         ],
       ),
     );
@@ -264,101 +254,109 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
   Widget _passwordField({
     required String label,
+    required String hint,
     required TextEditingController controller,
     required bool obscure,
+    required IconData icon,
     required VoidCallback onToggle,
-    double bottomPadding = 14,
   }) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: bottomPadding),
-      child: TextFormField(
-        controller: controller,
-        obscureText: obscure,
-        decoration: InputDecoration(
-          labelText: label,
-          filled: true,
-          fillColor: AppColors.white,
-          suffixIcon: IconButton(
-            onPressed: onToggle,
-            icon: Icon(
-              obscure
-                  ? Icons.visibility_off_outlined
-                  : Icons.visibility_outlined,
-              color: AppColors.dark3,
-            ),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: AppColors.light1),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(
-              color: AppColors.primaryBlue,
-              width: 1.5,
-            ),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: AppColors.red),
-          ),
-          focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: AppColors.red, width: 1.5),
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 14,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.dark2,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
           ),
         ),
-      ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          obscureText: obscure,
+          keyboardType: TextInputType.visiblePassword,
+          textInputAction: TextInputAction.next,
+          autocorrect: false,
+          enableSuggestions: false,
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: const TextStyle(color: AppColors.dark3, fontSize: 13),
+            filled: true,
+            fillColor: AppColors.light4,
+            prefixIcon: Icon(icon, color: AppColors.primaryBlue, size: 20),
+            suffixIcon: IconButton(
+              onPressed: onToggle,
+              icon: Icon(
+                obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                color: AppColors.dark3,
+                size: 21,
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(13),
+              borderSide: const BorderSide(color: AppColors.light1),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(13),
+              borderSide: const BorderSide(
+                color: AppColors.primaryBlue,
+                width: 1.5,
+              ),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 15,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _validationInfo(_PasswordValidationState validation) {
-    final hasError = validation.isError;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: hasError ? AppColors.lightRed : AppColors.veryLightBlue,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: hasError
-              ? AppColors.red.withValues(alpha: 0.20)
-              : AppColors.primaryBlue.withValues(alpha: 0.12),
+  Widget _sectionTitle(String title) {
+    return Row(
+      children: [
+        Container(
+          width: 4,
+          height: 18,
+          decoration: BoxDecoration(
+            color: AppColors.primaryBlue,
+            borderRadius: BorderRadius.circular(20),
+          ),
         ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            hasError ? Icons.error_outline : Icons.info_outline,
-            color: hasError ? AppColors.red : AppColors.primaryBlue,
-            size: 18,
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: const TextStyle(
+            color: AppColors.dark1,
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              validation.message,
-              style: TextStyle(
-                color: hasError ? AppColors.red : AppColors.primaryBlue,
-                fontSize: 12,
-                height: 1.35,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
+    );
+  }
+
+  BoxDecoration _cardDecoration() {
+    return BoxDecoration(
+      color: AppColors.white,
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: AppColors.light1),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.04),
+          blurRadius: 10,
+          offset: const Offset(0, 4),
+        ),
+      ],
     );
   }
 
   Widget _saveButton() {
     return SizedBox(
       width: double.infinity,
-      height: 48,
+      height: 52,
       child: ElevatedButton(
         onPressed: isSaving || !isFormValid ? null : _savePassword,
         style: ElevatedButton.styleFrom(
@@ -367,7 +365,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
           disabledForegroundColor: AppColors.white,
           foregroundColor: Colors.white,
           elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
         child: isSaving
             ? const SizedBox(
@@ -378,43 +376,17 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   strokeWidth: 2,
                 ),
               )
-            : const Text(
-                'Simpan Kata Sandi',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            : const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(width: 8),
+                  Text(
+                    'Simpan Kata Sandi',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                  ),
+                ],
               ),
       ),
-    );
-  }
-
-  _PasswordValidationState _passwordValidationState() {
-    final current = currentPasswordController.text.trim();
-    final newPass = newPasswordController.text.trim();
-    final confirm = confirmPasswordController.text.trim();
-
-    if (newPass.isNotEmpty && newPass.length < 8) {
-      return const _PasswordValidationState(
-        message: 'Kata sandi baru minimal 8 karakter.',
-        isError: true,
-      );
-    }
-
-    if (confirm.isNotEmpty && newPass != confirm) {
-      return const _PasswordValidationState(
-        message: 'Konfirmasi kata sandi belum sama.',
-        isError: true,
-      );
-    }
-
-    if (current.isNotEmpty && newPass.isNotEmpty && current == newPass) {
-      return const _PasswordValidationState(
-        message: 'Kata sandi baru tidak boleh sama dengan kata sandi saat ini.',
-        isError: true,
-      );
-    }
-
-    return const _PasswordValidationState(
-      message: 'Kata sandi minimal 8 karakter dan berbeda dari kata sandi saat ini.',
-      isError: false,
     );
   }
 
@@ -472,7 +444,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   ),
                   const SizedBox(height: 10),
                   const Text(
-                    'Gunakan kata sandi baru saat login berikutnya.',
+                    'Perubahan sudah tersimpan. Kamu tetap bisa lanjut menggunakan aplikasi.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14,
@@ -524,7 +496,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(12),
           ),
           content: Row(
             children: [
@@ -545,14 +517,4 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         ),
       );
   }
-}
-
-class _PasswordValidationState {
-  final String message;
-  final bool isError;
-
-  const _PasswordValidationState({
-    required this.message,
-    required this.isError,
-  });
 }

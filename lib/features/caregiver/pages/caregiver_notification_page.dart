@@ -326,6 +326,10 @@ class _CaregiverNotificationPageState extends State<CaregiverNotificationPage> {
       return 'Validasi Data';
     }
 
+    if (type.contains('prescription') || type.contains('resep')) {
+      return 'Resep Obat';
+    }
+
     if (type.contains('medication') ||
         type.contains('obat') ||
         type.contains('pengingat')) {
@@ -384,12 +388,20 @@ class _CaregiverNotificationPageState extends State<CaregiverNotificationPage> {
       } catch (_) {}
     }
 
+    Map<String, dynamic> detail = item;
+
+    if (notificationId != null) {
+      try {
+        detail = await ApiService.getNotificationDetail(notificationId);
+      } catch (_) {}
+    }
+
     if (!mounted) return;
 
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => CaregiverNotificationDetailPage(item: item),
+        builder: (_) => CaregiverNotificationDetailPage(item: detail),
       ),
     );
   }
@@ -584,14 +596,23 @@ class _CaregiverNotificationPageState extends State<CaregiverNotificationPage> {
             Expanded(
               child: Container(
                 color: AppColors.background,
-                child: isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : errorMessage != null
-                        ? _errorState()
-                        : RefreshIndicator(
-                            onRefresh: _loadNotifications,
-                            child: _body(filteredNotifications),
-                          ),
+                child: Stack(
+                  children: [
+                    RefreshIndicator(
+                      onRefresh: _loadNotifications,
+                      child: _body(filteredNotifications),
+                    ),
+                    if (errorMessage != null && notifications.isEmpty)
+                      Positioned.fill(child: _errorState()),
+                    if (isLoading)
+                      const Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: LinearProgressIndicator(minHeight: 2),
+                      ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -606,6 +627,7 @@ class _CaregiverNotificationPageState extends State<CaregiverNotificationPage> {
       padding: EdgeInsets.zero,
       children: [
         _tabs(),
+        if (hasUnreadNotification) _markAllReadButton(),
         if (data.isEmpty)
           _emptyNotification()
         else ...[
@@ -679,27 +701,7 @@ class _CaregiverNotificationPageState extends State<CaregiverNotificationPage> {
                   ),
                 ),
               ),
-              IconButton(
-                onPressed: hasUnreadNotification && !isMarkingAll
-                    ? _markAllAsRead
-                    : null,
-                tooltip: 'Tandai semua dibaca',
-                icon: isMarkingAll
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : Icon(
-                        Icons.done_all_rounded,
-                        color: hasUnreadNotification
-                            ? Colors.white
-                            : Colors.white.withValues(alpha: 0.45),
-                      ),
-              ),
+              const SizedBox(width: 48),
             ],
           ),
           const SizedBox(height: 16),
@@ -734,6 +736,40 @@ class _CaregiverNotificationPageState extends State<CaregiverNotificationPage> {
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+
+  Widget _markAllReadButton() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 0, 22, 12),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: OutlinedButton.icon(
+          onPressed: isMarkingAll ? null : _markAllAsRead,
+          icon: isMarkingAll
+              ? const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.done_all, size: 15),
+          label: Text(
+            isMarkingAll ? 'Menandai...' : 'Tandai semua dibaca',
+            style: const TextStyle(fontSize: 11),
+          ),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.primaryBlue,
+            backgroundColor: AppColors.white,
+            side: const BorderSide(color: AppColors.primaryBlue),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            minimumSize: const Size(0, 34),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
         ),
       ),
     );
@@ -902,67 +938,125 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
   }
 
   String get categoryLabel {
-    if (type.contains('validation') || type.contains('validasi')) {
-      return 'Validasi Data';
-    }
-    if (type.contains('medication') || type.contains('obat')) {
-      return 'Kepatuhan Obat';
-    }
-    if (type.contains('recommendation') || type.contains('rekomendasi')) {
-      return 'Rekomendasi';
-    }
-    if (type.contains('disconnect') || type.contains('putus')) {
-      return 'Relasi Terputus';
-    }
-    if (type.contains('connection') || type.contains('koneksi')) {
-      return 'Koneksi';
-    }
+    if (_isValidation) return 'Validasi Data';
+    if (_isPrescription) return 'Resep Obat';
+    if (_isMedication) return 'Kepatuhan Obat';
+    if (_isRecommendation) return 'Rekomendasi';
+    if (_isDisconnected) return 'Relasi Terputus';
+    if (_isConnection) return 'Koneksi';
     return 'Informasi';
   }
 
   IconData get icon {
-    if (type.contains('validation') || type.contains('validasi')) {
-      return Icons.assignment_outlined;
-    }
-    if (type.contains('medication') || type.contains('obat')) {
-      return Icons.medication_outlined;
-    }
-    if (type.contains('recommendation') || type.contains('rekomendasi')) {
-      return Icons.medical_information_outlined;
-    }
-    if (type.contains('disconnect') || type.contains('putus')) {
-      return Icons.link_off_rounded;
-    }
-    if (type.contains('connection') || type.contains('koneksi')) {
-      return Icons.person_outline;
-    }
+    if (_isValidation) return Icons.assignment_outlined;
+    if (_isPrescription || _isMedication) return Icons.medication_outlined;
+    if (_isRecommendation) return Icons.medical_information_outlined;
+    if (_isDisconnected) return Icons.link_off_rounded;
+    if (_isConnection) return Icons.person_outline;
     return Icons.notifications_none_outlined;
   }
 
   Color get iconBg {
-    if (type.contains('validation') || type.contains('validasi')) {
-      return const Color(0xFFFFF4DA);
-    }
-    if (type.contains('disconnect') || type.contains('putus')) {
-      return AppColors.lightRed;
-    }
-    if (type.contains('connection') || type.contains('koneksi')) {
-      return const Color(0xFFEAFBF3);
-    }
+    if (_isValidation) return const Color(0xFFFFF4DA);
+    if (_isDisconnected) return AppColors.lightRed;
+    if (_isConnection) return const Color(0xFFEAFBF3);
     return AppColors.veryLightBlue;
   }
 
   Color get iconColor {
-    if (type.contains('validation') || type.contains('validasi')) {
-      return Colors.orange;
-    }
-    if (type.contains('disconnect') || type.contains('putus')) {
-      return AppColors.red;
-    }
-    if (type.contains('connection') || type.contains('koneksi')) {
-      return const Color(0xFF10C878);
-    }
+    if (_isValidation) return Colors.orange;
+    if (_isDisconnected) return AppColors.red;
+    if (_isConnection) return const Color(0xFF10C878);
     return AppColors.primaryBlue;
+  }
+
+  bool get _isValidation {
+    return type.contains('validation') ||
+        type.contains('validasi') ||
+        type.contains('caregiver_data') ||
+        item['record_type'] != null;
+  }
+
+  bool get _isPrescription {
+    return type.contains('prescription') ||
+        type.contains('resep') ||
+        item['prescription_id'] != null ||
+        item['schedules'] is List;
+  }
+
+  bool get _isMedication {
+    return type.contains('medication') ||
+        type.contains('obat') ||
+        type.contains('pengingat') ||
+        item['log_id'] != null;
+  }
+
+  bool get _isRecommendation {
+    return type.contains('recommendation') ||
+        type.contains('rekomendasi') ||
+        item['recommendation_text'] != null ||
+        item['recommendations'] is List;
+  }
+
+  bool get _isDisconnected {
+    return type.contains('disconnect') ||
+        type.contains('disconnected') ||
+        type.contains('putus');
+  }
+
+  bool get _isConnection {
+    return type.contains('connection') ||
+        type.contains('koneksi') ||
+        type.contains('relation') ||
+        type.contains('relasi') ||
+        item['relation_name'] != null ||
+        item['relation'] != null;
+  }
+
+  bool get _isStoppedPrescription {
+    final combined = '${title.toLowerCase()} ${type.toLowerCase()} ${_text(item['status']).toLowerCase()}';
+    return combined.contains('dihentikan') ||
+        combined.contains('stopped') ||
+        combined.contains('selesai');
+  }
+
+  bool get _isUpdatedPrescription {
+    final combined = '${title.toLowerCase()} ${type.toLowerCase()}';
+    return combined.contains('diperbarui') || combined.contains('updated');
+  }
+
+  String get _pageTitle {
+    if (_isPrescription) {
+      if (_isStoppedPrescription) return 'Resep Obat Dihentikan';
+      if (_isUpdatedPrescription) return 'Resep Obat Diperbarui';
+      return 'Detail Resep Obat';
+    }
+    if (_isValidation) return 'Detail Validasi Data';
+    if (_isRecommendation) return 'Detail Rekomendasi';
+    if (_isDisconnected) return 'Detail Relasi Terputus';
+    if (_isConnection) return 'Detail Koneksi';
+    if (_isMedication) return 'Detail Kepatuhan Obat';
+    return 'Detail Notifikasi';
+  }
+
+  String get _headerText {
+    if (_isPrescription) {
+      return '${_text(item['medication_name'], fallback: 'Resep Obat')}\n$time';
+    }
+    if (_isValidation) {
+      return '${_text(item['title'], fallback: 'Data kesehatan')}\n$time';
+    }
+    if (_isRecommendation) {
+      return '${_text(item['doctor_name'], fallback: 'Dokter')}\n$time';
+    }
+    if (_isConnection || _isDisconnected) {
+      final name = _text(
+        item['patient_name'] ?? item['caregiver_name'] ?? item['full_name'] ?? item['name'],
+        fallback: categoryLabel,
+      );
+      return '$name\n$time';
+    }
+    return '$title\n$time';
   }
 
   String _formatTime(dynamic raw) {
@@ -984,24 +1078,365 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
         item['created_at'] ?? item['notification_date'] ?? item['time'],
       );
 
+  String _text(dynamic value, {String fallback = '-'}) {
+    if (value == null) return fallback;
+    final text = value.toString().trim();
+    if (text.isEmpty || text == '-') return fallback;
+    return text;
+  }
+
+  String _date(dynamic value) {
+    if (value == null) return '-';
+    final parsed = DateTime.tryParse(value.toString());
+    if (parsed == null) return value.toString();
+    return '${parsed.day.toString().padLeft(2, '0')}/'
+        '${parsed.month.toString().padLeft(2, '0')}/'
+        '${parsed.year}';
+  }
+
+  List<Map<String, dynamic>> _schedules() {
+    final raw = item['schedules'];
+    if (raw is! List) return [];
+    return raw
+        .whereType<Map>()
+        .map((entry) => Map<String, dynamic>.from(entry))
+        .toList();
+  }
+
+  List<Map<String, dynamic>> _recommendations() {
+    final raw = item['recommendations'];
+    if (raw is! List) return [];
+    return raw
+        .whereType<Map>()
+        .map((entry) => Map<String, dynamic>.from(entry))
+        .toList();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final relatedCards = _relatedCards();
+
+    return _NotificationDetailScaffold(
+      title: _pageTitle,
+      icon: icon,
+      iconBg: iconBg,
+      iconColor: iconColor,
+      headerText: _headerText,
+      children: [
+        _whiteCard(
+          title: 'Isi Notifikasi',
+          children: [
+            Text(
+              message,
+              style: const TextStyle(
+                color: AppColors.dark1,
+                fontSize: 12,
+                height: 1.45,
+              ),
+            ),
+          ],
+        ),
+        if (relatedCards.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          ...relatedCards,
+        ],
+        const SizedBox(height: 14),
+        _whiteCard(
+          title: 'Informasi Notifikasi',
+          children: [
+            _InfoRow(label: 'Kategori', value: categoryLabel),
+            _InfoRow(label: 'Waktu', value: time),
+            if (_text(item['status']).isNotEmpty && _text(item['status']) != '-')
+              _InfoRow(label: 'Status', value: _text(item['status'])),
+          ],
+        ),
+      ],
+    );
+  }
+
+  List<Widget> _relatedCards() {
+    if (_isPrescription) return _prescriptionCards();
+    if (_isRecommendation) return _recommendationCards();
+    if (_isValidation) return [_validationCard()];
+    if (_isMedication) return [_medicationCard()];
+    if (_isConnection || _isDisconnected) return [_connectionCard()];
+    return [];
+  }
+
+  List<Widget> _prescriptionCards() {
+    final medicationName = _text(item['medication_name'], fallback: 'Resep Obat');
+    final patientName = _text(item['patient_name'], fallback: 'Pasien');
+    final doctorName = _text(item['doctor_name'], fallback: 'Dokter');
+    final dosage = _text(item['dosage']);
+    final form = _text(item['form']);
+    final mealRule = _text(item['meal_rule']);
+    final notes = _text(item['notes']);
+    final status = _text(
+      item['status'],
+      fallback: _isStoppedPrescription ? 'Selesai' : 'Aktif',
+    );
+    final validFrom = _date(item['valid_from']);
+    final validUntil = _date(item['valid_until']);
+    final schedules = _schedules();
+
+    return [
+      _whiteCard(
+        title: 'Informasi Resep',
+        children: [
+          _InfoRow(label: 'Obat', value: medicationName),
+          _InfoRow(label: 'Pasien', value: patientName),
+          _InfoRow(label: 'Dokter', value: doctorName),
+          _InfoRow(label: 'Dosis', value: dosage),
+          if (form != '-') _InfoRow(label: 'Bentuk', value: form),
+          _InfoRow(label: 'Aturan minum', value: mealRule),
+          _InfoRow(label: 'Status', value: status),
+          _InfoRow(label: 'Berlaku', value: '$validFrom - $validUntil'),
+          if (notes != '-') _InfoRow(label: 'Catatan', value: notes),
+        ],
+      ),
+      if (schedules.isNotEmpty) ...[
+        const SizedBox(height: 14),
+        _whiteCard(
+          title: 'Jadwal Minum',
+          children: schedules.map((schedule) {
+            final session = _text(schedule['session_name'], fallback: 'Jadwal');
+            final reminder = _text(
+              schedule['reminder_time'] ?? schedule['default_reminder_time'],
+            );
+
+            return _ScheduleRow(session: session, reminder: reminder);
+          }).toList(),
+        ),
+      ],
+    ];
+  }
+
+  List<Widget> _recommendationCards() {
+    final patientName = _text(item['patient_name'], fallback: 'Pasien');
+    final doctorName = _text(item['doctor_name'], fallback: 'Dokter');
+    final category = _text(item['category'], fallback: 'Rekomendasi');
+    final singleText = _text(item['recommendation_text']);
+    final recommendations = _recommendations();
+
+    final children = <Widget>[
+      _InfoRow(label: 'Pasien', value: patientName),
+      _InfoRow(label: 'Dokter', value: doctorName),
+      _InfoRow(label: 'Kategori', value: category),
+    ];
+
+    if (recommendations.isNotEmpty) {
+      for (var i = 0; i < recommendations.length; i++) {
+        final recommendation = recommendations[i];
+        final itemCategory = _text(recommendation['category'], fallback: 'Rekomendasi ${i + 1}');
+        final itemText = _text(recommendation['recommendation_text']);
+
+        children.add(
+          Padding(
+            padding: EdgeInsets.only(top: i == 0 ? 6 : 12),
+            child: Text(
+              '$itemCategory\n$itemText',
+              style: const TextStyle(
+                color: AppColors.dark1,
+                fontSize: 12,
+                height: 1.45,
+              ),
+            ),
+          ),
+        );
+      }
+    } else if (singleText != '-') {
+      children.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Text(
+            singleText,
+            style: const TextStyle(
+              color: AppColors.dark1,
+              fontSize: 12,
+              height: 1.45,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return [
+      _whiteCard(
+        title: 'Detail Rekomendasi',
+        children: children,
+      ),
+    ];
+  }
+
+  Widget _validationCard() {
+    final patientName = _text(item['patient_name'], fallback: 'Pasien');
+    final recordTitle = _text(item['title'], fallback: 'Data kesehatan');
+    final inputBy = _text(item['input_by_name'] ?? item['input_by']);
+    final inputRole = _text(item['input_by_role'] ?? item['relation']);
+    final date = _formatTime(item['date'] ?? item['measured_at'] ?? item['checked_at']);
+    final value = _text(item['value']);
+    final unit = _text(item['unit'], fallback: '');
+    final status = _text(item['validation_status'] ?? item['status']);
+    final valueText = unit.isEmpty ? value : '$value $unit';
+
+    return _whiteCard(
+      title: 'Detail Data Validasi',
+      children: [
+        _InfoRow(label: 'Pasien', value: patientName),
+        _InfoRow(label: 'Jenis Data', value: recordTitle),
+        if (inputBy != '-') _InfoRow(label: 'Diinput oleh', value: inputBy),
+        if (inputRole != '-') _InfoRow(label: 'Peran', value: inputRole),
+        if (date != '-') _InfoRow(label: 'Tanggal', value: date),
+        if (value != '-') _InfoRow(label: 'Nilai', value: valueText),
+        if (status != '-') _InfoRow(label: 'Status', value: status),
+      ],
+    );
+  }
+
+  Widget _medicationCard() {
+    final patientName = _text(item['patient_name'], fallback: 'Pasien');
+    final medicationName = _text(item['medication_name'], fallback: 'Obat');
+    final sessionName = _text(item['session_name'] ?? item['session']);
+    final status = _text(item['value'] ?? item['status']);
+    final date = _date(item['date'] ?? item['log_date']);
+    final inputBy = _text(item['input_by_name'] ?? item['input_by']);
+
+    return _whiteCard(
+      title: 'Detail Kepatuhan Obat',
+      children: [
+        _InfoRow(label: 'Pasien', value: patientName),
+        _InfoRow(label: 'Obat', value: medicationName),
+        if (sessionName != '-') _InfoRow(label: 'Sesi', value: sessionName),
+        if (status != '-') _InfoRow(label: 'Status', value: status),
+        if (date != '-') _InfoRow(label: 'Tanggal', value: date),
+        if (inputBy != '-') _InfoRow(label: 'Diinput oleh', value: inputBy),
+      ],
+    );
+  }
+
+  Widget _connectionCard() {
+    final patientName = _text(item['patient_name'], fallback: '-');
+    final caregiverName = _text(item['caregiver_name'], fallback: '-');
+    final relation = _text(item['relation_name'] ?? item['relation'], fallback: 'Pendamping');
+    final status = _text(item['status']);
+    final requestedAt = _formatTime(item['requested_at']);
+    final respondedAt = _formatTime(item['responded_at']);
+    final connectedAt = _formatTime(item['connected_at']);
+    final disconnectedAt = _formatTime(item['disconnected_at']);
+    final updatedAt = _formatTime(item['relation_updated_at']);
+
+    return _whiteCard(
+      title: _isDisconnected ? 'Detail Relasi' : 'Detail Koneksi',
+      children: [
+        if (patientName != '-') _InfoRow(label: 'Pasien', value: patientName),
+        if (caregiverName != '-') _InfoRow(label: 'Pendamping', value: caregiverName),
+        _InfoRow(label: 'Hubungan', value: relation),
+        if (status != '-') _InfoRow(label: 'Status', value: status),
+        if (requestedAt != '-') _InfoRow(label: 'Diajukan', value: requestedAt),
+        if (respondedAt != '-') _InfoRow(label: 'Direspons', value: respondedAt),
+        if (connectedAt != '-') _InfoRow(label: 'Terhubung sejak', value: connectedAt),
+        if (disconnectedAt != '-') _InfoRow(label: 'Diputus pada', value: disconnectedAt),
+        if (updatedAt != '-') _InfoRow(label: 'Diperbarui', value: updatedAt),
+      ],
+    );
+  }
+}
+
+class _NotificationDetailScaffold extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Color iconBg;
+  final Color iconColor;
+  final String headerText;
+  final List<Widget> children;
+
+  const _NotificationDetailScaffold({
+    required this.title,
+    required this.icon,
+    this.iconBg = AppColors.lightBlue,
+    this.iconColor = AppColors.primaryBlue,
+    required this.headerText,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final topPad = MediaQuery.of(context).padding.top;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         top: false,
         child: Column(
           children: [
-            _header(context),
+            Container(
+              padding: EdgeInsets.fromLTRB(14, topPad + 12, 18, 24),
+              decoration: const BoxDecoration(
+                color: AppColors.primaryBlue,
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(24),
+                  bottomRight: Radius.circular(24),
+                ),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      ),
+                      Expanded(
+                        child: Text(
+                          title,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 48),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppColors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.08),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: iconBg,
+                          child: Icon(icon, color: iconColor),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _HeaderInfoText(text: headerText),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
-                child: Column(
-                  children: [
-                    _messageCard(),
-                    const SizedBox(height: 14),
-                    _infoCard(),
-                  ],
+              child: Container(
+                color: AppColors.background,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(18),
+                  child: Column(children: children),
                 ),
               ),
             ),
@@ -1010,143 +1445,50 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _header(BuildContext context) {
-    final topPad = MediaQuery.of(context).padding.top;
-
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.fromLTRB(14, topPad + 12, 20, 24),
-      decoration: const BoxDecoration(
-        color: AppColors.primaryBlue,
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(24),
-          bottomRight: Radius.circular(24),
+Widget _whiteCard({required String title, required List<Widget> children}) {
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: AppColors.white,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: AppColors.light1),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.05),
+          blurRadius: 8,
+          offset: const Offset(0, 3),
         ),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
-              ),
-              const Expanded(
-                child: Text(
-                  'Detail Notifikasi',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 48),
-            ],
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            color: AppColors.primaryBlue,
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
           ),
-          const SizedBox(height: 18),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.white,
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 29,
-                  backgroundColor: iconBg,
-                  child: Icon(icon, color: iconColor, size: 28),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          color: AppColors.dark1,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        time,
-                        style: const TextStyle(
-                          color: AppColors.dark2,
-                          fontSize: 12,
-                        ),
-                      ),
-                      const SizedBox(height: 7),
-                      _badge(categoryLabel),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+        ),
+        const SizedBox(height: 12),
+        ...children,
+      ],
+    ),
+  );
+}
 
-  Widget _messageCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(15),
-      decoration: _cardDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Isi Notifikasi',
-            style: TextStyle(
-              color: AppColors.primaryBlue,
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            message,
-            style: const TextStyle(
-              color: AppColors.dark1,
-              fontSize: 13,
-              height: 1.45,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final String value;
 
-  Widget _infoCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(15),
-      decoration: _cardDecoration(),
-      child: Column(
-        children: [
-          _infoRow('Kategori', categoryLabel),
-          _infoRow('Waktu', time),
-        ],
-      ),
-    );
-  }
+  const _InfoRow({required this.label, required this.value});
 
-  Widget _infoRow(String label, String value) {
+  @override
+  Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 9),
       child: Row(
@@ -1155,7 +1497,10 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(color: AppColors.dark2, fontSize: 12),
+              style: const TextStyle(
+                color: AppColors.primaryBlue,
+                fontSize: 12,
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -1164,9 +1509,9 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
               value,
               textAlign: TextAlign.right,
               style: const TextStyle(
-                color: AppColors.primaryBlue,
+                color: AppColors.dark1,
                 fontSize: 12,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
@@ -1174,36 +1519,79 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _badge(String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: AppColors.lightBlue,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: AppColors.primaryBlue,
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-        ),
+class _ScheduleRow extends StatelessWidget {
+  final String session;
+  final String reminder;
+
+  const _ScheduleRow({
+    required this.session,
+    required this.reminder,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 9),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.schedule_rounded,
+            color: AppColors.primaryBlue,
+            size: 16,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '$session • Reminder $reminder',
+              style: const TextStyle(
+                color: AppColors.dark1,
+                fontSize: 12,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
+}
 
-  BoxDecoration _cardDecoration() {
-    return BoxDecoration(
-      color: AppColors.white,
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: AppColors.light1),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.06),
-          blurRadius: 8,
-          offset: const Offset(0, 3),
+class _HeaderInfoText extends StatelessWidget {
+  final String text;
+
+  const _HeaderInfoText({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final lines = text.split('\n');
+    final main = lines.isNotEmpty ? lines.first : text;
+    final sub = lines.length > 1 ? lines.sublist(1).join('\n') : '';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          main,
+          style: const TextStyle(
+            color: AppColors.dark1,
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+          ),
         ),
+        if (sub.trim().isNotEmpty) ...[
+          const SizedBox(height: 5),
+          Text(
+            sub,
+            style: const TextStyle(
+              color: AppColors.dark2,
+              fontSize: 12,
+              height: 1.35,
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -1236,37 +1624,32 @@ class _CaregiverNotificationItem extends StatelessWidget {
       onTap: onTap,
       child: Container(
         color: unread ? const Color(0xFFF3F8FF) : AppColors.white,
-        padding: const EdgeInsets.fromLTRB(22, 14, 14, 14),
+        padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(
-              width: 42,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  CircleAvatar(
-                    radius: 20,
-                    backgroundColor: iconBg,
-                    child: Icon(icon, color: iconColor, size: 21),
-                  ),
-                  if (unread)
-                    Positioned(
-                      left: -2,
-                      top: -3,
-                      child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: AppColors.primaryBlue,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
-                ],
+            if (unread)
+              Container(
+                width: 7,
+                height: 7,
+                margin: const EdgeInsets.only(top: 5, right: 8),
+                decoration: const BoxDecoration(
+                  color: AppColors.primaryBlue,
+                  shape: BoxShape.circle,
+                ),
+              )
+            else
+              const SizedBox(width: 15),
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: iconBg,
+                shape: BoxShape.circle,
               ),
+              child: Icon(icon, color: iconColor, size: 22),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1276,15 +1659,15 @@ class _CaregiverNotificationItem extends StatelessWidget {
                     style: const TextStyle(
                       color: AppColors.primaryBlue,
                       fontSize: 13,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 4),
                   Text(
                     message,
                     style: const TextStyle(
                       color: AppColors.dark1,
-                      fontSize: 11,
+                      fontSize: 12,
                       height: 1.35,
                     ),
                   ),
@@ -1293,15 +1676,15 @@ class _CaregiverNotificationItem extends StatelessWidget {
                     children: [
                       const Icon(
                         Icons.access_time,
-                        size: 12,
                         color: AppColors.primaryBlue,
+                        size: 13,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         time,
                         style: const TextStyle(
                           color: AppColors.primaryBlue,
-                          fontSize: 10,
+                          fontSize: 11,
                         ),
                       ),
                     ],
