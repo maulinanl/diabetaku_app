@@ -3,6 +3,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 import 'email_verification_page.dart';
 import 'package:diabetaku_app/core/theme/app_button_styles.dart';
+import '../../../core/widgets/app_option_bottom_sheet.dart';
 
 class RegisterDoctorStep2Page extends StatefulWidget {
   final String fullName;
@@ -136,75 +137,23 @@ class _RegisterDoctorStep2PageState extends State<RegisterDoctorStep2Page> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (sheetContext) {
-        return Container(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
-          decoration: const BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: SizedBox(
-            height: MediaQuery.of(context).size.height * 0.5,
-            child: Column(
-              children: [
-                Container(
-                  width: 42,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.light1,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                const Text(
-                  'Pilih Spesialisasi',
-                  style: TextStyle(
-                    color: AppColors.primaryBlue,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: ListView(
-                    children: specializations.map((item) {
-                      final id =
-                          int.tryParse(item['specialization_id'].toString()) ??
-                          0;
-                      final name =
-                          item['specialization_name']?.toString() ?? '-';
-                      final selected = id == specializationId;
-
-                      return ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(
-                          name,
-                          style: TextStyle(
-                            color: selected
-                                ? AppColors.primaryBlue
-                                : AppColors.dark1,
-                            fontWeight: selected
-                                ? FontWeight.w600
-                                : FontWeight.w400,
-                          ),
-                        ),
-                        trailing: selected
-                            ? const Icon(
-                                Icons.check,
-                                color: AppColors.primaryBlue,
-                              )
-                            : null,
-                        onTap: () {
-                          setState(() => specializationId = id);
-                          Navigator.pop(sheetContext);
-                        },
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ],
-            ),
-          ),
+        return AppOptionBottomSheet<Map<String, dynamic>>(
+          title: 'Pilih Spesialisasi',
+          icon: Icons.medical_services_outlined,
+          items: specializations,
+          maxHeightFactor: 0.62,
+          labelBuilder: (item) => item['specialization_name']?.toString() ?? '-',
+          isSelected: (item) {
+            final id = int.tryParse(item['specialization_id'].toString()) ?? 0;
+            return id == specializationId;
+          },
+          onSelected: (item) {
+            final id = int.tryParse(item['specialization_id'].toString()) ?? 0;
+            setState(() => specializationId = id);
+            Navigator.pop(sheetContext);
+          },
         );
       },
     );
@@ -274,14 +223,30 @@ class _RegisterDoctorStep2PageState extends State<RegisterDoctorStep2Page> {
   Widget _specializationField() {
     return InkWell(
       onTap: isLoadingSpecialization ? null : _showSpecializationSheet,
+      borderRadius: BorderRadius.circular(6),
       child: InputDecorator(
         decoration: _inputDecoration(),
-        child: Text(
-          isLoadingSpecialization ? 'Memuat...' : _selectedSpecializationName(),
-          style: TextStyle(
-            color: specializationId == null ? AppColors.dark4 : AppColors.dark1,
-            fontSize: 13,
-          ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                isLoadingSpecialization
+                    ? 'Memuat...'
+                    : _selectedSpecializationName(),
+                style: TextStyle(
+                  color: specializationId == null
+                      ? AppColors.dark4
+                      : AppColors.dark1,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+            const Icon(
+              Icons.keyboard_arrow_down_rounded,
+              color: AppColors.dark3,
+              size: 22,
+            ),
+          ],
         ),
       ),
     );

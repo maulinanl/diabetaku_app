@@ -325,49 +325,39 @@ class _DoctorPatientHealthHistoryPageState
   }
 
   Widget _filterTabs() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-      color: AppColors.background,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: List.generate(filters.length, (index) {
-            final selected = selectedIndex == index;
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
+      child: Row(
+        children: List.generate(filters.length, (index) {
+          final selected = selectedIndex == index;
 
-            return Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: GestureDetector(
-                onTap: () => setState(() => selectedIndex = index),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: selected ? AppColors.lightBlue : AppColors.white,
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(
-                      color: selected
-                          ? AppColors.lightBlue
-                          : AppColors.light1,
-                    ),
-                  ),
-                  child: Text(
-                    filters[index],
-                    style: TextStyle(
-                      color: selected
-                          ? AppColors.primaryBlue
-                          : AppColors.dark2,
-                      fontSize: 13,
-                      fontWeight:
-                          selected ? FontWeight.w600 : FontWeight.w400,
-                    ),
-                  ),
+          return GestureDetector(
+            onTap: () {
+              if (selectedIndex == index) return;
+              setState(() => selectedIndex = index);
+            },
+            child: Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+              decoration: BoxDecoration(
+                color: selected ? AppColors.primaryBlue : AppColors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: selected ? AppColors.primaryBlue : AppColors.light1,
                 ),
               ),
-            );
-          }),
-        ),
+              child: Text(
+                filters[index],
+                style: TextStyle(
+                  color: selected ? Colors.white : AppColors.primaryBlue,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          );
+        }),
       ),
     );
   }

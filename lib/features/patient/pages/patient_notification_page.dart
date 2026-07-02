@@ -1231,6 +1231,25 @@ _NotificationVisual _notificationVisual(String routeKey) {
     );
   }
 
+  if (routeKey.contains('prescription') ||
+      routeKey.contains('resep') ||
+      routeKey.contains('obat') ||
+      routeKey.contains('pengingat_obat')) {
+    return const _NotificationVisual(
+      icon: Icons.medication_outlined,
+      bg: AppColors.veryLightBlue,
+      color: AppColors.primaryBlue,
+    );
+  }
+
+  if (routeKey.contains('recommendation') || routeKey.contains('rekomendasi')) {
+    return const _NotificationVisual(
+      icon: Icons.medical_information_outlined,
+      bg: AppColors.veryLightBlue,
+      color: AppColors.primaryBlue,
+    );
+  }
+
   if (routeKey.contains('rejected') ||
       routeKey.contains('ditolak') ||
       routeKey.contains('tolak')) {
@@ -1274,25 +1293,6 @@ _NotificationVisual _notificationVisual(String routeKey) {
       icon: Icons.person_add_alt_1_rounded,
       bg: Color(0xFFEAFBF3),
       color: Color(0xFF10C878),
-    );
-  }
-
-  if (routeKey.contains('prescription') ||
-      routeKey.contains('resep') ||
-      routeKey.contains('obat') ||
-      routeKey.contains('pengingat_obat')) {
-    return const _NotificationVisual(
-      icon: Icons.medication_outlined,
-      bg: AppColors.veryLightBlue,
-      color: AppColors.primaryBlue,
-    );
-  }
-
-  if (routeKey.contains('recommendation') || routeKey.contains('rekomendasi')) {
-    return const _NotificationVisual(
-      icon: Icons.medical_information_outlined,
-      bg: AppColors.veryLightBlue,
-      color: AppColors.primaryBlue,
     );
   }
 
@@ -1572,9 +1572,9 @@ class PatientPrescriptionNotificationDetailPage extends StatelessWidget {
     final validFrom = _date(item['valid_from']);
     final validUntil = _date(item['valid_until']);
     final schedules = _schedules();
-    final icon = _isStopped ? Icons.cancel_outlined : Icons.medication_outlined;
-    final iconBg = _isStopped ? AppColors.lightRed : AppColors.veryLightBlue;
-    final iconColor = _isStopped ? AppColors.red : AppColors.primaryBlue;
+    const icon = Icons.medication_outlined;
+    const iconBg = AppColors.veryLightBlue;
+    const iconColor = AppColors.primaryBlue;
     final title = _isUpdated
         ? 'Resep Obat Diperbarui'
         : _isStopped

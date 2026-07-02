@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
 import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class CustomButton extends StatelessWidget {

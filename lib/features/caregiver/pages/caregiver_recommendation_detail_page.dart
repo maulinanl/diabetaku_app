@@ -29,10 +29,89 @@ class CaregiverRecommendationDetailPage extends StatelessWidget {
       item['description']?.toString() ??
       '-';
 
-  String get targetPatient =>
-      item['patient_name']?.toString() ??
-      item['full_name']?.toString() ??
-      'Pasien';
+  String _nameFrom(dynamic value) {
+    if (value == null) return '';
+
+    if (value is Map) {
+      final fromMap = value['patient_name'] ??
+          value['patient_full_name'] ??
+          value['patientName'] ??
+          value['patient_user_name'] ??
+          value['full_name'] ??
+          value['name'];
+      return _nameFrom(fromMap);
+    }
+
+    final text = value.toString().trim();
+    if (text.isEmpty || text == '-' || text.toLowerCase() == 'null') {
+      return '';
+    }
+
+    return text;
+  }
+
+  String _patientNameFromMessage(dynamic rawMessage) {
+    final text = rawMessage?.toString().trim() ?? '';
+    if (text.isEmpty) return '';
+
+    final patterns = [
+      RegExp(r'untuk pasien\s+([^.,\n]+)', caseSensitive: false),
+      RegExp(r'pasien\s+([^.,\n]+)', caseSensitive: false),
+      RegExp(r'untuk\s+([^.,\n]+)', caseSensitive: false),
+    ];
+
+    for (final pattern in patterns) {
+      final match = pattern.firstMatch(text);
+      final name = match?.group(1)?.trim() ?? '';
+      if (name.isNotEmpty && name.toLowerCase() != 'pasien') return name;
+    }
+
+    return '';
+  }
+
+  String get targetPatient {
+    final directSources = [
+      item['patient_name'],
+      item['patient_full_name'],
+      item['patientName'],
+      item['patient_user_name'],
+      item['patient'],
+      item['full_name'],
+      item['name'],
+      _patientNameFromMessage(item['message'] ?? item['notification_message']),
+    ];
+
+    for (final source in directSources) {
+      final name = _nameFrom(source);
+      if (name.isNotEmpty && name.toLowerCase() != 'pasien') {
+        return name;
+      }
+    }
+
+    for (final recommendation in recommendationItems) {
+      final recommendationSources = [
+        recommendation['patient_name'],
+        recommendation['patient_full_name'],
+        recommendation['patientName'],
+        recommendation['patient_user_name'],
+        recommendation['patient'],
+        recommendation['full_name'],
+        recommendation['name'],
+        _patientNameFromMessage(
+          recommendation['message'] ?? recommendation['notification_message'],
+        ),
+      ];
+
+      for (final source in recommendationSources) {
+        final name = _nameFrom(source);
+        if (name.isNotEmpty && name.toLowerCase() != 'pasien') {
+          return name;
+        }
+      }
+    }
+
+    return 'Nama pasien tidak tersedia';
+  }
 
   List<Map<String, dynamic>> get recommendationItems {
     final rawItems = item['items'];
@@ -130,7 +209,14 @@ class CaregiverRecommendationDetailPage extends StatelessWidget {
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: AppColors.white,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Row(
               children: [
@@ -227,7 +313,7 @@ class CaregiverRecommendationDetailPage extends StatelessWidget {
               Icon(Icons.send_outlined, color: AppColors.primaryBlue, size: 17),
               SizedBox(width: 8),
               Text(
-                'Rekomendasi untuk Pendamping',
+                'Rekomendasi untuk Pasien',
                 style: TextStyle(
                   color: AppColors.primaryBlue,
                   fontSize: 13,

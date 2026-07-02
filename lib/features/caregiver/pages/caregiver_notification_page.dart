@@ -389,11 +389,12 @@ class _CaregiverNotificationPageState extends State<CaregiverNotificationPage> {
       } catch (_) {}
     }
 
-    Map<String, dynamic> detail = item;
+    Map<String, dynamic> detail = Map<String, dynamic>.from(item);
 
     if (notificationId != null) {
       try {
-        detail = await ApiService.getNotificationDetail(notificationId);
+        final fetchedDetail = await ApiService.getNotificationDetail(notificationId);
+        detail = _mergeNotificationSummaryAndDetail(item, fetchedDetail);
       } catch (_) {}
     }
 
@@ -405,6 +406,142 @@ class _CaregiverNotificationPageState extends State<CaregiverNotificationPage> {
         builder: (_) => CaregiverNotificationDetailPage(item: detail),
       ),
     );
+  }
+
+  Map<String, dynamic> _mergeNotificationSummaryAndDetail(
+    Map<String, dynamic> summary,
+    Map<String, dynamic> detail,
+  ) {
+    bool isGenericPatientName(dynamic value) {
+      final text = value?.toString().trim().toLowerCase() ?? '';
+      return text.isEmpty ||
+          text == '-' ||
+          text == 'null' ||
+          text == 'pasien' ||
+          text == 'nama pasien tidak tersedia';
+    }
+
+    String nameFromSource(dynamic source) {
+      if (source == null) return '';
+
+      if (source is Map) {
+        return nameFromSource(
+          source['patient_name'] ??
+              source['patient_full_name'] ??
+              source['patientName'] ??
+              source['patient_user_name'] ??
+              source['full_name'] ??
+              source['name'],
+        );
+      }
+
+      final text = source.toString().trim();
+      if (isGenericPatientName(text)) return '';
+      return text;
+    }
+
+    String patientNameFromText(dynamic rawText) {
+      final text = rawText?.toString().trim() ?? '';
+      if (text.isEmpty) return '';
+
+      final patterns = [
+        RegExp(r'^(.+?)\s+(?:menerima|menolak)\s+data\b', caseSensitive: false),
+        RegExp(r'^(.+?)\s+(?:menerima|menolak)\s+[^.,\n]+\s+yang\s+anda\s+tambahkan', caseSensitive: false),
+        RegExp(r'untuk pasien\s+([^.,\n]+)', caseSensitive: false),
+        RegExp(r'nama pasien\s*:?\s*([^.,\n]+)', caseSensitive: false),
+        RegExp(r'pasien\s*:?\s*([^.,\n]+)', caseSensitive: false),
+        RegExp(r'data\s+[^.,\n]*?\s+dari\s+([^.,\n]+)', caseSensitive: false),
+        RegExp(r'milik\s+([^.,\n]+)', caseSensitive: false),
+        RegExp(r'untuk\s+([^.,\n]+)', caseSensitive: false),
+      ];
+
+      for (final pattern in patterns) {
+        final match = pattern.firstMatch(text);
+        final name = match?.group(1)?.trim() ?? '';
+        if (!isGenericPatientName(name)) return name;
+      }
+
+      return '';
+    }
+
+    String patientNameFromMap(Map<String, dynamic> source) {
+      final directSources = [
+        source['summary_patient_name'],
+        source['patient_name'],
+        source['patient_full_name'],
+        source['patientName'],
+        source['patient_user_name'],
+        source['patient'],
+        source['patient_data'],
+        source['record_patient'],
+        source['record'],
+        source['data'],
+        source['payload'],
+        source['notification_data'],
+        source['reference_data'],
+        source['full_name'],
+        source['name'],
+      ];
+
+      for (final sourceValue in directSources) {
+        final name = nameFromSource(sourceValue);
+        if (name.isNotEmpty) return name;
+      }
+
+      final textSources = [
+        source['message'],
+        source['notification_message'],
+        source['description'],
+        source['body'],
+        source['title'],
+        source['notification_title'],
+      ];
+
+      for (final sourceValue in textSources) {
+        final name = patientNameFromText(sourceValue);
+        if (name.isNotEmpty) return name;
+      }
+
+      return '';
+    }
+
+    final merged = Map<String, dynamic>.from(summary);
+    final summaryPatientName = patientNameFromMap(summary);
+
+    detail.forEach((key, value) {
+      if (value == null) return;
+
+      final textValue = value.toString().trim();
+      if (textValue.isEmpty || textValue.toLowerCase() == 'null') return;
+
+      final normalizedKey = key.toLowerCase();
+      final isPatientNameKey = normalizedKey.contains('patient') ||
+          normalizedKey == 'full_name' ||
+          normalizedKey == 'name';
+
+      if (isPatientNameKey &&
+          summaryPatientName.isNotEmpty &&
+          isGenericPatientName(value)) {
+        return;
+      }
+
+      merged[key] = value;
+    });
+
+    final detailPatientName = patientNameFromMap(merged);
+    final finalPatientName = detailPatientName.isNotEmpty
+        ? detailPatientName
+        : summaryPatientName;
+
+    if (finalPatientName.isNotEmpty) {
+      merged['summary_patient_name'] = finalPatientName;
+
+      if (isGenericPatientName(merged['patient_name'])) {
+        merged['patient_name'] = finalPatientName;
+      }
+    }
+
+    return merged;
   }
 
   void _showNotificationDetail(Map<String, dynamic> item) {
@@ -922,31 +1059,46 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
     if (_isPrescription) return 'Resep Obat';
     if (_isMedication) return 'Kepatuhan Obat';
     if (_isRecommendation) return 'Rekomendasi';
+    if (_isDoctorPatientRelation) return 'Relasi Dokter';
     if (_isDisconnected) return 'Relasi Terputus';
     if (_isConnection) return 'Koneksi';
     return 'Informasi';
   }
 
   IconData get icon {
+    if (_isValidationAccepted) return Icons.check_circle_outline;
+    if (_isValidationRejected) return Icons.cancel_outlined;
     if (_isValidation) return Icons.assignment_outlined;
-    if (_isPrescription || _isMedication) return Icons.medication_outlined;
-    if (_isRecommendation) return Icons.medical_information_outlined;
+    if (_isPrescription || _isMedication) {
+      return _isStoppedPrescription ? Icons.cancel_outlined : Icons.medication_outlined;
+    }
+    if (_isRecommendation) return Icons.send_outlined;
     if (_isDisconnected) return Icons.link_off_rounded;
+    if (_isRejectedConnection) return Icons.cancel_outlined;
+    if (_isAcceptedConnection) return Icons.check_circle_outline;
     if (_isConnection) return Icons.person_outline;
     return Icons.notifications_none_outlined;
   }
 
   Color get iconBg {
+    if (_isValidationAccepted) return const Color(0xFFEAFBF3);
+    if (_isValidationRejected) return AppColors.lightRed;
     if (_isValidation) return const Color(0xFFFFF4DA);
-    if (_isDisconnected) return AppColors.lightRed;
-    if (_isConnection) return const Color(0xFFEAFBF3);
+    if (_isStoppedPrescription || _isDisconnected || _isRejectedConnection) {
+      return AppColors.lightRed;
+    }
+    if (_isAcceptedConnection || _isConnection) return const Color(0xFFEAFBF3);
     return AppColors.veryLightBlue;
   }
 
   Color get iconColor {
+    if (_isValidationAccepted) return const Color(0xFF10C878);
+    if (_isValidationRejected) return AppColors.red;
     if (_isValidation) return Colors.orange;
-    if (_isDisconnected) return AppColors.red;
-    if (_isConnection) return const Color(0xFF10C878);
+    if (_isStoppedPrescription || _isDisconnected || _isRejectedConnection) {
+      return AppColors.red;
+    }
+    if (_isAcceptedConnection || _isConnection) return const Color(0xFF10C878);
     return AppColors.primaryBlue;
   }
 
@@ -955,6 +1107,29 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
         type.contains('validasi') ||
         type.contains('caregiver_data') ||
         item['record_type'] != null;
+  }
+
+  bool get _isValidationAccepted {
+    final status = _text(
+      item['validation_status'] ?? item['status'] ?? item['validation_result'],
+    ).toLowerCase();
+
+    return _isValidation &&
+        (status.contains('diterima') ||
+            status.contains('disetujui') ||
+            status.contains('approved') ||
+            status == 'valid');
+  }
+
+  bool get _isValidationRejected {
+    final status = _text(
+      item['validation_status'] ?? item['status'] ?? item['validation_result'],
+    ).toLowerCase();
+
+    return _isValidation &&
+        (status.contains('ditolak') ||
+            status.contains('rejected') ||
+            status == 'tidak valid');
   }
 
   bool get _isPrescription {
@@ -975,13 +1150,15 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
     return type.contains('recommendation') ||
         type.contains('rekomendasi') ||
         item['recommendation_text'] != null ||
-        item['recommendations'] is List;
+        item['recommendations'] is List ||
+        item['items'] is List;
   }
 
   bool get _isDisconnected {
     return type.contains('disconnect') ||
         type.contains('disconnected') ||
-        type.contains('putus');
+        type.contains('putus') ||
+        _combinedText.contains('terputus');
   }
 
   bool get _isConnection {
@@ -993,16 +1170,38 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
         item['relation'] != null;
   }
 
+  bool get _isDoctorPatientRelation {
+    return type.contains('doctor_patient') ||
+        type.contains('doctor_connection') ||
+        (_combinedText.contains('dokter') && (_isDisconnected || _isConnection));
+  }
+
+  String get _combinedText =>
+      '${title.toLowerCase()} ${type.toLowerCase()} ${_text(item['status']).toLowerCase()} ${message.toLowerCase()}';
+
+  bool get _isRejectedConnection {
+    return _isConnection &&
+        (_combinedText.contains('ditolak') ||
+            _combinedText.contains('tolak') ||
+            _combinedText.contains('rejected'));
+  }
+
+  bool get _isAcceptedConnection {
+    return _isConnection &&
+        (_combinedText.contains('diterima') ||
+            _combinedText.contains('terhubung') ||
+            _combinedText.contains('accepted') ||
+            _combinedText.contains('disetujui'));
+  }
+
   bool get _isStoppedPrescription {
-    final combined = '${title.toLowerCase()} ${type.toLowerCase()} ${_text(item['status']).toLowerCase()}';
-    return combined.contains('dihentikan') ||
-        combined.contains('stopped') ||
-        combined.contains('selesai');
+    return _combinedText.contains('dihentikan') ||
+        _combinedText.contains('stopped') ||
+        _combinedText.contains('selesai');
   }
 
   bool get _isUpdatedPrescription {
-    final combined = '${title.toLowerCase()} ${type.toLowerCase()}';
-    return combined.contains('diperbarui') || combined.contains('updated');
+    return _combinedText.contains('diperbarui') || _combinedText.contains('updated');
   }
 
   String get _pageTitle {
@@ -1011,9 +1210,14 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
       if (_isUpdatedPrescription) return 'Resep Obat Diperbarui';
       return 'Detail Resep Obat';
     }
+    if (_isValidationAccepted) return 'Data Diterima';
+    if (_isValidationRejected) return 'Data Ditolak';
     if (_isValidation) return 'Detail Validasi Data';
     if (_isRecommendation) return 'Detail Rekomendasi';
-    if (_isDisconnected) return 'Detail Relasi Terputus';
+    if (_isDoctorPatientRelation && _isDisconnected) return 'Relasi Dokter Terputus';
+    if (_isDisconnected) return 'Relasi Pendamping Terputus';
+    if (_isRejectedConnection) return 'Koneksi Ditolak';
+    if (_isAcceptedConnection) return 'Koneksi Diterima';
     if (_isConnection) return 'Detail Koneksi';
     if (_isMedication) return 'Detail Kepatuhan Obat';
     return 'Detail Notifikasi';
@@ -1021,25 +1225,30 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
 
   String get _headerText {
     if (_isPrescription) {
-      return '${_text(item['medication_name'], fallback: 'Resep Obat')}\n$time';
+      return '${_text(item['medication_name'], fallback: 'Resep Obat')}\n${_dateTime(item['created_at'] ?? item['time'])}';
     }
     if (_isValidation) {
-      return '${_text(item['title'], fallback: 'Data kesehatan')}\n$time';
+      return '${_text(item['title'], fallback: 'Data kesehatan')}\n${_dateTime(item['created_at'] ?? item['time'])}';
     }
     if (_isRecommendation) {
-      return '${_text(item['doctor_name'], fallback: 'Dokter')}\n$time';
+      return '${_text(item['doctor_name'] ?? item['doctor'] ?? item['sender_name'], fallback: 'Dokter')}\n${_dateTime(item['created_at'] ?? item['date'] ?? item['time'])}';
+    }
+    if (_isDoctorPatientRelation && _isDisconnected) {
+      final patientName = _resolvedPatientName(fallback: 'Pasien');
+      final doctorName = _text(item['doctor_name'] ?? item['doctor'], fallback: 'Dokter');
+      return '$patientName\n$doctorName • ${_dateTime(item['disconnected_at'] ?? item['relation_updated_at'] ?? item['created_at'] ?? item['time'])}';
     }
     if (_isConnection || _isDisconnected) {
       final name = _text(
         item['patient_name'] ?? item['caregiver_name'] ?? item['full_name'] ?? item['name'],
         fallback: categoryLabel,
       );
-      return '$name\n$time';
+      return '$name\n${_dateTime(item['created_at'] ?? item['time'])}';
     }
-    return '$title\n$time';
+    return '$title\n${_dateTime(item['created_at'] ?? item['time'])}';
   }
 
-  String _formatTime(dynamic raw) {
+  String _dateTime(dynamic raw) {
     final value = raw?.toString() ?? '';
     if (value.isEmpty) return '-';
 
@@ -1054,7 +1263,7 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
         '${local.minute.toString().padLeft(2, '0')}';
   }
 
-  String get time => _formatTime(
+  String get time => _dateTime(
         item['created_at'] ?? item['notification_date'] ?? item['time'],
       );
 
@@ -1084,17 +1293,50 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
   }
 
   List<Map<String, dynamic>> _recommendations() {
-    final raw = item['recommendations'];
-    if (raw is! List) return [];
-    return raw
-        .whereType<Map>()
-        .map((entry) => Map<String, dynamic>.from(entry))
+    final rawRecommendations = item['recommendations'];
+    if (rawRecommendations is List && rawRecommendations.isNotEmpty) {
+      return rawRecommendations
+          .whereType<Map>()
+          .map((entry) => Map<String, dynamic>.from(entry))
+          .toList();
+    }
+
+    final rawItems = item['items'];
+    if (rawItems is List && rawItems.isNotEmpty) {
+      return rawItems
+          .whereType<Map>()
+          .map((entry) => Map<String, dynamic>.from(entry))
+          .toList();
+    }
+
+    final singleText = _text(
+      item['recommendation_text'] ?? item['description'] ?? item['content'] ?? item['message'],
+    );
+
+    if (singleText == '-') return [];
+
+    return [
+      {
+        'category': item['category'] ?? item['status'] ?? 'Rekomendasi',
+        'recommendation_text': singleText,
+      }
+    ];
+  }
+
+  String _categorySummary(List<Map<String, dynamic>> recommendations) {
+    final values = recommendations
+        .map((entry) => _text(entry['category'], fallback: 'Rekomendasi'))
+        .where((value) => value != '-')
+        .toSet()
         .toList();
+
+    if (values.isEmpty) return _text(item['category'] ?? item['status'], fallback: 'Rekomendasi');
+    return values.join(', ');
   }
 
   @override
   Widget build(BuildContext context) {
-    final relatedCards = _relatedCards();
+    final children = _detailChildren();
 
     return _NotificationDetailScaffold(
       title: _pageTitle,
@@ -1102,50 +1344,85 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
       iconBg: iconBg,
       iconColor: iconColor,
       headerText: _headerText,
-      children: [
-        _whiteCard(
-          title: 'Isi Notifikasi',
-          children: [
-            Text(
-              message,
-              style: const TextStyle(
-                color: AppColors.dark1,
-                fontSize: 12,
-                height: 1.45,
-              ),
-            ),
-          ],
-        ),
-        if (relatedCards.isNotEmpty) ...[
+      children: children,
+    );
+  }
+
+  List<Widget> _detailChildren() {
+    if (_isPrescription) return _prescriptionCards();
+    if (_isRecommendation) return _recommendationCards();
+    if (_isDoctorPatientRelation && _isDisconnected) return [_doctorPatientRelationCard()];
+    if (_isConnection || _isDisconnected) return [_connectionCard()];
+    if (_isValidation) {
+      return [
+        _validationCard(),
+        if (message.trim().isNotEmpty && message != '-') ...[
           const SizedBox(height: 14),
-          ...relatedCards,
+          _whiteCard(
+            title: 'Keterangan',
+            children: [
+              Text(
+                message,
+                style: const TextStyle(
+                  color: AppColors.dark1,
+                  fontSize: 12,
+                  height: 1.45,
+                ),
+              ),
+            ],
+          ),
         ],
         const SizedBox(height: 14),
-        _whiteCard(
-          title: 'Informasi Notifikasi',
-          children: [
-            _InfoRow(label: 'Kategori', value: categoryLabel),
-            _InfoRow(label: 'Waktu', value: time),
-            if (_text(item['status']).isNotEmpty && _text(item['status']) != '-')
-              _InfoRow(label: 'Status', value: _text(item['status'])),
-          ],
+        _notificationInfoCard(),
+      ];
+    }
+    if (_isMedication) {
+      return [
+        _genericMessageCard(),
+        const SizedBox(height: 14),
+        _medicationCard(),
+        const SizedBox(height: 14),
+        _notificationInfoCard(),
+      ];
+    }
+
+    return [
+      _genericMessageCard(),
+      const SizedBox(height: 14),
+      _notificationInfoCard(),
+    ];
+  }
+
+  Widget _genericMessageCard() {
+    return _whiteCard(
+      title: 'Isi Notifikasi',
+      children: [
+        Text(
+          message,
+          style: const TextStyle(
+            color: AppColors.dark1,
+            fontSize: 12,
+            height: 1.45,
+          ),
         ),
       ],
     );
   }
 
-  List<Widget> _relatedCards() {
-    if (_isPrescription) return _prescriptionCards();
-    if (_isRecommendation) return _recommendationCards();
-    if (_isValidation) return [_validationCard()];
-    if (_isMedication) return [_medicationCard()];
-    if (_isConnection || _isDisconnected) return [_connectionCard()];
-    return [];
+  Widget _notificationInfoCard() {
+    return _whiteCard(
+      title: 'Informasi Notifikasi',
+      children: [
+        _InfoRow(label: 'Kategori', value: categoryLabel),
+        _InfoRow(label: 'Waktu', value: time),
+        if (_text(item['status']) != '-') _InfoRow(label: 'Status', value: _text(item['status'])),
+      ],
+    );
   }
 
   List<Widget> _prescriptionCards() {
     final medicationName = _text(item['medication_name'], fallback: 'Resep Obat');
-    final patientName = _text(item['patient_name'], fallback: 'Pasien');
+    final patientName = _resolvedPatientName(fallback: 'Pasien');
     final doctorName = _text(item['doctor_name'], fallback: 'Dokter');
     final dosage = _text(item['dosage']);
     final form = _text(item['form']);
@@ -1164,14 +1441,13 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
         title: 'Informasi Resep',
         children: [
           _InfoRow(label: 'Obat', value: medicationName),
-          _InfoRow(label: 'Pasien', value: patientName),
-          _InfoRow(label: 'Dokter', value: doctorName),
+          _InfoRow(label: 'Nama Pasien', value: patientName),
+          _InfoRow(label: 'Nama Dokter', value: doctorName),
           _InfoRow(label: 'Dosis', value: dosage),
           if (form != '-') _InfoRow(label: 'Bentuk', value: form),
           _InfoRow(label: 'Aturan minum', value: mealRule),
           _InfoRow(label: 'Status', value: status),
           _InfoRow(label: 'Berlaku', value: '$validFrom - $validUntil'),
-          if (notes != '-') _InfoRow(label: 'Catatan', value: notes),
         ],
       ),
       if (schedules.isNotEmpty) ...[
@@ -1180,95 +1456,346 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
           title: 'Jadwal Minum',
           children: schedules.map((schedule) {
             final session = _text(schedule['session_name'], fallback: 'Jadwal');
+            final dose = _text(schedule['dose_per_session']);
             final reminder = _text(
               schedule['reminder_time'] ?? schedule['default_reminder_time'],
             );
 
-            return _ScheduleRow(session: session, reminder: reminder);
+            return _ScheduleRow(
+              session: session,
+              dose: dose,
+              reminder: reminder,
+            );
           }).toList(),
         ),
       ],
-    ];
-  }
-
-  List<Widget> _recommendationCards() {
-    final patientName = _text(item['patient_name'], fallback: 'Pasien');
-    final doctorName = _text(item['doctor_name'], fallback: 'Dokter');
-    final category = _text(item['category'], fallback: 'Rekomendasi');
-    final singleText = _text(item['recommendation_text']);
-    final recommendations = _recommendations();
-
-    final children = <Widget>[
-      _InfoRow(label: 'Pasien', value: patientName),
-      _InfoRow(label: 'Dokter', value: doctorName),
-      _InfoRow(label: 'Kategori', value: category),
-    ];
-
-    if (recommendations.isNotEmpty) {
-      for (var i = 0; i < recommendations.length; i++) {
-        final recommendation = recommendations[i];
-        final itemCategory = _text(recommendation['category'], fallback: 'Rekomendasi ${i + 1}');
-        final itemText = _text(recommendation['recommendation_text']);
-
-        children.add(
-          Padding(
-            padding: EdgeInsets.only(top: i == 0 ? 6 : 12),
-            child: Text(
-              '$itemCategory\n$itemText',
+      if (notes != '-' || (message.trim().isNotEmpty && message != '-')) ...[
+        const SizedBox(height: 14),
+        _whiteCard(
+          title: 'Keterangan',
+          children: [
+            Text(
+              notes != '-' ? notes : message,
               style: const TextStyle(
                 color: AppColors.dark1,
                 fontSize: 12,
                 height: 1.45,
               ),
             ),
-          ),
-        );
-      }
-    } else if (singleText != '-') {
-      children.add(
-        Padding(
-          padding: const EdgeInsets.only(top: 6),
-          child: Text(
-            singleText,
-            style: const TextStyle(
-              color: AppColors.dark1,
-              fontSize: 12,
-              height: 1.45,
-            ),
-          ),
+          ],
         ),
+      ],
+    ];
+  }
+
+  String _resolvedPatientName({String fallback = 'Nama pasien tidak tersedia'}) {
+    final sources = [
+      item['summary_patient_name'],
+      item['patient_name'],
+      item['patient_full_name'],
+      item['patientName'],
+      item['patient_user_name'],
+      item['patient'],
+      item['patient_data'],
+      item['record_patient'],
+      item['record'],
+      item['data'],
+      item['payload'],
+      item['notification_data'],
+      item['reference_data'],
+      item['full_name'],
+      item['name'],
+      _patientNameFromMessage(item['message'] ?? item['notification_message']),
+      _patientNameFromMessage(item['description'] ?? item['body']),
+      _patientNameFromMessage(item['title'] ?? item['notification_title']),
+    ];
+
+    for (final source in sources) {
+      final name = _nameFromSource(source);
+      if (name.isNotEmpty && !_isGenericPatientName(name)) return name;
+    }
+
+    return fallback;
+  }
+
+  String _recommendationPatientName(List<Map<String, dynamic>> recommendations) {
+    final directSources = [
+      item['patient_name'],
+      item['patient_full_name'],
+      item['patientName'],
+      item['patient_user_name'],
+      item['patient'],
+      item['full_name'],
+      item['name'],
+      _patientNameFromMessage(item['message'] ?? item['notification_message']),
+    ];
+
+    for (final source in directSources) {
+      final name = _nameFromSource(source);
+      if (name.isNotEmpty && name.toLowerCase() != 'pasien') return name;
+    }
+
+    for (final recommendation in recommendations) {
+      final recommendationSources = [
+        recommendation['patient_name'],
+        recommendation['patient_full_name'],
+        recommendation['patientName'],
+        recommendation['patient_user_name'],
+        recommendation['patient'],
+        recommendation['full_name'],
+        recommendation['name'],
+        _patientNameFromMessage(
+          recommendation['message'] ?? recommendation['notification_message'],
+        ),
+      ];
+
+      for (final source in recommendationSources) {
+        final name = _nameFromSource(source);
+        if (name.isNotEmpty && name.toLowerCase() != 'pasien') return name;
+      }
+    }
+
+    return 'Nama pasien tidak tersedia';
+  }
+
+  bool _isGenericPatientName(dynamic value) {
+    final text = value?.toString().trim().toLowerCase() ?? '';
+    return text.isEmpty ||
+        text == '-' ||
+        text == 'null' ||
+        text == 'pasien' ||
+        text == 'nama pasien tidak tersedia';
+  }
+
+  String _nameFromSource(dynamic source) {
+    if (source == null) return '';
+
+    if (source is Map) {
+      return _nameFromSource(
+        source['summary_patient_name'] ??
+            source['patient_name'] ??
+            source['patient_full_name'] ??
+            source['patientName'] ??
+            source['patient_user_name'] ??
+            source['patient'] ??
+            source['patient_data'] ??
+            source['full_name'] ??
+            source['name'],
       );
     }
 
+    final text = source.toString().trim();
+    if (_isGenericPatientName(text)) return '';
+
+    return text;
+  }
+
+  String _patientNameFromMessage(dynamic rawMessage) {
+    final text = rawMessage?.toString().trim() ?? '';
+    if (text.isEmpty) return '';
+
+    final patterns = [
+      RegExp(r'^(.+?)\s+(?:menerima|menolak)\s+data\b', caseSensitive: false),
+      RegExp(r'^(.+?)\s+(?:menerima|menolak)\s+[^.,\n]+\s+yang\s+anda\s+tambahkan', caseSensitive: false),
+      RegExp(r'untuk pasien\s+([^.,\n]+)', caseSensitive: false),
+      RegExp(r'nama pasien\s*:?\s*([^.,\n]+)', caseSensitive: false),
+      RegExp(r'pasien\s*:?\s*([^.,\n]+)', caseSensitive: false),
+      RegExp(r'data\s+[^.,\n]*?\s+dari\s+([^.,\n]+)', caseSensitive: false),
+      RegExp(r'milik\s+([^.,\n]+)', caseSensitive: false),
+      RegExp(r'atas nama\s+([^.,\n]+)', caseSensitive: false),
+      RegExp(r'untuk\s+([^.,\n]+)', caseSensitive: false),
+    ];
+
+    for (final pattern in patterns) {
+      final match = pattern.firstMatch(text);
+      final name = match?.group(1)?.trim() ?? '';
+      if (!_isGenericPatientName(name)) return name;
+    }
+
+    return '';
+  }
+
+  String _validationTypeFromMessage(dynamic rawMessage) {
+    final text = rawMessage?.toString().toLowerCase() ?? '';
+
+    if (text.contains('glukosa')) return 'Glukosa';
+    if (text.contains('fisiologis') || text.contains('tekanan darah')) {
+      return 'Fisiologis';
+    }
+    if (text.contains('aktivitas') || text.contains('olahraga')) return 'Aktivitas';
+    if (text.contains('makan') || text.contains('pola makan')) return 'Makan';
+    if (text.contains('obat') || text.contains('kepatuhan')) return 'Obat';
+
+    return '';
+  }
+
+  String _validationTypeLabel() {
+    final recordType = _text(item['record_type']).toLowerCase();
+    final title = _text(item['record_title'] ?? item['data_title'] ?? item['title']);
+
+    if (recordType.contains('glucose')) return title != '-' ? title : 'Glukosa';
+    if (recordType.contains('physiological')) return title != '-' ? title : 'Fisiologis';
+    if (recordType.contains('activity')) return title != '-' ? title : 'Aktivitas';
+    if (recordType.contains('meal')) return title != '-' ? title : 'Makan';
+    if (recordType.contains('medication')) return title != '-' ? title : 'Obat';
+
+    final fromMessage = _validationTypeFromMessage(item['message'] ?? item['notification_message']);
+    if (fromMessage.isNotEmpty) return fromMessage;
+
+    if (title != '-' &&
+        !title.toLowerCase().contains('data diterima') &&
+        !title.toLowerCase().contains('data ditolak')) {
+      return title;
+    }
+
+    return 'Data kesehatan';
+  }
+
+  String _validationDataSummary() {
+    final recordType = _text(item['record_type']).toLowerCase();
+    final title = _validationTypeLabel();
+    final parts = <String>[title];
+
+    if (recordType.contains('meal')) {
+      final carbohydrate = _text(item['carbohydrate_estimate']);
+      final calories = _text(item['calories']);
+
+      if (carbohydrate != '-') parts.add('Karbohidrat $carbohydrate gram');
+      if (calories != '-') parts.add('Kalori $calories kkal');
+    } else if (recordType.contains('medication')) {
+      final medicationName = _text(item['medication_name']);
+      final session = _text(item['session_name'] ?? item['session']);
+      final dose = _text(item['dose_per_session']);
+      final value = _text(item['value']);
+
+      if (medicationName != '-') parts.add(medicationName);
+      if (session != '-') parts.add(session);
+      if (dose != '-') parts.add(dose);
+      if (value != '-') parts.add(value);
+    } else {
+      final value = _text(item['value']);
+      final unit = _text(item['unit'], fallback: '');
+
+      if (value != '-') {
+        parts.add(unit.isEmpty ? value : '$value $unit');
+      }
+    }
+
+    return parts.where((part) => part.trim().isNotEmpty && part != '-').join(' • ');
+  }
+
+  String _validationDataOwner() {
+    final inputBy = _text(item['input_by_name'] ?? item['input_by']);
+    final inputRole = _text(item['input_by_role'] ?? item['relation']);
+
+    if (inputBy != '-' && inputRole != '-') return '$inputBy • $inputRole';
+    if (inputBy != '-') return inputBy;
+    if (inputRole != '-') return inputRole;
+
+    final msg = message.toLowerCase();
+    if (msg.contains('anda tambahkan') || msg.contains('kamu tambahkan')) {
+      return 'Data yang Anda tambahkan';
+    }
+
+    return 'Pendamping';
+  }
+
+  List<Widget> _recommendationCards() {
+    final recommendations = _recommendations();
+    final patientName = _recommendationPatientName(recommendations);
+    final doctorName = _text(
+      item['doctor_name'] ?? item['doctor'] ?? item['sender_name'],
+      fallback: 'Dokter',
+    );
+    final category = recommendations.length == 1
+        ? _text(recommendations.first['category'], fallback: 'Rekomendasi')
+        : _categorySummary(recommendations);
+    final date = _dateTime(item['created_at'] ?? item['date'] ?? item['time']);
+
     return [
       _whiteCard(
-        title: 'Detail Rekomendasi',
-        children: children,
+        title: 'Informasi Rekomendasi',
+        children: [
+          _InfoRow(label: 'Dokter', value: doctorName),
+          _InfoRow(label: 'Tanggal', value: date),
+          _InfoRow(label: 'Kategori', value: category),
+          _InfoRow(label: 'Untuk Pasien', value: patientName),
+        ],
+      ),
+      const SizedBox(height: 14),
+      _whiteCard(
+        title: 'Rekomendasi untuk Pasien',
+        children: recommendations.isEmpty
+            ? [
+                const Text(
+                  'Belum ada detail rekomendasi.',
+                  style: TextStyle(
+                    color: AppColors.dark2,
+                    fontSize: 12,
+                    height: 1.45,
+                  ),
+                ),
+              ]
+            : recommendations.asMap().entries.map((entry) {
+                final recommendation = entry.value;
+                final itemCategory = _text(
+                  recommendation['category'],
+                  fallback: 'Rekomendasi',
+                );
+                final itemText = _text(
+                  recommendation['recommendation_text'] ??
+                      recommendation['description'] ??
+                      recommendation['content'],
+                );
+
+                return Padding(
+                  padding: EdgeInsets.only(
+                    bottom: entry.key == recommendations.length - 1 ? 0 : 10,
+                  ),
+                  child: _RecommendationItem(
+                    category: itemCategory,
+                    description: itemText,
+                  ),
+                );
+              }).toList(),
       ),
     ];
   }
 
   Widget _validationCard() {
-    final patientName = _text(item['patient_name'], fallback: 'Pasien');
-    final recordTitle = _text(item['title'], fallback: 'Data kesehatan');
-    final inputBy = _text(item['input_by_name'] ?? item['input_by']);
-    final inputRole = _text(item['input_by_role'] ?? item['relation']);
-    final date = _formatTime(item['date'] ?? item['measured_at'] ?? item['checked_at']);
-    final value = _text(item['value']);
-    final unit = _text(item['unit'], fallback: '');
-    final status = _text(item['validation_status'] ?? item['status']);
-    final valueText = unit.isEmpty ? value : '$value $unit';
+    final patientName = _resolvedPatientName();
+    final dataDate = _dateTime(
+      item['date'] ?? item['measured_at'] ?? item['checked_at'] ?? item['log_date'],
+    );
+    final validatedAt = _dateTime(
+      item['validated_at'] ?? item['responded_at'] ?? item['updated_at'] ?? item['created_at'],
+    );
+    final rawStatus = _text(
+      item['validation_status'] ?? item['status'] ?? item['validation_result'],
+      fallback: _isValidationAccepted
+          ? 'Diterima'
+          : _isValidationRejected
+              ? 'Ditolak'
+              : 'Menunggu',
+    );
+    final normalizedStatus = rawStatus.toLowerCase();
+    final status = normalizedStatus == 'valid'
+        ? 'Diterima'
+        : normalizedStatus == 'tidak valid'
+            ? 'Ditolak'
+            : rawStatus;
+    final dataSummary = _validationDataSummary();
+    final dataOwner = _validationDataOwner();
 
     return _whiteCard(
-      title: 'Detail Data Validasi',
+      title: 'Data Pendamping yang Divalidasi',
       children: [
-        _InfoRow(label: 'Pasien', value: patientName),
-        _InfoRow(label: 'Jenis Data', value: recordTitle),
-        if (inputBy != '-') _InfoRow(label: 'Diinput oleh', value: inputBy),
-        if (inputRole != '-') _InfoRow(label: 'Peran', value: inputRole),
-        if (date != '-') _InfoRow(label: 'Tanggal', value: date),
-        if (value != '-') _InfoRow(label: 'Nilai', value: valueText),
-        if (status != '-') _InfoRow(label: 'Status', value: status),
+        _InfoRow(label: 'Nama Pasien', value: patientName),
+        _InfoRow(label: 'Data yang Divalidasi', value: dataSummary),
+        if (dataDate != '-') _InfoRow(label: 'Waktu Data', value: dataDate),
+        _InfoRow(label: 'Diinput oleh', value: dataOwner),
+        _InfoRow(label: 'Hasil Validasi', value: status),
+        if (validatedAt != '-') _InfoRow(label: 'Waktu Validasi', value: validatedAt),
       ],
     );
   }
@@ -1294,32 +1821,117 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _connectionCard() {
-    final patientName = _text(item['patient_name'], fallback: '-');
-    final caregiverName = _text(item['caregiver_name'], fallback: '-');
-    final relation = _text(item['relation_name'] ?? item['relation'], fallback: 'Pendamping');
-    final status = _text(item['status']);
-    final requestedAt = _formatTime(item['requested_at']);
-    final respondedAt = _formatTime(item['responded_at']);
-    final connectedAt = _formatTime(item['connected_at']);
-    final disconnectedAt = _formatTime(item['disconnected_at']);
-    final updatedAt = _formatTime(item['relation_updated_at']);
+  Widget _doctorPatientRelationCard() {
+    final patientName = _resolvedPatientName(fallback: 'Pasien');
+    final doctorName = _text(item['doctor_name'] ?? item['doctor'], fallback: 'Dokter');
+    final specialization = _text(item['specialization_name']);
+    final institution = _text(item['institution']);
+    final doctorInfo = _text(item['doctor_info']);
+    final connectedAt = _dateTime(item['connected_at'] ?? item['connected_since']);
+    final disconnectedAt = _dateTime(
+      item['disconnected_at'] ??
+          item['relation_updated_at'] ??
+          item['created_at'] ??
+          item['time'],
+    );
+
+    final infoParts = <String>[];
+    if (specialization != '-') infoParts.add(specialization);
+    if (institution != '-') infoParts.add(institution);
+    if (infoParts.isEmpty && doctorInfo != '-') infoParts.add(doctorInfo);
 
     return _whiteCard(
-      title: _isDisconnected ? 'Detail Relasi' : 'Detail Koneksi',
+      title: 'Informasi Relasi Dokter',
       children: [
-        if (patientName != '-') _InfoRow(label: 'Pasien', value: patientName),
-        if (caregiverName != '-') _InfoRow(label: 'Pendamping', value: caregiverName),
-        _InfoRow(label: 'Hubungan', value: relation),
-        if (status != '-') _InfoRow(label: 'Status', value: status),
-        if (requestedAt != '-') _InfoRow(label: 'Diajukan', value: requestedAt),
-        if (respondedAt != '-') _InfoRow(label: 'Direspons', value: respondedAt),
-        if (connectedAt != '-') _InfoRow(label: 'Terhubung sejak', value: connectedAt),
-        if (disconnectedAt != '-') _InfoRow(label: 'Diputus pada', value: disconnectedAt),
-        if (updatedAt != '-') _InfoRow(label: 'Diperbarui', value: updatedAt),
+        _InfoRow(label: 'Nama Pasien', value: patientName),
+        _InfoRow(label: 'Nama Dokter', value: doctorName),
+        if (infoParts.isNotEmpty)
+          _InfoRow(label: 'Informasi Dokter', value: infoParts.join(' • ')),
+        const _InfoRow(label: 'Status Relasi', value: 'Tidak Terhubung'),
+        if (connectedAt != '-') _InfoRow(label: 'Terhubung Sejak', value: connectedAt),
+        if (disconnectedAt != '-') _InfoRow(label: 'Relasi Berakhir', value: disconnectedAt),
+        if (message.trim().isNotEmpty && message != '-') ...[
+          const SizedBox(height: 8),
+          Text(
+            message,
+            style: const TextStyle(
+              color: AppColors.dark1,
+              fontSize: 12,
+              height: 1.45,
+            ),
+          ),
+        ],
       ],
     );
   }
+
+  Widget _connectionCard() {
+    final patientName = _resolvedPatientName();
+    final relation = _text(
+      item['relation_name'] ?? item['relation'],
+      fallback: 'Pendamping',
+    );
+    final statusRaw = _text(item['status']);
+    final status = _isDisconnected
+        ? 'Tidak Terhubung'
+        : _isRejectedConnection
+            ? 'Ditolak'
+            : _isAcceptedConnection
+                ? 'Terhubung'
+                : statusRaw;
+    final requestedAt = _dateTime(item['requested_at'] ?? item['created_at'] ?? item['time']);
+    final respondedAt = _dateTime(item['responded_at'] ?? item['relation_updated_at'] ?? item['created_at'] ?? item['time']);
+    final connectedAt = _dateTime(item['connected_at'] ?? item['connected_since'] ?? item['responded_at'] ?? item['created_at'] ?? item['time']);
+    final disconnectedAt = _dateTime(item['disconnected_at'] ?? item['relation_updated_at'] ?? item['created_at'] ?? item['time']);
+    final updatedAt = _dateTime(item['relation_updated_at']);
+
+    final title = _isDisconnected
+        ? 'Informasi Relasi'
+        : _isRejectedConnection
+            ? 'Status Permintaan'
+            : _isAcceptedConnection
+                ? 'Informasi Koneksi'
+                : 'Detail Permintaan Koneksi';
+
+    return _whiteCard(
+      title: title,
+      children: [
+        _InfoRow(label: 'Nama Pasien', value: patientName),
+        _InfoRow(label: 'Hubungan', value: relation),
+        if (status != '-')
+          _InfoRow(
+            label: _isDisconnected || _isAcceptedConnection
+                ? 'Status Relasi'
+                : 'Status Permintaan',
+            value: status,
+          ),
+        if (_isAcceptedConnection && connectedAt != '-')
+          _InfoRow(label: 'Terhubung Sejak', value: connectedAt),
+        if (_isRejectedConnection && respondedAt != '-')
+          _InfoRow(label: 'Tanggal Ditolak', value: respondedAt),
+        if (_isDisconnected && disconnectedAt != '-')
+          _InfoRow(label: 'Relasi Berakhir', value: disconnectedAt),
+        if (!_isDisconnected && !_isAcceptedConnection && !_isRejectedConnection && requestedAt != '-')
+          _InfoRow(label: 'Diajukan', value: requestedAt),
+        if (!_isDisconnected && !_isAcceptedConnection && !_isRejectedConnection && respondedAt != '-')
+          _InfoRow(label: 'Direspons', value: respondedAt),
+        if (!_isDisconnected && !_isAcceptedConnection && updatedAt != '-')
+          _InfoRow(label: 'Diperbarui', value: updatedAt),
+        if (_isDisconnected && message.trim().isNotEmpty && message != '-') ...[
+          const SizedBox(height: 8),
+          Text(
+            message,
+            style: const TextStyle(
+              color: AppColors.dark1,
+              fontSize: 12,
+              height: 1.45,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
 }
 
 class _NotificationDetailScaffold extends StatelessWidget {
@@ -1503,15 +2115,27 @@ class _InfoRow extends StatelessWidget {
 
 class _ScheduleRow extends StatelessWidget {
   final String session;
+  final String dose;
   final String reminder;
 
   const _ScheduleRow({
     required this.session,
+    this.dose = '-',
     required this.reminder,
   });
 
   @override
   Widget build(BuildContext context) {
+    final parts = <String>[session];
+
+    if (dose.trim().isNotEmpty && dose != '-') {
+      parts.add(dose);
+    }
+
+    if (reminder.trim().isNotEmpty && reminder != '-') {
+      parts.add(reminder);
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 9),
       child: Row(
@@ -1525,11 +2149,109 @@ class _ScheduleRow extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              '$session • Reminder $reminder',
+              parts.join(' • '),
               style: const TextStyle(
                 color: AppColors.dark1,
                 fontSize: 12,
                 height: 1.35,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecommendationItem extends StatelessWidget {
+  final String category;
+  final String description;
+
+  const _RecommendationItem({
+    required this.category,
+    required this.description,
+  });
+
+  IconData _categoryIcon(String category) {
+    final normalized = category.toLowerCase().replaceAll('_', ' ').trim();
+
+    if (normalized.contains('obat')) return Icons.medication_outlined;
+    if (normalized.contains('makan')) return Icons.restaurant_outlined;
+    if (normalized.contains('aktivitas') ||
+        normalized.contains('gaya hidup') ||
+        normalized.contains('olahraga')) {
+      return Icons.directions_run;
+    }
+
+    return Icons.assignment_outlined;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.veryLightBlue.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.light1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _InlineBadge(
+            text: category,
+            icon: _categoryIcon(category),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            description,
+            style: const TextStyle(
+              color: AppColors.dark1,
+              fontSize: 13,
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InlineBadge extends StatelessWidget {
+  final String text;
+  final IconData? icon;
+
+  const _InlineBadge({
+    required this.text,
+    this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.lightBlue,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.primaryBlue.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, color: AppColors.primaryBlue, size: 12),
+            const SizedBox(width: 4),
+          ],
+          Flexible(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppColors.primaryBlue,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),

@@ -4,6 +4,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 import '../../auth/pages/email_verification_page.dart';
 import 'package:diabetaku_app/core/theme/app_button_styles.dart';
+import '../../../core/widgets/app_option_bottom_sheet.dart';
 
 class RegisterPatientPage extends StatefulWidget {
   const RegisterPatientPage({super.key});
@@ -614,111 +615,28 @@ class _RegisterPatientPageState extends State<RegisterPatientPage> {
         ? title
         : 'Pilih $title';
 
+    final icon = displayTitle.toLowerCase().contains('jenis kelamin')
+        ? Icons.wc_outlined
+        : displayTitle.toLowerCase().contains('darah') ||
+                displayTitle.toLowerCase().contains('rhesus')
+            ? Icons.bloodtype_outlined
+            : Icons.check_circle_outline;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (sheetContext) {
-        return SafeArea(
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: const BoxDecoration(
-              color: AppColors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 44,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.light1,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                ),
-                const SizedBox(height: 22),
-                CircleAvatar(
-                  radius: 34,
-                  backgroundColor: AppColors.lightBlue,
-                  child: Icon(
-                    displayTitle.toLowerCase().contains('jenis kelamin')
-                        ? Icons.wc_outlined
-                        : displayTitle.toLowerCase().contains('darah') ||
-                              displayTitle.toLowerCase().contains('rhesus')
-                            ? Icons.bloodtype_outlined
-                            : Icons.check_circle_outline,
-                    color: AppColors.primaryBlue,
-                    size: 32,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  displayTitle,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: AppColors.primaryBlue,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                ...items.map((item) {
-                  final selected = item == selectedValue;
-
-                  return InkWell(
-                    onTap: () {
-                      onSelected(item);
-                      Navigator.pop(sheetContext);
-                    },
-                    borderRadius: BorderRadius.circular(10),
-                    child: Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 13,
-                      ),
-                      decoration: BoxDecoration(
-                        color: selected
-                            ? AppColors.veryLightBlue
-                            : AppColors.white,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: selected
-                              ? AppColors.lightBlue
-                              : AppColors.light1,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              item,
-                              style: TextStyle(
-                                color: selected
-                                    ? AppColors.primaryBlue
-                                    : AppColors.dark1,
-                                fontSize: 14,
-                                fontWeight: selected
-                                    ? FontWeight.w700
-                                    : FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                          if (selected)
-                            const Icon(
-                              Icons.check_circle,
-                              color: AppColors.primaryBlue,
-                              size: 20,
-                            ),
-                        ],
-                      ),
-                    ),
-                  );
-                }),
-              ],
-            ),
-          ),
+        return AppOptionBottomSheet<String>(
+          title: displayTitle,
+          icon: icon,
+          items: items,
+          labelBuilder: (item) => item,
+          isSelected: (item) => item == selectedValue,
+          onSelected: (item) {
+            onSelected(item);
+            Navigator.pop(sheetContext);
+          },
         );
       },
     );

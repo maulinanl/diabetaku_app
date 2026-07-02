@@ -4,6 +4,7 @@ import 'register_doctor_step2_page.dart';
 import 'package:flutter/services.dart';
 import '../../../data/services/api_service.dart';
 import 'package:diabetaku_app/core/theme/app_button_styles.dart';
+import '../../../core/widgets/app_option_bottom_sheet.dart';
 
 class RegisterDoctorStep1Page extends StatefulWidget {
   const RegisterDoctorStep1Page({super.key});
@@ -250,27 +251,23 @@ class _RegisterDoctorStep1PageState extends State<RegisterDoctorStep1Page> {
                       width: double.infinity,
                       height: 50,
                       child: ElevatedButton(
-                        onPressed: isValid ? _goToStep2 : null,
+                        onPressed: isValid && !isCheckingEmail
+                            ? _goToStep2
+                            : null,
                         style: AppButtonStyles.primary,
-                        child: ElevatedButton(
-                          onPressed: isValid && !isCheckingEmail
-                              ? _goToStep2
-                              : null,
-                          style: AppButtonStyles.primary,
-                          child: isCheckingEmail
-                              ? const SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Text(
-                                  'Lanjut',
-                                  style: TextStyle(fontWeight: FontWeight.w600),
+                        child: isCheckingEmail
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
                                 ),
-                        ),
+                              )
+                            : const Text(
+                                'Lanjut',
+                                style: TextStyle(fontWeight: FontWeight.w600),
+                              ),
                       ),
                     ),
                   ],
@@ -286,11 +283,23 @@ class _RegisterDoctorStep1PageState extends State<RegisterDoctorStep1Page> {
   Widget _genderSelector() {
     return InkWell(
       onTap: _showGenderSheet,
+      borderRadius: BorderRadius.circular(6),
       child: InputDecorator(
         decoration: _inputDecoration(),
-        child: Text(
-          gender,
-          style: const TextStyle(color: AppColors.dark1, fontSize: 13),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                gender,
+                style: const TextStyle(color: AppColors.dark1, fontSize: 13),
+              ),
+            ),
+            const Icon(
+              Icons.keyboard_arrow_down_rounded,
+              color: AppColors.dark3,
+              size: 22,
+            ),
+          ],
         ),
       ),
     );
@@ -302,57 +311,18 @@ class _RegisterDoctorStep1PageState extends State<RegisterDoctorStep1Page> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (sheetContext) {
-        return Container(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
-          decoration: const BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 42,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.light1,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'Pilih Jenis Kelamin',
-                style: TextStyle(
-                  color: AppColors.primaryBlue,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
-              ...options.map((item) {
-                final selected = item == gender;
-
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(
-                    item,
-                    style: TextStyle(
-                      color: selected ? AppColors.primaryBlue : AppColors.dark1,
-                      fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                    ),
-                  ),
-                  trailing: selected
-                      ? const Icon(Icons.check, color: AppColors.primaryBlue)
-                      : null,
-                  onTap: () {
-                    setState(() => gender = item);
-                    Navigator.pop(sheetContext);
-                  },
-                );
-              }),
-            ],
-          ),
+        return AppOptionBottomSheet<String>(
+          title: 'Pilih Jenis Kelamin',
+          icon: Icons.wc_outlined,
+          items: options,
+          labelBuilder: (item) => item,
+          isSelected: (item) => item == gender,
+          onSelected: (item) {
+            setState(() => gender = item);
+            Navigator.pop(sheetContext);
+          },
         );
       },
     );

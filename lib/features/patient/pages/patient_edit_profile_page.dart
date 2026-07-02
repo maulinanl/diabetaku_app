@@ -336,12 +336,12 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
                     const SizedBox(height: 24),
                     SizedBox(
                       width: double.infinity,
-                      height: 46,
+                      height: 50,
                       child: ElevatedButton(
                         onPressed: isSaving || !_hasChanges
                             ? null
                             : _saveProfile,
-                        style: AppButtonStyles.soft,
+                        style: AppButtonStyles.primary,
                         child: isSaving
                             ? const SizedBox(
                                 width: 22,
@@ -351,7 +351,10 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : const Text('Simpan Perubahan'),
+                            : const Text(
+                                'Simpan Perubahan',
+                                style: TextStyle(fontWeight: FontWeight.w600),
+                              ),
                       ),
                     ),
                   ],
@@ -688,7 +691,7 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
               const SizedBox(height: 22),
               SizedBox(
                 width: double.infinity,
-                height: 46,
+                height: 50,
                 child: ElevatedButton(
                   onPressed: () {
                     Navigator.pop(sheetContext);
