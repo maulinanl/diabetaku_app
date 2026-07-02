@@ -7,6 +7,7 @@ import '../../../data/services/api_service.dart';
 import '../../auth/pages/change_password_page.dart';
 import '../../auth/pages/login_page.dart';
 import 'caregiver_edit_profile_page.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class CaregiverProfilePage extends StatefulWidget {
   const CaregiverProfilePage({super.key});
@@ -166,11 +167,7 @@ class _CaregiverProfilePageState extends State<CaregiverProfilePage> {
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _loadProfile,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryBlue,
-                foregroundColor: Colors.white,
-                elevation: 0,
-              ),
+              style: AppButtonStyles.primary,
               child: const Text('Coba lagi'),
             ),
           ],
@@ -307,18 +304,7 @@ class _CaregiverProfilePageState extends State<CaregiverProfilePage> {
                 },
                 icon: const Icon(Icons.edit, size: 16),
                 label: const Text('Ubah'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  side: const BorderSide(color: AppColors.primaryBlue),
-                  foregroundColor: AppColors.primaryBlue,
-                  backgroundColor: Colors.white,
-                ),
+                style: AppButtonStyles.outlined,
               ),
             ],
           ),
@@ -555,14 +541,7 @@ class _CaregiverProfilePageState extends State<CaregiverProfilePage> {
                 height: 46,
                 child: ElevatedButton(
                   onPressed: () => Navigator.pop(sheetContext),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.red,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
+                  style: AppButtonStyles.danger,
                   child: const Text('Batal'),
                 ),
               ),

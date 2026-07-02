@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class CaregiverNotificationPage extends StatefulWidget {
   final int? initialNotificationId;
@@ -484,14 +485,7 @@ class _CaregiverNotificationPageState extends State<CaregiverNotificationPage> {
                   height: 46,
                   child: ElevatedButton(
                     onPressed: () => Navigator.pop(sheetContext),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryBlue,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                    ),
+                    style: AppButtonStyles.primary,
                     child: const Text('Mengerti'),
                   ),
                 ),
@@ -759,17 +753,7 @@ class _CaregiverNotificationPageState extends State<CaregiverNotificationPage> {
             isMarkingAll ? 'Menandai...' : 'Tandai semua dibaca',
             style: const TextStyle(fontSize: 11),
           ),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.primaryBlue,
-            backgroundColor: AppColors.white,
-            side: const BorderSide(color: AppColors.primaryBlue),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            minimumSize: const Size(0, 34),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
+          style: AppButtonStyles.outlined,
         ),
       ),
     );
@@ -891,11 +875,7 @@ class _CaregiverNotificationPageState extends State<CaregiverNotificationPage> {
         Center(
           child: ElevatedButton(
             onPressed: _loadNotifications,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryBlue,
-              foregroundColor: Colors.white,
-              elevation: 0,
-            ),
+            style: AppButtonStyles.primary,
             child: const Text('Coba lagi'),
           ),
         ),

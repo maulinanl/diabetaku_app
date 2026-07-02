@@ -3,6 +3,7 @@ import '../../../core/theme/app_colors.dart';
 import 'email_sent_page.dart';
 import '../../../data/services/api_service.dart';
 import 'login_page.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -120,16 +121,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       child: ElevatedButton(
                         onPressed:
                             isValid && !isLoading ? _sendResetEmail : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primaryBlue,
-                          disabledBackgroundColor: const Color(0xFFAFCBEA),
-                          disabledForegroundColor: AppColors.white,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                        ),
+                        style: AppButtonStyles.primary,
                         child: isLoading
                             ? const SizedBox(
                                 width: 22,

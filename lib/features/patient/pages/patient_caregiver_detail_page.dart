@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class PatientCaregiverDetailPage extends StatefulWidget {
   final int caregiverId;
@@ -223,13 +224,7 @@ class _PatientCaregiverDetailPageState extends State<PatientCaregiverDetailPage>
       height: 46,
       child: ElevatedButton(
         onPressed: isProcessing ? null : () => _showDisconnectSheet(context),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.red,
-          disabledBackgroundColor: AppColors.lightRed,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-        ),
+        style: AppButtonStyles.danger,
         child: Text(
           isProcessing ? 'Memproses...' : 'Putus Relasi',
           style: const TextStyle(fontWeight: FontWeight.w600),
@@ -289,14 +284,7 @@ class _PatientCaregiverDetailPageState extends State<PatientCaregiverDetailPage>
                     Navigator.pop(sheetContext);
                     _disconnectCaregiver();
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.red,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
+                  style: AppButtonStyles.danger,
                   child: const Text('Ya, Putus Relasi'),
                 ),
               ),

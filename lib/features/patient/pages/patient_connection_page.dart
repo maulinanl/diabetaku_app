@@ -4,6 +4,7 @@ import 'patient_doctor_detail_page.dart';
 import 'patient_caregiver_detail_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../data/services/api_service.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class PatientConnectionPage extends StatefulWidget {
   const PatientConnectionPage({super.key});
@@ -756,14 +757,7 @@ class _ActionBottomSheet extends StatelessWidget {
             height: 46,
             child: ElevatedButton(
               onPressed: onPrimaryTap,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: primaryColor,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
+              style: AppButtonStyles.primary,
               child: Text(primaryText),
             ),
           ),
@@ -836,14 +830,7 @@ class _SuccessBottomSheet extends StatelessWidget {
             height: 46,
             child: ElevatedButton(
               onPressed: () => Navigator.pop(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryBlue,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
+              style: AppButtonStyles.primary,
               child: const Text('OK'),
             ),
           ),
@@ -941,14 +928,7 @@ class _RequestCard extends StatelessWidget {
                       onPressed: onAccept,
                       icon: const Icon(Icons.check, size: 14),
                       label: const Text('Terima'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryBlue,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
+                      style: AppButtonStyles.primary,
                     ),
                   ),
                 ),
@@ -960,13 +940,7 @@ class _RequestCard extends StatelessWidget {
                       onPressed: onReject,
                       icon: const Icon(Icons.close, size: 14),
                       label: const Text('Tolak'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.red,
-                        side: const BorderSide(color: AppColors.red),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
+                      style: AppButtonStyles.outlinedDanger,
                     ),
                   ),
                 ),
@@ -1333,13 +1307,7 @@ class _PatientRequestDetailPageState extends State<PatientRequestDetailPage> {
         onPressed: isProcessing ? null : () => _handleAction(true),
         icon: const Icon(Icons.check, size: 16),
         label: Text(isProcessing ? 'Memproses...' : 'Terima permintaan'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primaryBlue,
-          disabledBackgroundColor: const Color(0xFFAFCBEA),
-          foregroundColor: Colors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
+        style: AppButtonStyles.primary,
       ),
     );
   }
@@ -1352,12 +1320,7 @@ class _PatientRequestDetailPageState extends State<PatientRequestDetailPage> {
         onPressed: isProcessing ? null : () => _handleAction(false),
         icon: const Icon(Icons.close, size: 16),
         label: const Text('Tolak permintaan'),
-        style: OutlinedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: AppColors.red,
-          side: const BorderSide(color: AppColors.red),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
+        style: AppButtonStyles.outlinedDanger,
       ),
     );
   }

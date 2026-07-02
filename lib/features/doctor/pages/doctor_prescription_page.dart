@@ -4,6 +4,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 import 'doctor_prescription_detail_page.dart';
 import 'doctor_prescription_form_page.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class DoctorPrescriptionPage extends StatefulWidget {
   final int patientId;
@@ -154,15 +155,7 @@ class _DoctorPrescriptionPageState extends State<DoctorPrescriptionPage> {
                       },
                 icon: const Icon(Icons.add, size: 16),
                 label: const Text('Tambah Obat'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryBlue,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  textStyle: const TextStyle(fontSize: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
+                style: AppButtonStyles.primary,
               ),
           ],
         ),

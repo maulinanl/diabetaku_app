@@ -45,6 +45,49 @@ class _DoctorPatientHealthHistoryPageState
     _loadData();
   }
 
+
+
+  String _mealSummary(Map<String, dynamic> item) {
+    final parts = <String>[];
+
+    final carbohydrate = item['carbohydrate_estimate'];
+    if (carbohydrate != null && carbohydrate.toString().trim().isNotEmpty) {
+      parts.add('Karbohidrat $carbohydrate gram');
+    }
+
+    final calories = item['calories'];
+    if (calories != null && calories.toString().trim().isNotEmpty) {
+      parts.add('Kalori $calories kkal');
+    }
+
+    return parts.join(' • ');
+  }
+
+  String _medicationDescription(Map<String, dynamic> item) {
+    final parts = <String>[];
+
+    final session = item['session']?.toString() ??
+        item['session_name']?.toString() ??
+        '';
+    if (session.trim().isNotEmpty && session.trim() != '-') {
+      parts.add('Sesi $session');
+    }
+
+    final dose = item['dose_per_session']?.toString() ??
+        item['dosage']?.toString() ??
+        '';
+    if (dose.trim().isNotEmpty && dose.trim() != '-') {
+      parts.add(dose);
+    }
+
+    final doctor = item['doctor_name']?.toString() ?? '';
+    if (doctor.trim().isNotEmpty && doctor.trim() != '-') {
+      parts.add('Resep dari $doctor');
+    }
+
+    return parts.join(' • ');
+  }
+
   Future<void> _loadData() async {
     if (!mounted) return;
 
@@ -165,9 +208,9 @@ class _DoctorPatientHealthHistoryPageState
       return {
         'type': 'Makan',
         'title': item['meal_type_name']?.toString() ?? 'Pola Makan',
-        'value': '${item['carbohydrate_estimate'] ?? '-'}',
-        'unit': 'gram',
-        'description': item['food_description']?.toString() ?? '-',
+        'value': '',
+        'unit': '',
+        'description': _mealSummary(item),
         'time': _formatDateTime(item['meal_date']),
         'date_raw': item['meal_date'],
         'badge': item['validation_status'] ?? 'Valid',
@@ -180,18 +223,13 @@ class _DoctorPatientHealthHistoryPageState
   List<Map<String, dynamic>> _mapMedication(List<Map<String, dynamic>> data) {
     return data.map((item) {
       final status = item['status']?.toString() ?? '-';
-      final session =
-          item['session']?.toString() ?? item['session_name']?.toString() ?? '-';
-      final dose = item['dose_per_session']?.toString() ??
-          item['dosage']?.toString() ??
-          '-';
 
       return {
         'type': 'Obat',
         'title': item['medication_name']?.toString() ?? 'Obat',
-        'value': status,
+        'value': '',
         'unit': '',
-        'description': 'Sesi $session • $dose',
+        'description': _medicationDescription(item),
         'time': _formatDateTime(item['log_date']),
         'date_raw': item['log_date'],
         'badge': status,
@@ -337,6 +375,9 @@ class _DoctorPatientHealthHistoryPageState
   Widget _historyCard(Map<String, dynamic> item) {
     final color = item['color'] as Color? ?? AppColors.primaryBlue;
     final description = item['description']?.toString() ?? '';
+    final value = item['value']?.toString().trim() ?? '';
+    final unit = item['unit']?.toString().trim() ?? '';
+    final hasValue = value.isNotEmpty && value != '-';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -380,28 +421,28 @@ class _DoctorPatientHealthHistoryPageState
                   ),
                 ),
                 const SizedBox(height: 6),
-                RichText(
-                  text: TextSpan(
-                    text: item['value']?.toString() ?? '-',
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                    ),
-                    children: [
-                      TextSpan(
-                        text: (item['unit']?.toString() ?? '').isEmpty
-                            ? ''
-                            : ' ${item['unit']}',
-                        style: const TextStyle(
-                          color: AppColors.dark2,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w400,
-                        ),
+                if (hasValue) ...[
+                  RichText(
+                    text: TextSpan(
+                      text: value,
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
                       ),
-                    ],
+                      children: [
+                        TextSpan(
+                          text: unit.isEmpty ? '' : ' $unit',
+                          style: const TextStyle(
+                            color: AppColors.dark2,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                ],
                 if (description.trim().isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text(

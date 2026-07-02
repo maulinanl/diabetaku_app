@@ -7,6 +7,7 @@ import '../../../data/services/api_service.dart';
 import 'doctor_connection_page.dart';
 import 'patient_detail_page.dart';
 import 'recommendation_detail_page.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class DoctorNotificationPage extends StatefulWidget {
   final int? initialNotificationId;
@@ -627,17 +628,7 @@ class _DoctorNotificationPageState extends State<DoctorNotificationPage> {
             isMarkingAll ? 'Menandai...' : 'Tandai semua dibaca',
             style: const TextStyle(fontSize: 11),
           ),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.primaryBlue,
-            backgroundColor: AppColors.white,
-            side: const BorderSide(color: AppColors.primaryBlue),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            minimumSize: const Size(0, 34),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
+          style: AppButtonStyles.outlined,
         ),
       ),
     );

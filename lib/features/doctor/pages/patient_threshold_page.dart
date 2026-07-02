@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../widgets/diabetes_type_badge.dart';
 import '../../../data/services/api_service.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class PatientThresholdPage extends StatefulWidget {
   final int patientId;
@@ -261,14 +262,7 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
                     height: 50,
                     child: ElevatedButton(
                       onPressed: () => Navigator.pop(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryBlue,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
+                      style: AppButtonStyles.primary,
                       child: const Text('OK'),
                     ),
                   ),
@@ -415,15 +409,7 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
             onPressed: () => _startEdit(index),
             icon: const Icon(Icons.edit, size: 16),
             label: const Text('Ubah'),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              side: const BorderSide(color: AppColors.primaryBlue),
-              foregroundColor: AppColors.primaryBlue,
-              backgroundColor: AppColors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
+            style: AppButtonStyles.outlined,
           )
         else
           TextButton(
@@ -496,14 +482,7 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
                 height: 42,
                 child: OutlinedButton(
                   onPressed: _cancelEdit,
-                  style: OutlinedButton.styleFrom(
-                    backgroundColor: AppColors.white,
-                    foregroundColor: AppColors.dark2,
-                    side: const BorderSide(color: AppColors.light1),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
+                  style: AppButtonStyles.outlined,
                   child: const Text('Batal'),
                 ),
               ),
@@ -514,14 +493,7 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
                 height: 42,
                 child: ElevatedButton(
                   onPressed: () => _saveEdit(index),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryBlue,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
+                  style: AppButtonStyles.primary,
                   child: const Text('Simpan'),
                 ),
               ),

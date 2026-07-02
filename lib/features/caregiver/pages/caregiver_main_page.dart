@@ -10,6 +10,7 @@ import 'caregiver_connection_page.dart';
 import 'caregiver_history_page.dart';
 import 'caregiver_notification_page.dart';
 import 'caregiver_profile_page.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class CaregiverMainPage extends StatefulWidget {
   const CaregiverMainPage({super.key});
@@ -906,11 +907,7 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _loadCaregiverHome,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryBlue,
-                foregroundColor: Colors.white,
-                elevation: 0,
-              ),
+              style: AppButtonStyles.primary,
               child: const Text('Coba lagi'),
             ),
           ],
@@ -977,14 +974,7 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
                           'Ajukan Koneksi Pasien',
                           style: TextStyle(fontWeight: FontWeight.w600),
                         ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primaryBlue,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
+                        style: AppButtonStyles.primary,
                       ),
                     ),
                   ],
@@ -1175,12 +1165,7 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
                     onPressed: _showPatientSelector,
                     icon: const Icon(Icons.swap_horiz, size: 15),
                     label: const Text('Ganti'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.dark1,
-                      backgroundColor: AppColors.lightBlue,
-                      side: BorderSide.none,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                    ),
+                    style: AppButtonStyles.outlined,
                   ),
               ],
             ),

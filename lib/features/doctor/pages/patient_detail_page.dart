@@ -7,6 +7,7 @@ import 'clinical_note_form_page.dart';
 import 'doctor_prescription_page.dart';
 import '../../../data/services/api_service.dart';
 import 'doctor_patient_health_history_page.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class PatientDetailPage extends StatefulWidget {
   final int patientId;
@@ -343,14 +344,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                           _fetchDashboard();
                         }
                       },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryBlue,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
+                      style: AppButtonStyles.primary,
                       child: const Text(
                         'Buat Catatan Klinis',
                         style: TextStyle(
@@ -627,18 +621,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                   },
                   icon: const Icon(Icons.edit, size: 16),
                   label: const Text('Ubah'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    side: const BorderSide(color: AppColors.primaryBlue),
-                    foregroundColor: AppColors.primaryBlue,
-                    backgroundColor: Colors.white,
-                  ),
+                  style: AppButtonStyles.outlined,
                 ),
             ],
           ),
@@ -1322,14 +1305,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
           height: 46,
           child: ElevatedButton(
             onPressed: _openFullHistory,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryBlue,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
+            style: AppButtonStyles.primary,
             child: const Text(
               'Lihat Semua Riwayat',
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
@@ -1974,14 +1950,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
           height: 46,
           child: ElevatedButton(
             onPressed: _openFullHistory,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryBlue,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
+            style: AppButtonStyles.primary,
             child: const Text(
               'Lihat Semua Riwayat',
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
@@ -2120,10 +2089,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                         Expanded(
                           child: OutlinedButton(
                             onPressed: () => Navigator.pop(dialogContext),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.dark2,
-                              side: const BorderSide(color: AppColors.light1),
-                            ),
+                            style: AppButtonStyles.outlined,
                             child: const Text('Batal'),
                           ),
                         ),
@@ -2141,11 +2107,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                                     );
                                   }
                                 : null,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primaryBlue,
-                              foregroundColor: Colors.white,
-                              elevation: 0,
-                            ),
+                            style: AppButtonStyles.primary,
                             child: const Text('Terapkan'),
                           ),
                         ),
@@ -2200,12 +2162,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
       height: 48,
       child: ElevatedButton(
         onPressed: _showDisconnectConfirmationSheet,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.red,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-        ),
+        style: AppButtonStyles.danger,
         child: const Text('Putus Relasi'),
       ),
     );
@@ -2287,14 +2244,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                         Navigator.pop(sheetContext);
                         await _disconnectPatient();
                       },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.red,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
+                      style: AppButtonStyles.danger,
                       child: const Text(
                         'Putus Relasi',
                         style: TextStyle(
@@ -2421,14 +2371,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                     height: 50,
                     child: ElevatedButton(
                       onPressed: () => Navigator.pop(sheetContext),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryBlue,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
+                      style: AppButtonStyles.primary,
                       child: const Text(
                         'OK',
                         style: TextStyle(

@@ -8,6 +8,7 @@ import 'caregiver_glucose_form_page.dart';
 import 'caregiver_meal_form_page.dart';
 import 'caregiver_physiological_form_page.dart';
 import 'caregiver_medication_form_page.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class CaregiverAddDataPage extends StatefulWidget {
   final bool showBackButton;
@@ -507,15 +508,7 @@ class _CaregiverAddDataPageState extends State<CaregiverAddDataPage> {
               onPressed: _showPatientSelector,
               icon: const Icon(Icons.swap_horiz, size: 15),
               label: const Text('Ganti'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.dark1,
-                backgroundColor: AppColors.lightBlue,
-                side: BorderSide.none,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
+              style: AppButtonStyles.outlined,
             ),
         ],
       ),
@@ -689,11 +682,7 @@ class _CaregiverAddDataPageState extends State<CaregiverAddDataPage> {
                     widget.onGoConnection ?? () => Navigator.pop(context),
                 icon: const Icon(Icons.people_alt_outlined, size: 18),
                 label: const Text('Ke Menu Koneksi'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryBlue,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                ),
+                style: AppButtonStyles.primary,
               ),
             ),
           ],
@@ -719,11 +708,7 @@ class _CaregiverAddDataPageState extends State<CaregiverAddDataPage> {
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _loadPatients,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryBlue,
-                foregroundColor: Colors.white,
-                elevation: 0,
-              ),
+              style: AppButtonStyles.primary,
               child: const Text('Coba lagi'),
             ),
           ],

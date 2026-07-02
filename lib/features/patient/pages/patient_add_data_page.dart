@@ -8,6 +8,7 @@ import 'patient_physiology_form_page.dart';
 import 'patient_meal_form_page.dart';
 import 'patient_activity_form_page.dart';
 import 'patient_medication_form_page.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class PatientAddDataPage extends StatefulWidget {
   const PatientAddDataPage({super.key});
@@ -340,14 +341,7 @@ class _PatientAddDataPageState extends State<PatientAddDataPage> {
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _loadTodayStatus,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryBlue,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
+              style: AppButtonStyles.primary,
               child: const Text('Coba lagi'),
             ),
           ],

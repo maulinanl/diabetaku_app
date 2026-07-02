@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import 'login_page.dart';
 import '../../../data/services/api_service.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class ResetPasswordPage extends StatefulWidget {
   final String token;
@@ -94,14 +95,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                       (route) => false,
                     );
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryBlue,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
+                  style: AppButtonStyles.primary,
                   child: const Text('Masuk'),
                 ),
               ),
@@ -197,15 +191,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                       child: ElevatedButton(
                         onPressed:
                             isValid && !isLoading ? _resetPassword : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primaryBlue,
-                          disabledBackgroundColor: const Color(0xFFAFCBEA),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                        ),
+                        style: AppButtonStyles.primary,
                         child: isLoading
                             ? const SizedBox(
                                 width: 22,

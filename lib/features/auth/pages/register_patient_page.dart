@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 import '../../auth/pages/email_verification_page.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class RegisterPatientPage extends StatefulWidget {
   const RegisterPatientPage({super.key});
@@ -354,16 +355,7 @@ class _RegisterPatientPageState extends State<RegisterPatientPage> {
                   onPressed: isValid && !isRegistering
                       ? _registerPatient
                       : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryBlue,
-                    disabledBackgroundColor: const Color(0xFFAFCBEA),
-                    disabledForegroundColor: AppColors.white,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
+                  style: AppButtonStyles.primary,
                   child: isRegistering
                       ? const SizedBox(
                           width: 22,

@@ -10,6 +10,7 @@ import 'email_verification_page.dart';
 import 'admin_verification_waiting_page.dart';
 import '../../../data/services/push_notification_service.dart';
 import '../../../data/services/medication_reminder_service.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -341,16 +342,7 @@ class _LoginPageState extends State<LoginPage> {
                 height: 50,
                 child: ElevatedButton(
                   onPressed: isFormValid && !isLoading ? _handleLogin : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryBlue,
-                    disabledBackgroundColor: const Color(0xFFAFCBEA),
-                    disabledForegroundColor: AppColors.white,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
+                  style: AppButtonStyles.primary,
                   child: isLoading
                       ? const SizedBox(
                           width: 22,
@@ -394,14 +386,7 @@ class _LoginPageState extends State<LoginPage> {
                       const RoleSelectionPage(),
                     );
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryBlue,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
+                  style: AppButtonStyles.primary,
                   child: const Text(
                     'Daftar Akun Baru',
                     style: TextStyle(fontWeight: FontWeight.w600),

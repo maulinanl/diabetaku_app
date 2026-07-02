@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class CaregiverMedicationFormPage extends StatefulWidget {
   final int patientId;
@@ -273,18 +274,7 @@ class _CaregiverMedicationFormPageState extends State<CaregiverMedicationFormPag
                                               !isSaving
                                           ? _save
                                           : null,
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor:
-                                            AppColors.primaryBlue,
-                                        disabledBackgroundColor:
-                                            const Color(0xFFAFCBEA),
-                                        foregroundColor: Colors.white,
-                                        elevation: 0,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(6),
-                                        ),
-                                      ),
+                                      style: AppButtonStyles.primary,
                                       child: isSaving
                                           ? const SizedBox(
                                               width: 22,
@@ -779,14 +769,7 @@ class _CaregiverMedicationFormPageState extends State<CaregiverMedicationFormPag
                     Navigator.pop(sheetContext);
                     Navigator.pop(context, true);
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryBlue,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
+                  style: AppButtonStyles.primary,
                   child: const Text('Kembali'),
                 ),
               ),

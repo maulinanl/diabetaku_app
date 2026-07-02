@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 import 'doctor_prescription_form_page.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class DoctorPrescriptionDetailPage extends StatefulWidget {
   final Map<String, dynamic> prescription;
@@ -169,14 +170,7 @@ class _DoctorPrescriptionDetailPageState
                                 onPressed: isSaving ? null : _openEditForm,
                                 icon: const Icon(Icons.edit_outlined, size: 16),
                                 label: const Text('Ubah'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primaryBlue,
-                                  foregroundColor: Colors.white,
-                                  elevation: 0,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                ),
+                                style: AppButtonStyles.primary,
                               ),
                             ),
                           ),
@@ -189,13 +183,7 @@ class _DoctorPrescriptionDetailPageState
                                     isSaving ? null : _showStopConfirmation,
                                 icon: const Icon(Icons.block, size: 16),
                                 label: const Text('Hentikan'),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: AppColors.red,
-                                  side: const BorderSide(color: AppColors.red),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                ),
+                                style: AppButtonStyles.outlinedDanger,
                               ),
                             ),
                           ),
@@ -543,15 +531,7 @@ class _DoctorPrescriptionDetailPageState
                   onPressed: isSaving
                       ? null
                       : () => _stopPrescription(sheetContext),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.red,
-                    foregroundColor: Colors.white,
-                    disabledBackgroundColor: AppColors.lightRed,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
+                  style: AppButtonStyles.danger,
                   child: isSaving
                       ? const SizedBox(
                           width: 22,
@@ -624,14 +604,7 @@ class _DoctorPrescriptionDetailPageState
                 height: 46,
                 child: ElevatedButton(
                   onPressed: () => Navigator.pop(sheetContext),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryBlue,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
+                  style: AppButtonStyles.primary,
                   child: const Text('Selesai'),
                 ),
               ),

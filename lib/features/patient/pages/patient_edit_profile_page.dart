@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/profile_badge.dart';
 import '../../../data/services/api_service.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class PatientEditProfilePage extends StatefulWidget {
   final Map<String, dynamic> profile;
@@ -340,16 +341,7 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
                         onPressed: isSaving || !_hasChanges
                             ? null
                             : _saveProfile,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primaryBlue,
-                          disabledBackgroundColor: AppColors.light2,
-                          disabledForegroundColor: AppColors.dark3,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                        ),
+                        style: AppButtonStyles.soft,
                         child: isSaving
                             ? const SizedBox(
                                 width: 22,
@@ -702,14 +694,7 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
                     Navigator.pop(sheetContext);
                     Navigator.pop(context, true);
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryBlue,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
+                  style: AppButtonStyles.primary,
                   child: const Text(
                     'Kembali ke Profil',
                     style: TextStyle(fontWeight: FontWeight.w600),

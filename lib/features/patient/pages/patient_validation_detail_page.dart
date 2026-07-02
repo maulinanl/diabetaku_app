@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class PatientValidationDetailPage extends StatefulWidget {
   final Map<String, dynamic> item;
@@ -184,11 +185,7 @@ class _PatientValidationDetailPageState
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () => Navigator.pop(sheetContext),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.dark2,
-                          side: const BorderSide(color: AppColors.light1),
-                          minimumSize: const Size.fromHeight(46),
-                        ),
+                        style: AppButtonStyles.outlined,
                         child: const Text('Batal'),
                       ),
                     ),
@@ -199,13 +196,7 @@ class _PatientValidationDetailPageState
                           Navigator.pop(sheetContext);
                           _respond(approve);
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              approve ? AppColors.primaryBlue : AppColors.red,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          minimumSize: const Size.fromHeight(46),
-                        ),
+                        style: AppButtonStyles.danger,
                         child: Text(approve ? 'Ya, Setujui' : 'Ya, Tolak'),
                       ),
                     ),
@@ -280,11 +271,7 @@ class _PatientValidationDetailPageState
                           child: OutlinedButton(
                             onPressed:
                                 isProcessing ? null : () => _confirmRespond(false),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.red,
-                              side: const BorderSide(color: AppColors.red),
-                              minimumSize: const Size.fromHeight(46),
-                            ),
+                            style: AppButtonStyles.outlinedDanger,
                             child: const Text('Tolak'),
                           ),
                         ),
@@ -293,13 +280,7 @@ class _PatientValidationDetailPageState
                           child: ElevatedButton(
                             onPressed:
                                 isProcessing ? null : () => _confirmRespond(true),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primaryBlue,
-                              foregroundColor: Colors.white,
-                              disabledBackgroundColor: AppColors.light1,
-                              minimumSize: const Size.fromHeight(46),
-                              elevation: 0,
-                            ),
+                            style: AppButtonStyles.primary,
                             child: Text(isProcessing ? 'Memproses...' : 'Setujui'),
                           ),
                         ),
@@ -544,10 +525,7 @@ class _PatientValidationDetailPageState
                       Navigator.pop(context, true);
                     }
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryBlue,
-                    foregroundColor: Colors.white,
-                  ),
+                  style: AppButtonStyles.primary,
                   child: const Text('Selesai'),
                 ),
               ),

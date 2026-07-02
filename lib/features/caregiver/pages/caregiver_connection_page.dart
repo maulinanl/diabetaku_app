@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 import 'caregiver_patient_detail_page.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class CaregiverConnectionPage extends StatefulWidget {
   const CaregiverConnectionPage({super.key});
@@ -554,11 +555,7 @@ class _CaregiverConnectionPageState extends State<CaregiverConnectionPage> {
                 onPressed: () => setState(() => mainTab = 1),
                 icon: const Icon(Icons.email_outlined, size: 18),
                 label: const Text('Cari Pasien'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryBlue,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                ),
+                style: AppButtonStyles.primary,
               ),
             ),
           ],
@@ -1162,10 +1159,7 @@ class _CaregiverPatientSearchDetailPageState
         height: 46,
         child: ElevatedButton(
           onPressed: null,
-          style: ElevatedButton.styleFrom(
-            disabledBackgroundColor: const Color(0xFFEAFBF3),
-            disabledForegroundColor: const Color(0xFF10C878),
-          ),
+          style: AppButtonStyles.primary,
           child: const Text('Sudah Terhubung'),
         ),
       );
@@ -1179,10 +1173,7 @@ class _CaregiverPatientSearchDetailPageState
           onPressed: null,
           icon: const Icon(Icons.access_time, size: 18),
           label: const Text('Menunggu Persetujuan'),
-          style: ElevatedButton.styleFrom(
-            disabledBackgroundColor: const Color(0xFFFFF4DA),
-            disabledForegroundColor: Colors.orange,
-          ),
+          style: AppButtonStyles.primary,
         ),
       );
     }
@@ -1203,12 +1194,7 @@ class _CaregiverPatientSearchDetailPageState
               )
             : const Icon(Icons.person_add_alt_1, size: 18),
         label: const Text('Ajukan Koneksi'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primaryBlue,
-          disabledBackgroundColor: const Color(0xFFAFCBEA),
-          foregroundColor: Colors.white,
-          elevation: 0,
-        ),
+        style: AppButtonStyles.primary,
       ),
     );
   }

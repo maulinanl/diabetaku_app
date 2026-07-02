@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class CaregiverActivityFormPage extends StatefulWidget {
   final int patientId;
@@ -260,15 +261,7 @@ class _CaregiverActivityFormPageState extends State<CaregiverActivityFormPage> {
               height: 46,
               child: ElevatedButton(
                 onPressed: isValid && !isSaving ? _saveData : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryBlue,
-                  disabledBackgroundColor: const Color(0xFFAFCBEA),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                ),
+                style: AppButtonStyles.primary,
                 child: isSaving
                     ? const SizedBox(
                         width: 22,
@@ -506,11 +499,7 @@ class _CaregiverActivityFormPageState extends State<CaregiverActivityFormPage> {
                   Navigator.pop(sheetContext);
                   Navigator.pop(context);
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryBlue,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                ),
+                style: AppButtonStyles.primary,
                 child: const Text('Kembali'),
               ),
             ),

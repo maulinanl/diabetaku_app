@@ -9,6 +9,7 @@ import 'patient_recommendation_detail_page.dart';
 import 'patient_history_page.dart';
 import 'patient_validation_detail_page.dart';
 import 'patient_validation_page.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class PatientNotificationPage extends StatefulWidget {
   final int? initialNotificationId;
@@ -362,6 +363,52 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
           _desc(item),
     };
 
+    Map<String, dynamic> buildPayloadFromRecommendations(
+      Map<String, dynamic> detail,
+      List<Map<String, dynamic>> recommendations,
+    ) {
+      final first = recommendations.first;
+      final description = recommendations.length == 1
+          ? first['recommendation_text']?.toString() ?? _desc(item)
+          : recommendations.map((recommendation) {
+              final category =
+                  recommendation['category']?.toString() ?? 'Rekomendasi';
+              final text =
+                  recommendation['recommendation_text']?.toString() ?? '-';
+              return '• $category: $text';
+            }).join('\n\n');
+
+      return {
+        ...fallback,
+        ...detail,
+        'clinical_note_id':
+            clinicalNoteId ?? first['clinical_note_id'] ?? detail['clinical_note_id'],
+        'recommendations': recommendations,
+        'doctor': detail['doctor_name']?.toString() ??
+            item['doctor_name']?.toString() ??
+            _doctorFromMessage(_desc(item)),
+        'date': _formatDateTime(
+          first['created_at'] ?? detail['created_at'] ?? item['created_at'],
+        ),
+        'category': recommendations.length == 1
+            ? first['category']?.toString() ?? 'Rekomendasi'
+            : '${recommendations.length} Rekomendasi',
+        'description': description,
+      };
+    }
+
+    final existingRecommendations = item['recommendations'];
+    if (existingRecommendations is List && existingRecommendations.isNotEmpty) {
+      final recommendations = existingRecommendations
+          .whereType<Map>()
+          .map((entry) => Map<String, dynamic>.from(entry))
+          .toList();
+
+      if (recommendations.isNotEmpty) {
+        return buildPayloadFromRecommendations(item, recommendations);
+      }
+    }
+
     if (clinicalNoteId == null || clinicalNoteId == 0) {
       return fallback;
     }
@@ -374,29 +421,7 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
 
       if (recommendations.isEmpty) return fallback;
 
-      final first = recommendations.first;
-      final description = recommendations.length == 1
-          ? first['recommendation_text']?.toString() ?? _desc(item)
-          : recommendations.map((recommendation) {
-              final category = recommendation['category']?.toString() ?? 'Rekomendasi';
-              final text = recommendation['recommendation_text']?.toString() ?? '-';
-              return '• $category: $text';
-            }).join('\n\n');
-
-      return {
-        ...fallback,
-        ...detail,
-        'clinical_note_id': clinicalNoteId,
-        'recommendations': recommendations,
-        'doctor': item['doctor_name']?.toString() ?? _doctorFromMessage(_desc(item)),
-        'date': _formatDateTime(
-          first['created_at'] ?? detail['created_at'] ?? item['created_at'],
-        ),
-        'category': recommendations.length == 1
-            ? first['category']?.toString() ?? 'Rekomendasi'
-            : '${recommendations.length} Rekomendasi',
-        'description': description,
-      };
+      return buildPayloadFromRecommendations(detail, recommendations);
     } catch (_) {
       return fallback;
     }
@@ -887,11 +912,7 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _loadNotifications,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryBlue,
-                foregroundColor: Colors.white,
-                elevation: 0,
-              ),
+              style: AppButtonStyles.primary,
               child: const Text('Coba lagi'),
             ),
           ],
@@ -1008,17 +1029,7 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
             isMarkingAll ? 'Menandai...' : 'Tandai semua dibaca',
             style: const TextStyle(fontSize: 11),
           ),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.primaryBlue,
-            backgroundColor: AppColors.white,
-            side: const BorderSide(color: AppColors.primaryBlue),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            minimumSize: const Size(0, 34),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
+          style: AppButtonStyles.outlined,
         ),
       ),
     );
@@ -1367,14 +1378,7 @@ class _CaregiverRequestActionSheet extends StatelessWidget {
               height: 46,
               child: ElevatedButton(
                 onPressed: onPrimaryTap,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryColor,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
+                style: AppButtonStyles.primary,
                 child: Text(
                   primaryText,
                   style: const TextStyle(
@@ -1476,14 +1480,7 @@ class _CaregiverRequestSuccessSheet extends StatelessWidget {
               height: 46,
               child: ElevatedButton(
                 onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryBlue,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
+                style: AppButtonStyles.primary,
                 child: const Text(
                   'Mengerti',
                   style: TextStyle(

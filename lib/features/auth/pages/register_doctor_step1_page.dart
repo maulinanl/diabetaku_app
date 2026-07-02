@@ -3,6 +3,7 @@ import '../../../core/theme/app_colors.dart';
 import 'register_doctor_step2_page.dart';
 import 'package:flutter/services.dart';
 import '../../../data/services/api_service.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class RegisterDoctorStep1Page extends StatefulWidget {
   const RegisterDoctorStep1Page({super.key});
@@ -250,30 +251,12 @@ class _RegisterDoctorStep1PageState extends State<RegisterDoctorStep1Page> {
                       height: 50,
                       child: ElevatedButton(
                         onPressed: isValid ? _goToStep2 : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primaryBlue,
-                          disabledBackgroundColor: const Color(0xFFAFCBEA),
-                          disabledForegroundColor: AppColors.white,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                        ),
+                        style: AppButtonStyles.primary,
                         child: ElevatedButton(
                           onPressed: isValid && !isCheckingEmail
                               ? _goToStep2
                               : null,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primaryBlue,
-                            disabledBackgroundColor: const Color(0xFFAFCBEA),
-                            disabledForegroundColor: AppColors.white,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                          ),
+                          style: AppButtonStyles.primary,
                           child: isCheckingEmail
                               ? const SizedBox(
                                   width: 22,

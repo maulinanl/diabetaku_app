@@ -35,10 +35,22 @@ class CaregiverRecommendationDetailPage extends StatelessWidget {
       'Pasien';
 
   List<Map<String, dynamic>> get recommendationItems {
-    final raw = item['items'];
-    if (raw is List) {
-      return List<Map<String, dynamic>>.from(raw);
+    final rawItems = item['items'];
+    if (rawItems is List && rawItems.isNotEmpty) {
+      return rawItems
+          .whereType<Map>()
+          .map((entry) => Map<String, dynamic>.from(entry))
+          .toList();
     }
+
+    final rawRecommendations = item['recommendations'];
+    if (rawRecommendations is List && rawRecommendations.isNotEmpty) {
+      return rawRecommendations
+          .whereType<Map>()
+          .map((entry) => Map<String, dynamic>.from(entry))
+          .toList();
+    }
+
     return [item];
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class CaregiverPatientDetailPage extends StatefulWidget {
   final int patientId;
@@ -365,13 +366,7 @@ class _CaregiverPatientDetailPageState extends State<CaregiverPatientDetailPage>
       height: 46,
       child: ElevatedButton(
         onPressed: isProcessing ? null : () => _showDisconnectSheet(context),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.red,
-          disabledBackgroundColor: AppColors.lightRed,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-        ),
+        style: AppButtonStyles.danger,
         child: Text(
           isProcessing ? 'Memproses...' : 'Putus Relasi',
           style: const TextStyle(fontWeight: FontWeight.w600),
@@ -431,14 +426,7 @@ class _CaregiverPatientDetailPageState extends State<CaregiverPatientDetailPage>
                     Navigator.pop(sheetContext);
                     _disconnectPatient();
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.red,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
+                  style: AppButtonStyles.danger,
                   child: const Text('Ya, Putus Relasi'),
                 ),
               ),
@@ -473,11 +461,7 @@ class _CaregiverPatientDetailPageState extends State<CaregiverPatientDetailPage>
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _loadDetail,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryBlue,
-                foregroundColor: Colors.white,
-                elevation: 0,
-              ),
+              style: AppButtonStyles.primary,
               child: const Text('Coba Lagi'),
             ),
           ],

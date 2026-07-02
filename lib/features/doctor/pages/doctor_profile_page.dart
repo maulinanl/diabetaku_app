@@ -6,6 +6,7 @@ import '../../../core/widgets/profile_badge.dart';
 import '../../../data/services/api_service.dart';
 import 'edit_doctor_profile_page.dart';
 import '../../auth/pages/login_page.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class DoctorProfilePage extends StatefulWidget {
   const DoctorProfilePage({super.key});
@@ -258,22 +259,59 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
     return 'Terverifikasi';
   }
 
+  String _emailVerificationText(Map<String, dynamic>? data) {
+    if (data == null) return 'Terverifikasi';
+    if (!data.containsKey('email_verified_at')) return 'Terverifikasi';
+
+    final verifiedAt = data['email_verified_at'];
+    return verifiedAt == null ? 'Belum Verifikasi' : 'Terverifikasi';
+  }
 
   Widget _statusBadge(String text) {
+    final isVerified = text.toLowerCase() == 'terverifikasi' ||
+        text.toLowerCase() == 'valid';
+    final isRejected = text.toLowerCase() == 'ditolak';
+
+    final bg = isRejected
+        ? AppColors.lightRed
+        : isVerified
+            ? AppColors.veryLightBlue
+            : Colors.orange.shade50;
+    final color = isRejected
+        ? AppColors.red
+        : isVerified
+            ? AppColors.primaryBlue
+            : Colors.orange.shade700;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColors.veryLightBlue,
+        color: bg,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.lightBlue),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
       ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: AppColors.primaryBlue,
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isRejected
+                ? Icons.cancel_rounded
+                : isVerified
+                    ? Icons.verified
+                    : Icons.pending,
+            size: 10,
+            color: color,
+          ),
+          const SizedBox(width: 3),
+          Text(
+            text,
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -353,18 +391,7 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
                 },
                 icon: const Icon(Icons.edit, size: 16),
                 label: const Text('Ubah'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  side: const BorderSide(color: AppColors.primaryBlue),
-                  foregroundColor: AppColors.primaryBlue,
-                  backgroundColor: Colors.white,
-                ),
+                style: AppButtonStyles.outlined,
               ),
             ],
           ),
@@ -378,7 +405,7 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
             Icons.email_outlined,
             'Email',
             profile?['email']?.toString() ?? '-',
-            badge: 'Terverifikasi',
+            badge: _emailVerificationText(profile),
           ),
           _profileItem(
             Icons.phone_outlined,
@@ -609,14 +636,7 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
                 height: 46,
                 child: ElevatedButton(
                   onPressed: () => Navigator.pop(sheetContext),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.red,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
+                  style: AppButtonStyles.danger,
                   child: const Text('Batal'),
                 ),
               ),

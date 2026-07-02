@@ -3,6 +3,7 @@ import '../../../core/theme/app_colors.dart';
 import '../widgets/diabetes_type_badge.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../data/services/api_service.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class RecommendationFormPage extends StatefulWidget {
   final int patientId;
@@ -450,13 +451,7 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
             onPressed: _addRecommendation,
             icon: const Icon(Icons.add, size: 16),
             label: const Text('Tambahkan Rekomendasi'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.primaryBlue,
-              side: const BorderSide(color: AppColors.primaryBlue),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
+            style: AppButtonStyles.outlined,
           ),
         ),
 
@@ -828,14 +823,7 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
                         Navigator.pop(context, true);
                         Navigator.pop(context, true);
                       },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryBlue,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
+                      style: AppButtonStyles.primary,
                       child: const Text(
                         'Selesai',
                         style: TextStyle(

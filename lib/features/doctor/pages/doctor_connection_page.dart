@@ -4,6 +4,7 @@ import '../../../core/theme/app_colors.dart';
 import '../widgets/diabetes_type_badge.dart';
 import '../../../data/services/api_service.dart';
 import 'patient_detail_page.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class DoctorConnectionPage extends StatefulWidget {
   final int initialTab;
@@ -792,14 +793,7 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
                       Navigator.pop(sheetContext);
                       onConfirm();
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: buttonColor,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
+                    style: AppButtonStyles.primary,
                     child: Text(buttonText),
                   ),
                 ),
@@ -893,16 +887,7 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
                   height: 46,
                   child: ElevatedButton(
                     onPressed: onPrimaryTap,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isReject
-                          ? AppColors.red
-                          : AppColors.primaryBlue,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
+                    style: AppButtonStyles.danger,
                     child: Text(buttonText),
                   ),
                 ),
@@ -996,13 +981,7 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
         onPressed: isProcessing ? null : _confirmAccept,
         icon: const Icon(Icons.check, size: 16),
         label: const Text('Terima permintaan'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primaryBlue,
-          disabledBackgroundColor: const Color(0xFFAFCBEA),
-          foregroundColor: Colors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-        ),
+        style: AppButtonStyles.primary,
       ),
     );
   }
@@ -1015,12 +994,7 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
         onPressed: isProcessing ? null : _confirmReject,
         icon: const Icon(Icons.close, size: 16),
         label: const Text('Tolak permintaan'),
-        style: OutlinedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: AppColors.red,
-          side: const BorderSide(color: AppColors.red),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-        ),
+        style: AppButtonStyles.outlinedDanger,
       ),
     );
   }
@@ -1043,12 +1017,7 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
         },
         icon: const Icon(Icons.visibility_outlined, size: 16),
         label: const Text('Lihat Detail Pasien'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primaryBlue,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-        ),
+        style: AppButtonStyles.primary,
       ),
     );
   }

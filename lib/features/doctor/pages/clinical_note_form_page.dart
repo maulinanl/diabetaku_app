@@ -4,6 +4,7 @@ import '../widgets/diabetes_type_badge.dart';
 import 'recommendation_form_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../data/services/api_service.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class ClinicalNoteFormPage extends StatefulWidget {
   final int patientId;
@@ -200,14 +201,7 @@ class _ClinicalNoteFormPageState extends State<ClinicalNoteFormPage> {
                       ),
                     );
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryBlue,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
+                  style: AppButtonStyles.primary,
                   child: const Text('Tambah Rekomendasi'),
                 ),
               ),
@@ -270,13 +264,7 @@ class _ClinicalNoteFormPageState extends State<ClinicalNoteFormPage> {
                         height: 52,
                         child: ElevatedButton(
                           onPressed: _isSaving ? null : _save,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primaryBlue,
-                            elevation: 2,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
+                          style: AppButtonStyles.primary,
                           child: _isSaving
                               ? const SizedBox(
                                   width: 22,
@@ -556,16 +544,7 @@ class _ClinicalNoteFormPageState extends State<ClinicalNoteFormPage> {
                   ? 'Pilih Tanggal Kontrol'
                   : _formatDate(_followUpDate!),
             ),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 48),
-              alignment: Alignment.centerLeft,
-              foregroundColor: AppColors.primaryBlue,
-              backgroundColor: Colors.white,
-              side: const BorderSide(color: AppColors.light1),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
+            style: AppButtonStyles.outlined,
           ),
         ],
       ),

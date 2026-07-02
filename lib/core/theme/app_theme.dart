@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
+import 'app_button_styles.dart';
 
 class AppTheme {
   static ThemeData lightTheme = ThemeData(
@@ -27,6 +28,20 @@ class AppTheme {
         fontWeight: FontWeight.bold,
         color: AppColors.dark1,
       ),
+    ),
+
+
+
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: AppButtonStyles.primary,
+    ),
+
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: AppButtonStyles.outlined,
+    ),
+
+    textButtonTheme: TextButtonThemeData(
+      style: AppButtonStyles.text,
     ),
 
     inputDecorationTheme: InputDecorationTheme(

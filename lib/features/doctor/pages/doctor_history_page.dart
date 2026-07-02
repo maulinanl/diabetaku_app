@@ -3,6 +3,7 @@ import '../../../core/theme/app_colors.dart';
 import 'clinical_note_detail_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../data/services/api_service.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class DoctorHistoryPage extends StatefulWidget {
   const DoctorHistoryPage({super.key});
@@ -522,10 +523,7 @@ class _DoctorHistoryPageState extends State<DoctorHistoryPage> {
                         Expanded(
                           child: OutlinedButton(
                             onPressed: () => Navigator.pop(dialogContext),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.dark2,
-                              side: const BorderSide(color: AppColors.light1),
-                            ),
+                            style: AppButtonStyles.outlined,
                             child: const Text('Batal'),
                           ),
                         ),
@@ -543,11 +541,7 @@ class _DoctorHistoryPageState extends State<DoctorHistoryPage> {
                                     );
                                   }
                                 : null,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primaryBlue,
-                              foregroundColor: Colors.white,
-                              elevation: 0,
-                            ),
+                            style: AppButtonStyles.primary,
                             child: const Text('Terapkan'),
                           ),
                         ),

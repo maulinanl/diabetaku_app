@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 import 'admin_verification_waiting_page.dart';
 import 'login_page.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 enum VerificationRoleType { doctor, patient, caregiver }
 
@@ -164,14 +165,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
     required Color backgroundColor,
     Color foregroundColor = Colors.white,
   }) {
-    return ElevatedButton.styleFrom(
-      backgroundColor: backgroundColor,
-      foregroundColor: foregroundColor,
-      disabledBackgroundColor: const Color(0xFFAFCBEA),
-      disabledForegroundColor: AppColors.white,
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-    );
+    return AppButtonStyles.primary;
   }
 
   @override

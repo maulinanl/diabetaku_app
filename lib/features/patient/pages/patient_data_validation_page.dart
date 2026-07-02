@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class PatientDataValidationPage extends StatefulWidget {
   const PatientDataValidationPage({super.key});
@@ -202,14 +203,7 @@ class _PatientDataValidationPageState extends State<PatientDataValidationPage> {
                 height: 46,
                 child: ElevatedButton(
                   onPressed: () => Navigator.pop(sheetContext),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryBlue,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
+                  style: AppButtonStyles.primary,
                   child: const Text('Mengerti'),
                 ),
               ),
@@ -265,11 +259,7 @@ class _PatientDataValidationPageState extends State<PatientDataValidationPage> {
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: _loadPendingData,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryBlue,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                ),
+                style: AppButtonStyles.primary,
                 child: const Text('Coba lagi'),
               ),
             ],
@@ -566,15 +556,7 @@ class _ValidationCard extends StatelessWidget {
                     onPressed: isProcessing ? null : onAccept,
                     icon: const Icon(Icons.check, size: 18),
                     label: const Text('Terima'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryBlue,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: AppColors.light1,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
+                    style: AppButtonStyles.primary,
                   ),
                 ),
               ),
@@ -586,15 +568,7 @@ class _ValidationCard extends StatelessWidget {
                     onPressed: isProcessing ? null : onReject,
                     icon: const Icon(Icons.close, size: 18),
                     label: const Text('Tolak'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.red,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: AppColors.light1,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
+                    style: AppButtonStyles.danger,
                   ),
                 ),
               ),
