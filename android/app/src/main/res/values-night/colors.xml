@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="diabetaku_primary">#3A86D1</color>
+    <color name="diabetaku_background">#F8FBFF</color>
+    <color name="diabetaku_white">#FFFFFF</color>
+    <color name="diabetaku_light_border">#DDE5E9</color>
+</resources>

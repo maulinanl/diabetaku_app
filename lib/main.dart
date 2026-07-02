@@ -37,6 +37,9 @@ Future<void> main() async {
       statusBarColor: AppColors.primaryBlue,
       statusBarIconBrightness: Brightness.light,
       statusBarBrightness: Brightness.dark,
+      systemNavigationBarColor: AppColors.white,
+      systemNavigationBarIconBrightness: Brightness.dark,
+      systemNavigationBarDividerColor: AppColors.light1,
     ),
   );
 
@@ -50,9 +53,22 @@ class DiabetAkuApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: AppNavigator.navigatorKey,
-      title: 'diabetAku',
+      title: 'DiabetAku',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
+      builder: (context, child) {
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: const SystemUiOverlayStyle(
+            statusBarColor: AppColors.primaryBlue,
+            statusBarIconBrightness: Brightness.light,
+            statusBarBrightness: Brightness.dark,
+            systemNavigationBarColor: AppColors.white,
+            systemNavigationBarIconBrightness: Brightness.dark,
+            systemNavigationBarDividerColor: AppColors.light1,
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       home: const SplashPage(),
     );
   }
