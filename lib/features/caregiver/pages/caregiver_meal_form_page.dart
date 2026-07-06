@@ -3,7 +3,8 @@ import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
-import 'package:diabetaku_app/core/theme/app_button_styles.dart';
+import '../../patient/widgets/patient_health_form_widgets.dart';
+import '../widgets/caregiver_health_form_widgets.dart';
 
 class CaregiverMealFormPage extends StatefulWidget {
   final int patientId;
@@ -24,40 +25,42 @@ class CaregiverMealFormPage extends StatefulWidget {
 }
 
 class _CaregiverMealFormPageState extends State<CaregiverMealFormPage> {
-  int selectedMealType = 0;
-
-  final mealTypes = const ['Sarapan', 'Makan Siang', 'Makan Malam', 'Snack'];
-
-  final carbController = TextEditingController();
-  final caloriesController = TextEditingController();
-  final foodController = TextEditingController();
+  final carbCtr = TextEditingController();
+  final calorieCtr = TextEditingController();
+  final descriptionCtr = TextEditingController();
 
   DateTime selectedDate = DateTime.now();
   TimeOfDay selectedTime = TimeOfDay.now();
 
+  String selectedMealType = 'Sarapan';
   bool isSaving = false;
+
+  final mealTypes = const [
+    ['Sarapan', Icons.wb_sunny_outlined],
+    ['Makan Siang', Icons.restaurant_outlined],
+    ['Makan Malam', Icons.dinner_dining_outlined],
+    ['Camilan', Icons.cookie_outlined],
+  ];
+
+  bool get isValid {
+    return carbCtr.text.trim().isNotEmpty ||
+        calorieCtr.text.trim().isNotEmpty ||
+        descriptionCtr.text.trim().isNotEmpty;
+  }
 
   int get mealTypeId {
     switch (selectedMealType) {
-      case 0:
+      case 'Sarapan':
         return 1;
-      case 1:
+      case 'Makan Siang':
         return 2;
-      case 2:
+      case 'Makan Malam':
         return 3;
-      case 3:
+      case 'Camilan':
         return 4;
       default:
         return 1;
     }
-  }
-
-  bool get isValid {
-    final carb = double.tryParse(carbController.text.trim());
-
-    return carb != null &&
-        carb > 0 &&
-        foodController.text.trim().isNotEmpty;
   }
 
   DateTime get mealDate {
@@ -70,33 +73,29 @@ class _CaregiverMealFormPageState extends State<CaregiverMealFormPage> {
     );
   }
 
+  String get dateText {
+    return '${selectedDate.day.toString().padLeft(2, '0')}/${selectedDate.month.toString().padLeft(2, '0')}/${selectedDate.year}';
+  }
+
+  String get timeText {
+    return '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
+  }
+
   @override
   void initState() {
     super.initState();
 
-    for (final controller in [
-      carbController,
-      caloriesController,
-      foodController,
-    ]) {
+    for (final controller in [carbCtr, calorieCtr, descriptionCtr]) {
       controller.addListener(() => setState(() {}));
     }
   }
 
   @override
   void dispose() {
-    carbController.dispose();
-    caloriesController.dispose();
-    foodController.dispose();
+    carbCtr.dispose();
+    calorieCtr.dispose();
+    descriptionCtr.dispose();
     super.dispose();
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
-  }
-
-  String _formatTime(TimeOfDay time) {
-    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
   }
 
   Future<void> _pickDate() async {
@@ -108,18 +107,14 @@ class _CaregiverMealFormPageState extends State<CaregiverMealFormPage> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.primaryBlue,
-            ),
+            colorScheme: const ColorScheme.light(primary: AppColors.primaryBlue),
           ),
           child: child!,
         );
       },
     );
 
-    if (picked != null) {
-      setState(() => selectedDate = picked);
-    }
+    if (picked != null) setState(() => selectedDate = picked);
   }
 
   Future<void> _pickTime() async {
@@ -129,21 +124,17 @@ class _CaregiverMealFormPageState extends State<CaregiverMealFormPage> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.primaryBlue,
-            ),
+            colorScheme: const ColorScheme.light(primary: AppColors.primaryBlue),
           ),
           child: child!,
         );
       },
     );
 
-    if (picked != null) {
-      setState(() => selectedTime = picked);
-    }
+    if (picked != null) setState(() => selectedTime = picked);
   }
 
-  Future<void> _saveData() async {
+  Future<void> _save() async {
     if (!isValid || isSaving) return;
 
     FocusScope.of(context).unfocus();
@@ -153,394 +144,153 @@ class _CaregiverMealFormPageState extends State<CaregiverMealFormPage> {
       await ApiService.storeCaregiverMeal(
         patientId: widget.patientId,
         mealTypeId: mealTypeId,
-        carbohydrateGram: double.parse(carbController.text.trim()),
-        calories: caloriesController.text.trim().isEmpty
+        carbohydrateGram: carbCtr.text.trim().isEmpty
             ? null
-            : double.tryParse(caloriesController.text.trim()),
-        description: foodController.text.trim(),
+            : double.parse(carbCtr.text.trim()),
+        calories: calorieCtr.text.trim().isEmpty
+            ? null
+            : double.parse(calorieCtr.text.trim()),
+        description:
+            descriptionCtr.text.trim().isEmpty ? null : descriptionCtr.text.trim(),
         mealDate: mealDate,
       );
 
       if (!mounted) return;
-      _showSuccessSheet(context);
+      showCaregiverHealthSuccessSheet(context: context);
     } catch (e) {
       if (!mounted) return;
-
-      _showStyledSnackBar(
+      showCaregiverFormSnackBar(
+        context: context,
         message: e.toString().replaceFirst('Exception: ', ''),
       );
     } finally {
-      if (mounted) {
-        setState(() => isSaving = false);
-      }
+      if (mounted) setState(() => isSaving = false);
     }
+  }
+
+  Widget _input({
+    required TextEditingController controller,
+    required String hint,
+    TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
+      enabled: !isSaving,
+      decoration: patientFormInputDecoration(hint: hint),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.primaryBlue,
-        foregroundColor: Colors.white,
-        centerTitle: true,
-        elevation: 0,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.only(
-            bottomLeft: Radius.circular(24),
-            bottomRight: Radius.circular(24),
-          ),
-        ),
-        title: const Text(
-          'Tambah Data',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+      body: SafeArea(
+        top: false,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _patientCard(),
-            const SizedBox(height: 18),
-            const Text(
-              'Pola Makan',
-              style: TextStyle(
-                color: AppColors.primaryBlue,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-              ),
+            PatientFormHeader(
+              title: 'Tambah Data Pola Makan',
+              disabled: isSaving,
             ),
-            const SizedBox(height: 14),
-
-            _label('Tanggal dan waktu*'),
-            Row(
-              children: [
-                Expanded(
-                  child: _dateTimeBox(
-                    text: _formatDate(selectedDate),
-                    icon: Icons.calendar_today_outlined,
-                    onTap: _pickDate,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _dateTimeBox(
-                    text: _formatTime(selectedTime),
-                    icon: Icons.access_time,
-                    onTap: _pickTime,
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 14),
-
-            _label('Tipe makan*'),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: List.generate(mealTypes.length, (index) {
-                final selected = selectedMealType == index;
-
-                return GestureDetector(
-                  onTap: () => setState(() => selectedMealType = index),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 9,
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CaregiverPatientFormCard(
+                      initial: widget.patientInitial,
+                      name: widget.patientName,
+                      info: widget.patientInfo,
                     ),
-                    decoration: BoxDecoration(
-                      color: selected ? AppColors.primaryBlue : AppColors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: selected
-                            ? AppColors.primaryBlue
-                            : AppColors.light1,
-                      ),
-                    ),
-                    child: Text(
-                      mealTypes[index],
-                      style: TextStyle(
-                        color: selected ? Colors.white : AppColors.primaryBlue,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                );
-              }),
-            ),
-
-            const SizedBox(height: 14),
-
-            _label('Estimasi karbohidrat (gram)*'),
-            _input(
-              hint: 'Masukkan estimasi karbohidrat',
-              controller: carbController,
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-              ],
-            ),
-
-            const SizedBox(height: 14),
-
-            _label('Estimasi kalori'),
-            _input(
-              hint: 'Opsional, contoh: 450',
-              controller: caloriesController,
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-              ],
-            ),
-
-            const SizedBox(height: 14),
-
-            _label('Deskripsi makanan*'),
-            _input(
-              hint: 'Contoh: Nasi putih, ayam goreng, sayur bayam',
-              controller: foodController,
-              maxLines: 3,
-            ),
-
-            const SizedBox(height: 24),
-
-            SizedBox(
-              width: double.infinity,
-              height: 46,
-              child: ElevatedButton(
-                onPressed: isValid && !isSaving ? _saveData : null,
-                style: AppButtonStyles.primary,
-                child: isSaving
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
+                    const SizedBox(height: 18),
+                    const PatientFormSectionTitle('Pola Makan'),
+                    const PatientFormLabel('Tanggal dan waktu*'),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: PatientDateTimeBox(
+                            text: dateText,
+                            icon: Icons.calendar_today_outlined,
+                            onTap: _pickDate,
+                            disabled: isSaving,
+                          ),
                         ),
-                      )
-                    : const Text('Simpan'),
-              ),
-            ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: PatientDateTimeBox(
+                            text: timeText,
+                            icon: Icons.access_time,
+                            onTap: _pickTime,
+                            disabled: isSaving,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const PatientFormLabel('Tipe makan*'),
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: mealTypes.length,
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 4,
+                        mainAxisSpacing: 8,
+                        crossAxisSpacing: 8,
+                        childAspectRatio: 0.95,
+                      ),
+                      itemBuilder: (context, index) {
+                        final item = mealTypes[index];
+                        final title = item[0] as String;
+                        final icon = item[1] as IconData;
 
-            const SizedBox(height: 12),
-
-            Center(
-              child: TextButton(
-                onPressed: isSaving ? null : () => Navigator.pop(context),
-                child: const Text(
-                  'Batal',
-                  style: TextStyle(color: AppColors.primaryBlue),
+                        return PatientMealTypeCard(
+                          text: title,
+                          icon: icon,
+                          selected: selectedMealType == title,
+                          onTap: isSaving
+                              ? null
+                              : () => setState(() => selectedMealType = title),
+                        );
+                      },
+                    ),
+                    const PatientFormLabel('Estimasi karbohidrat (gram)'),
+                    _input(
+                      controller: carbCtr,
+                      hint: 'Masukkan estimasi karbohidrat',
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                      ],
+                    ),
+                    const PatientFormLabel('Estimasi kalori (kkal)'),
+                    _input(
+                      controller: calorieCtr,
+                      hint: 'Masukkan estimasi kalori',
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                      ],
+                    ),
+                    const PatientFormLabel('Deskripsi makanan'),
+                    _input(
+                      controller: descriptionCtr,
+                      hint: 'Tulis makanan yang dikonsumsi',
+                    ),
+                    const SizedBox(height: 26),
+                    PatientFormSubmitButton(
+                      label: 'Simpan',
+                      enabled: isValid,
+                      isSaving: isSaving,
+                      onPressed: _save,
+                    ),
+                    PatientFormCancelButton(disabled: isSaving),
+                  ],
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _patientCard() {
-    return Container(
-      padding: const EdgeInsets.all(13),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.light1),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundColor: AppColors.lightBlue,
-            child: Text(
-              widget.patientInitial,
-              style: const TextStyle(
-                color: AppColors.primaryBlue,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.patientName,
-                  style: const TextStyle(
-                    color: AppColors.dark1,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  widget.patientInfo,
-                  style: const TextStyle(color: AppColors.dark2, fontSize: 11),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _label(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 7),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: AppColors.primaryBlue,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  Widget _dateTimeBox({
-    required String text,
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      child: Container(
-        height: 48,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: AppColors.light1),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: AppColors.primaryBlue, size: 17),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                text,
-                style: const TextStyle(
-                  color: AppColors.dark1,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _input({
-    required String hint,
-    required TextEditingController controller,
-    TextInputType? keyboardType,
-    int maxLines = 1,
-    List<TextInputFormatter>? inputFormatters,
-  }) {
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      maxLines: maxLines,
-      inputFormatters: inputFormatters,
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.dark3, fontSize: 12),
-        filled: true,
-        fillColor: AppColors.white,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 13,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: const BorderSide(color: AppColors.light1),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: const BorderSide(color: AppColors.primaryBlue),
-        ),
-      ),
-    );
-  }
-
-  void _showSuccessSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isDismissible: false,
-      enableDrag: false,
-      builder: (sheetContext) {
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircleAvatar(
-                radius: 36,
-                backgroundColor: Color(0xFFEAFBF3),
-                child: Icon(Icons.check, color: Color(0xFF10C878), size: 36),
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'Data berhasil disimpan',
-                style: TextStyle(
-                  color: AppColors.primaryBlue,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Data menunggu konfirmasi pasien sebelum masuk ke riwayat kesehatan.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.dark2, fontSize: 13),
-              ),
-              const SizedBox(height: 22),
-              SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(sheetContext);
-                    Navigator.pop(context);
-                  },
-                  style: AppButtonStyles.primary,
-                  child: const Text('Kembali'),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _showStyledSnackBar({required String message}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: AppColors.red,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        content: Row(
-          children: [
-            const Icon(Icons.info_outline, color: Colors.white),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(message, style: const TextStyle(color: Colors.white)),
             ),
           ],
         ),

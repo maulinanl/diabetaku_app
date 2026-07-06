@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
-import 'package:diabetaku_app/core/theme/app_button_styles.dart';
+import '../widgets/patient_health_form_widgets.dart';
 
 class PatientMedicationFormPage extends StatefulWidget {
   const PatientMedicationFormPage({super.key});
@@ -30,7 +30,22 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
         .toSet()
         .toList();
 
-    result.sort();
+    const order = ['Pagi', 'Siang', 'Sore', 'Malam', 'Sebelum Tidur'];
+
+    result.sort((a, b) {
+      final aIndex = order.indexOf(a);
+      final bIndex = order.indexOf(b);
+
+      if (aIndex != -1 && bIndex != -1) {
+        return aIndex.compareTo(bIndex);
+      }
+
+      if (aIndex != -1) return -1;
+      if (bIndex != -1) return 1;
+
+      return a.compareTo(b);
+    });
+
     return ['Semua', ...result];
   }
 
@@ -106,7 +121,10 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
 
   void _toggleMedicine(int index, bool? value) {
     if (prescriptions[index]['already_saved'] == true) {
-      _showSnackBar('Data obat ini sudah dicatat hari ini');
+      showPatientFormSnackBar(
+        context: context,
+        message: 'Data obat ini sudah dicatat hari ini',
+      );
       return;
     }
 
@@ -125,7 +143,10 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
     }).toList();
 
     if (checkedMedicines.isEmpty) {
-      _showSnackBar('Pilih minimal satu obat yang belum dicatat');
+      showPatientFormSnackBar(
+        context: context,
+        message: 'Pilih minimal satu obat yang belum dicatat',
+      );
       return;
     }
 
@@ -162,10 +183,17 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
         }
       });
 
-      _showSuccessSheet(now);
+      showPatientHealthSuccessSheet(
+        context: context,
+        title: 'Kepatuhan obat tersimpan',
+        message: 'Checklist obat yang sudah diminum berhasil disimpan.',
+      );
     } catch (e) {
       if (!mounted) return;
-      _showSnackBar(e.toString().replaceFirst('Exception: ', ''));
+      showPatientFormSnackBar(
+        context: context,
+        message: e.toString().replaceFirst('Exception: ', ''),
+      );
     } finally {
       if (mounted) {
         setState(() => isSaving = false);
@@ -185,112 +213,102 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
         top: false,
         child: Column(
           children: [
-            _header(context),
+            PatientFormHeader(
+              title: 'Tambah Data Obat',
+              disabled: isSaving,
+            ),
             Expanded(
               child: isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : errorMessage != null
-                  ? _errorState()
-                  : prescriptions.isEmpty
-                  ? _noPrescriptionState()
-                  : SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _sectionTitle('Kepatuhan Obat'),
-                          const SizedBox(height: 6),
-                          const Text(
-                            'Checklist obat yang sudah diminum sesuai resep aktif dari dokter.',
-                            style: TextStyle(
-                              color: AppColors.dark2,
-                              fontSize: 12,
-                              height: 1.45,
-                            ),
-                          ),
-                          _label('Waktu minum*'),
-                          _scheduleTabs(),
-                          _label('Daftar obat dari resep dokter*'),
-                          if (filteredPrescriptions.isEmpty)
-                            _emptyPrescription()
-                          else
-                            Column(
-                              children: filteredPrescriptions.map((entry) {
-                                final index = entry.key;
-                                final item = entry.value;
-
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
-                                  child: _medicineCard(
-                                    index: index,
-                                    medicine:
-                                        item['medication_name']?.toString() ??
-                                        '-',
-                                    sessionName:
-                                        item['session_name']?.toString() ?? '-',
-                                    dosage: item['dosage']?.toString() ?? '-',
-                                    form: item['form']?.toString() ?? '-',
-                                    mealRule:
-                                        item['meal_rule']?.toString() ?? '-',
-                                    notes: item['notes']?.toString() ?? '-',
-                                    dosePerSession:
-                                        item['dose_per_session']?.toString() ??
-                                        '-',
-                                    reminderTime: _formatTime(
-                                      item['reminder_time'] ??
-                                          item['default_reminder_time'],
-                                    ),
-                                    checked: item['checked'] == true,
-                                    alreadySaved: item['already_saved'] == true,
+                      ? _errorState()
+                      : prescriptions.isEmpty
+                          ? _noPrescriptionState()
+                          : SingleChildScrollView(
+                              padding:
+                                  const EdgeInsets.fromLTRB(20, 18, 20, 28),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const PatientFormSectionTitle(
+                                    'Kepatuhan Obat',
                                   ),
-                                );
-                              }).toList(),
-                            ),
-                          _label('Catatan (opsional)'),
-                          _input(
-                            controller: noteCtr,
-                            hint: 'Contoh: obat diminum setelah makan',
-                          ),
-                          const SizedBox(height: 26),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 48,
-                            child: ElevatedButton(
-                              onPressed: hasUnsavedCheckedMedicine && !isSaving
-                                  ? _save
-                                  : null,
-                              style: AppButtonStyles.primary,
-                              child: isSaving
-                                  ? const SizedBox(
-                                      width: 22,
-                                      height: 22,
-                                      child: CircularProgressIndicator(
-                                        color: Colors.white,
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : const Text(
-                                      'Simpan Checklist',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                  const SizedBox(height: 6),
+                                  const Text(
+                                    'Checklist obat yang sudah diminum sesuai resep aktif dari dokter.',
+                                    style: TextStyle(
+                                      color: AppColors.dark2,
+                                      fontSize: 12,
+                                      height: 1.45,
                                     ),
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: isSaving
-                                ? null
-                                : () => Navigator.pop(context),
-                            child: const Center(
-                              child: Text(
-                                'Batal',
-                                style: TextStyle(color: AppColors.primaryBlue),
+                                  ),
+                                  const PatientFormLabel('Waktu minum*'),
+                                  _scheduleTabs(),
+                                  const PatientFormLabel(
+                                    'Daftar obat dari resep dokter*',
+                                  ),
+                                  if (filteredPrescriptions.isEmpty)
+                                    _emptyPrescription()
+                                  else
+                                    Column(
+                                      children:
+                                          filteredPrescriptions.map((entry) {
+                                        final index = entry.key;
+                                        final item = entry.value;
+
+                                        return Padding(
+                                          padding:
+                                              const EdgeInsets.only(bottom: 12),
+                                          child: _medicineCard(
+                                            index: index,
+                                            medicine: item['medication_name']
+                                                    ?.toString() ??
+                                                '-',
+                                            sessionName: item['session_name']
+                                                    ?.toString() ??
+                                                '-',
+                                            dosage:
+                                                item['dosage']?.toString() ??
+                                                    '-',
+                                            form: item['form']?.toString() ??
+                                                '-',
+                                            mealRule: item['meal_rule']
+                                                    ?.toString() ??
+                                                '-',
+                                            notes:
+                                                item['notes']?.toString() ??
+                                                    '-',
+                                            dosePerSession:
+                                                item['dose_per_session']
+                                                        ?.toString() ??
+                                                    '-',
+                                            reminderTime: _formatTime(
+                                              item['reminder_time'] ??
+                                                  item['default_reminder_time'],
+                                            ),
+                                            checked: item['checked'] == true,
+                                            alreadySaved:
+                                                item['already_saved'] == true,
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  const PatientFormLabel('Catatan (opsional)'),
+                                  _input(
+                                    controller: noteCtr,
+                                    hint: 'Contoh: obat diminum setelah makan',
+                                  ),
+                                  const SizedBox(height: 26),
+                                  PatientFormSubmitButton(
+                                    label: 'Simpan Checklist',
+                                    enabled: hasUnsavedCheckedMedicine,
+                                    isSaving: isSaving,
+                                    onPressed: _save,
+                                  ),
+                                  PatientFormCancelButton(disabled: isSaving),
+                                ],
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
             ),
           ],
         ),
@@ -299,41 +317,34 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
   }
 
   Widget _scheduleTabs() {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+    return Row(
       children: schedules.map((item) {
-        final selected = selectedSchedule == item;
-
-        return GestureDetector(
-          onTap: isSaving
-              ? null
-              : () {
-                  setState(() {
-                    selectedSchedule = item;
-                  });
-                },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-            decoration: BoxDecoration(
-              color: selected ? AppColors.primaryBlue : AppColors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: selected ? AppColors.primaryBlue : AppColors.light1,
-              ),
-            ),
-            child: Text(
-              item,
-              style: TextStyle(
-                color: selected ? Colors.white : AppColors.primaryBlue,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
+        return Expanded(
+          flex: _scheduleFlex(item),
+          child: Padding(
+            padding: EdgeInsets.only(right: item == schedules.last ? 0 : 8),
+            child: PatientChoiceChip(
+              text: item,
+              selected: selectedSchedule == item,
+              width: double.infinity,
+              onTap: isSaving
+                  ? null
+                  : () {
+                      setState(() {
+                        selectedSchedule = item;
+                      });
+                    },
             ),
           ),
         );
       }).toList(),
     );
+  }
+
+  int _scheduleFlex(String item) {
+    if (item == 'Sebelum Tidur') return 8;
+    if (item == 'Semua') return 5;
+    return item.length <= 5 ? 4 : 5;
   }
 
   Widget _medicineCard({
@@ -349,6 +360,8 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
     required bool checked,
     required bool alreadySaved,
   }) {
+    final selected = checked || alreadySaved;
+
     return InkWell(
       onTap: isSaving || alreadySaved
           ? null
@@ -360,13 +373,11 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
           color: alreadySaved
               ? const Color(0xFFEAFBF3)
               : checked
-              ? AppColors.veryLightBlue
-              : AppColors.white,
+                  ? AppColors.veryLightBlue
+                  : AppColors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: alreadySaved || checked
-                ? AppColors.primaryBlue
-                : AppColors.light1,
+            color: selected ? AppColors.primaryBlue : AppColors.light1,
           ),
         ),
         child: Row(
@@ -381,9 +392,8 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
                 : Checkbox(
                     value: checked,
                     activeColor: AppColors.primaryBlue,
-                    onChanged: isSaving
-                        ? null
-                        : (value) => _toggleMedicine(index, value),
+                    onChanged:
+                        isSaving ? null : (value) => _toggleMedicine(index, value),
                   ),
             const SizedBox(width: 8),
             Expanded(
@@ -472,7 +482,11 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
     return const Center(
       child: Padding(
         padding: EdgeInsets.all(24),
-        child: Text('Belum ada resep aktif'),
+        child: Text(
+          'Belum ada resep aktif',
+          style: TextStyle(color: AppColors.dark2, fontSize: 13),
+          textAlign: TextAlign.center,
+        ),
       ),
     );
   }
@@ -489,6 +503,7 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
       child: const Text(
         'Tidak ada obat pada jadwal ini',
         textAlign: TextAlign.center,
+        style: TextStyle(color: AppColors.dark2, fontSize: 13),
       ),
     );
   }
@@ -497,67 +512,10 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
-        child: Text(errorMessage!, textAlign: TextAlign.center),
-      ),
-    );
-  }
-
-  Widget _header(BuildContext context) {
-    final topPad = MediaQuery.of(context).padding.top;
-
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.fromLTRB(12, topPad + 12, 20, 24),
-      decoration: const BoxDecoration(
-        color: AppColors.primaryBlue,
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(24),
-          bottomRight: Radius.circular(24),
-        ),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: isSaving ? null : () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-          ),
-          const Expanded(
-            child: Text(
-              'Tambah Data Obat',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          const SizedBox(width: 48),
-        ],
-      ),
-    );
-  }
-
-  Widget _sectionTitle(String text) {
-    return Text(
-      text,
-      style: const TextStyle(
-        color: AppColors.primaryBlue,
-        fontSize: 14,
-        fontWeight: FontWeight.w700,
-      ),
-    );
-  }
-
-  Widget _label(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 16, bottom: 8),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: AppColors.primaryBlue,
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
+        child: Text(
+          errorMessage!,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: AppColors.dark2, fontSize: 13),
         ),
       ),
     );
@@ -571,86 +529,7 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
       controller: controller,
       enabled: !isSaving,
       maxLines: 3,
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.dark4, fontSize: 13),
-        filled: true,
-        fillColor: AppColors.white,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 15,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: const BorderSide(color: AppColors.light1),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: const BorderSide(color: AppColors.primaryBlue),
-        ),
-      ),
-    );
-  }
-
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: AppColors.red,
-        behavior: SnackBarBehavior.floating,
-        content: Text(message),
-      ),
-    );
-  }
-
-  void _showSuccessSheet(DateTime now) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircleAvatar(
-                radius: 36,
-                backgroundColor: Color(0xFFEAFBF3),
-                child: Icon(
-                  Icons.check,
-                  color: AppColors.primaryBlue,
-                  size: 36,
-                ),
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'Kepatuhan obat tersimpan',
-                style: TextStyle(
-                  color: AppColors.primaryBlue,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 22),
-              SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(sheetContext);
-                    Navigator.pop(context, true);
-                  },
-                  style: AppButtonStyles.primary,
-                  child: const Text('Selesai'),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+      decoration: patientFormInputDecoration(hint: hint),
     );
   }
 

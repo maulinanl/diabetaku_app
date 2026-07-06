@@ -227,7 +227,7 @@ class _PatientAddDataPageState extends State<PatientAddDataPage> {
           crossAxisCount: 2,
           mainAxisSpacing: 14,
           crossAxisSpacing: 14,
-          childAspectRatio: 0.88,
+          childAspectRatio: 1.22,
         ),
         itemBuilder: (context, index) {
           final item = items[index];
@@ -235,7 +235,7 @@ class _PatientAddDataPageState extends State<PatientAddDataPage> {
           final status = todayStatus[key] ?? 'Belum Input';
 
           return InkWell(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
             onTap: () => _openForm(item['page'] as Widget),
             child: Container(
               padding: const EdgeInsets.all(14),
@@ -244,76 +244,53 @@ class _PatientAddDataPageState extends State<PatientAddDataPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    width: 38,
-                    height: 38,
+                    width: 34,
+                    height: 34,
                     decoration: BoxDecoration(
                       color: AppColors.veryLightBlue,
-                      borderRadius: BorderRadius.circular(9),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
                       item['icon'] as IconData,
                       color: AppColors.primaryBlue,
-                      size: 20,
+                      size: 18,
                     ),
                   ),
                   const SizedBox(height: 12),
                   Text(
                     item['title'].toString(),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: AppColors.dark1,
-                      fontSize: 14,
+                      fontSize: 13,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 5),
                   Text(
                     item['subtitle'].toString(),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: AppColors.dark2,
-                      fontSize: 12,
-                      height: 1.3,
+                      fontSize: 10,
                     ),
                   ),
                   const Spacer(),
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 9,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _statusBgColor(status),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: _statusTextColor(status)
-                                  .withValues(alpha: 0.18),
-                            ),
-                          ),
-                          child: Text(
-                            status,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: _statusTextColor(status),
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _statusBgColor(status),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      status,
+                      style: TextStyle(
+                        color: _statusTextColor(status),
+                        fontSize: 9,
+                        fontWeight: FontWeight.w600,
                       ),
-                      const Spacer(),
-                      const Icon(
-                        Icons.chevron_right,
-                        color: AppColors.dark3,
-                        size: 18,
-                      ),
-                    ],
+                    ),
                   ),
                 ],
               ),
@@ -380,7 +357,7 @@ class _PatientAddDataPageState extends State<PatientAddDataPage> {
   BoxDecoration _cardDecoration() {
     return BoxDecoration(
       color: AppColors.white,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(12),
       border: Border.all(color: AppColors.light1),
       boxShadow: [
         BoxShadow(

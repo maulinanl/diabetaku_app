@@ -343,7 +343,7 @@ class _PatientConnectionPageState extends State<PatientConnectionPage> {
                 ),
               ),
               child: Icon(
-                Icons.search,
+                Icons.person_add_alt_1_rounded,
                 size: 16,
                 color: isSearchMode ? Colors.white : AppColors.primaryBlue,
               ),
