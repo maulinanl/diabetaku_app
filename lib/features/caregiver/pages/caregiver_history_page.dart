@@ -84,6 +84,7 @@ class _CaregiverHistoryPageState extends State<CaregiverHistoryPage> {
 
       final loadedRecommendations = _groupRecommendations(
         List<Map<String, dynamic>>.from(results[1] as List),
+        patient: caregiverPatients.first,
       );
 
       if (!mounted) return;
@@ -126,6 +127,7 @@ class _CaregiverHistoryPageState extends State<CaregiverHistoryPage> {
 
       final loadedRecommendations = _groupRecommendations(
         List<Map<String, dynamic>>.from(results[1] as List),
+        patient: patients[index],
       );
 
       if (!mounted) return;
@@ -148,13 +150,38 @@ class _CaregiverHistoryPageState extends State<CaregiverHistoryPage> {
   }
 
   List<Map<String, dynamic>> _groupRecommendations(
-    List<Map<String, dynamic>> rawRecommendations,
-  ) {
+    List<Map<String, dynamic>> rawRecommendations, {
+    Map<String, dynamic>? patient,
+  }) {
     final Map<String, List<Map<String, dynamic>>> grouped = {};
+    final fallbackPatientName = patient == null ? '' : _patientName(patient);
+    final fallbackPatientInfo = patient == null ? '' : _patientInfo(patient);
+
+    bool hasUsableText(dynamic value) {
+      final text = value?.toString().trim() ?? '';
+      return text.isNotEmpty && text != '-' && text.toLowerCase() != 'null';
+    }
+
+    Map<String, dynamic> withPatientInfo(Map<String, dynamic> source) {
+      final enriched = Map<String, dynamic>.from(source);
+
+      if (!hasUsableText(enriched['patient_name'])) {
+        enriched['patient_name'] = fallbackPatientName;
+      }
+      if (!hasUsableText(enriched['patient_full_name'])) {
+        enriched['patient_full_name'] = fallbackPatientName;
+      }
+      if (!hasUsableText(enriched['patient_info'])) {
+        enriched['patient_info'] = fallbackPatientInfo;
+      }
+
+      return enriched;
+    }
 
     for (final item in rawRecommendations) {
-      final clinicalNoteId = item['clinical_note_id']?.toString().trim();
-      final recommendationId = item['recommendation_id']?.toString().trim();
+      final enrichedItem = withPatientInfo(item);
+      final clinicalNoteId = enrichedItem['clinical_note_id']?.toString().trim();
+      final recommendationId = enrichedItem['recommendation_id']?.toString().trim();
 
       final key = clinicalNoteId != null && clinicalNoteId.isNotEmpty
           ? 'note_$clinicalNoteId'
@@ -163,7 +190,7 @@ class _CaregiverHistoryPageState extends State<CaregiverHistoryPage> {
               : 'item_${grouped.length}';
 
       grouped.putIfAbsent(key, () => []);
-      grouped[key]!.add(Map<String, dynamic>.from(item));
+      grouped[key]!.add(enrichedItem);
     }
 
     final result = grouped.values.map((items) {
@@ -184,6 +211,15 @@ class _CaregiverHistoryPageState extends State<CaregiverHistoryPage> {
 
       return <String, dynamic>{
         ...first,
+        'patient_name': hasUsableText(first['patient_name'])
+            ? first['patient_name']
+            : fallbackPatientName,
+        'patient_full_name': hasUsableText(first['patient_full_name'])
+            ? first['patient_full_name']
+            : fallbackPatientName,
+        'patient_info': hasUsableText(first['patient_info'])
+            ? first['patient_info']
+            : fallbackPatientInfo,
         'items': items,
         'category_summary': categories.isEmpty
             ? 'Rekomendasi'
