@@ -38,14 +38,23 @@ class _DoctorPrescriptionDetailPageState
       int.tryParse(prescription['doctor_id']?.toString() ?? '') ?? 0;
 
   String get medicine => prescription['medication_name']?.toString() ?? '-';
+  String get description =>
+      prescription['description']?.toString() ??
+      prescription['medication_description']?.toString() ??
+      '';
   String get dose => prescription['dosage']?.toString() ?? '-';
   String get form => prescription['form']?.toString() ?? '-';
-  String get indication => prescription['indication']?.toString() ?? '';
   String get rule => prescription['meal_rule']?.toString() ?? '-';
   String get note => prescription['notes']?.toString() ?? '';
   String get doctor => prescription['doctor_name']?.toString() ?? '-';
-  String get date => prescription['start_date'] ?? prescription['valid_from']?.toString() ?? '-';
-  String get validUntil => prescription['end_date'] ?? prescription['valid_until']?.toString() ?? '-';
+  String get date =>
+      prescription['start_date'] ??
+      prescription['valid_from']?.toString() ??
+      '-';
+  String get validUntil =>
+      prescription['end_date'] ??
+      prescription['valid_until']?.toString() ??
+      '-';
   String get status => prescription['status']?.toString() ?? 'Aktif';
 
   bool get isMine => currentDoctorId != null && currentDoctorId == doctorId;
@@ -57,20 +66,23 @@ class _DoctorPrescriptionDetailPageState
   String get scheduleText {
     if (schedules.isEmpty) return '-';
 
-    return schedules.map((item) {
-      final session = item['session_name']?.toString() ?? '-';
-      final dosePerSession = item['dose_per_session']?.toString() ?? '-';
-      final reminder = _formatTime(
-        item['reminder_time'] ?? item['default_reminder_time'],
-      );
+    return schedules
+        .map((item) {
+          final session = item['session_name']?.toString() ?? '-';
+          final dosePerSession = item['dose_per_session']?.toString() ?? '-';
+          final reminder = _formatTime(
+            item['reminder_time'] ?? item['default_reminder_time'],
+          );
 
-      return '$session ($dosePerSession, $reminder)';
-    }).join(', ');
+          return '$session ($dosePerSession, $reminder)';
+        })
+        .join(', ');
   }
 
   bool get stoppedByDisconnectedRelation {
-    final text = '${prescription['notes'] ?? ''} ${prescription['reason'] ?? ''}'
-        .toLowerCase();
+    final text =
+        '${prescription['notes'] ?? ''} ${prescription['reason'] ?? ''}'
+            .toLowerCase();
 
     return text.contains('relasi dokter-pasien terputus');
   }
@@ -179,8 +191,9 @@ class _DoctorPrescriptionDetailPageState
                             child: SizedBox(
                               height: 44,
                               child: OutlinedButton.icon(
-                                onPressed:
-                                    isSaving ? null : _showStopConfirmation,
+                                onPressed: isSaving
+                                    ? null
+                                    : _showStopConfirmation,
                                 icon: const Icon(Icons.block, size: 16),
                                 label: const Text('Hentikan'),
                                 style: AppButtonStyles.outlinedDanger,
@@ -308,9 +321,9 @@ class _DoctorPrescriptionDetailPageState
   Widget _detailCard() {
     final details = [
       ['Nama Obat', medicine],
+      ['Deskripsi Obat', description.trim().isEmpty ? '-' : description],
       ['Dosis', dose],
       ['Bentuk', form],
-      ['Indikasi', indication.isEmpty ? '-' : indication],
       ['Jadwal', scheduleText],
       ['Aturan Minum', rule],
       ['Dokter', doctor],

@@ -365,7 +365,9 @@ class ApiService {
     throw Exception(body['message'] ?? 'Gagal mengambil dashboard pasien');
   }
 
-  static Future<Map<String, dynamic>> getPatientOwnDashboard(int patientId) async {
+  static Future<Map<String, dynamic>> getPatientOwnDashboard(
+    int patientId,
+  ) async {
     final response = await http.get(
       Uri.parse('$baseUrl/patient/dashboard/$patientId'),
       headers: await _authHeaders(),
@@ -620,7 +622,9 @@ class ApiService {
       return List<Map<String, dynamic>>.from(data['data']);
     }
 
-    throw Exception(data['message'] ?? 'Gagal mengambil data pendamping pasien');
+    throw Exception(
+      data['message'] ?? 'Gagal mengambil data pendamping pasien',
+    );
   }
 
   static Future<List<Map<String, dynamic>>> getDoctorConnectionRequests(
@@ -758,30 +762,30 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> getDoctorPatientConnectionStatus({
-  required int patientId,
-}) async {
-  final prefs = await SharedPreferences.getInstance();
-  final doctorId = prefs.getInt('doctor_id');
+    required int patientId,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final doctorId = prefs.getInt('doctor_id');
 
-  if (doctorId == null) {
-    throw Exception('Doctor ID tidak ditemukan');
+    if (doctorId == null) {
+      throw Exception('Doctor ID tidak ditemukan');
+    }
+
+    final response = await http.get(
+      Uri.parse(
+        '$baseUrl/doctor/connections/status/$patientId?doctor_id=$doctorId',
+      ),
+      headers: await _authHeaders(),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(data['data']);
+    }
+
+    throw Exception(data['message'] ?? 'Gagal mengambil status koneksi pasien');
   }
-
-  final response = await http.get(
-    Uri.parse(
-      '$baseUrl/doctor/connections/status/$patientId?doctor_id=$doctorId',
-    ),
-    headers: await _authHeaders(),
-  );
-
-  final data = jsonDecode(response.body);
-
-  if (response.statusCode == 200) {
-    return Map<String, dynamic>.from(data['data']);
-  }
-
-  throw Exception(data['message'] ?? 'Gagal mengambil status koneksi pasien');
-}
 
   static Future<void> storeRecommendations({
     required int clinicalNoteId,
@@ -846,7 +850,7 @@ class ApiService {
 
     throw Exception(data['message'] ?? 'Gagal mengambil riwayat dokter');
   }
-  
+
   static Future<Map<String, dynamic>> getDoctorProfile(int doctorId) async {
     final response = await http.get(
       Uri.parse('$baseUrl/doctor/profile/$doctorId'),
@@ -1533,7 +1537,9 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> getCaregiverProfile(int caregiverId) async {
+  static Future<Map<String, dynamic>> getCaregiverProfile(
+    int caregiverId,
+  ) async {
     final response = await http.get(
       Uri.parse('$baseUrl/caregiver/profile/$caregiverId'),
       headers: await _authHeaders(),
@@ -1615,9 +1621,9 @@ class ApiService {
 
     throw Exception(data['message'] ?? 'Gagal mengambil rekomendasi pasien');
   }
-  static Future<List<Map<String, dynamic>>> getCaregiverPatientActivePrescriptions(
-    int patientId,
-  ) async {
+
+  static Future<List<Map<String, dynamic>>>
+  getCaregiverPatientActivePrescriptions(int patientId) async {
     final response = await http.get(
       Uri.parse('$baseUrl/caregiver/patients/$patientId/prescriptions/active'),
       headers: await _authHeaders(),
@@ -1631,7 +1637,6 @@ class ApiService {
 
     throw Exception(data['message'] ?? 'Gagal mengambil resep aktif pasien');
   }
-
 
   static Future<void> storeCaregiverGlucose({
     required int patientId,
@@ -1970,7 +1975,6 @@ class ApiService {
     required int medicationId,
     required String dosage,
     required String form,
-    String? indication,
     String? mealRule,
     String? notes,
     required String validFrom,
@@ -1992,7 +1996,6 @@ class ApiService {
         'medication_id': medicationId,
         'dosage': dosage,
         'form': form,
-        'indication': indication,
         'meal_rule': mealRule,
         'notes': notes,
         'start_date': validFrom,
@@ -2017,7 +2020,6 @@ class ApiService {
     required int medicationId,
     required String dosage,
     required String form,
-    String? indication,
     String? mealRule,
     String? notes,
     required String validFrom,
@@ -2033,7 +2035,6 @@ class ApiService {
         'medication_id': medicationId,
         'dosage': dosage,
         'form': form,
-        'indication': indication,
         'meal_rule': mealRule,
         'notes': notes,
         'start_date': validFrom,
@@ -2099,7 +2100,9 @@ class ApiService {
     throw Exception(data['message'] ?? 'Gagal mengambil detail pasien');
   }
 
-  static Future<void> disconnectCaregiverPatient({required int patientId}) async {
+  static Future<void> disconnectCaregiverPatient({
+    required int patientId,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     final caregiverId = prefs.getInt('caregiver_id');
 

@@ -100,8 +100,9 @@ class _DoctorPrescriptionFormPageState
         if (widget.isEdit && initial != null) {
           _fillInitialPrescription(loadedMealRules);
         } else {
-          selectedMealRule =
-              loadedMealRules.isNotEmpty ? loadedMealRules.first : null;
+          selectedMealRule = loadedMealRules.isNotEmpty
+              ? loadedMealRules.first
+              : null;
         }
 
         isLoading = false;
@@ -123,7 +124,9 @@ class _DoctorPrescriptionFormPageState
 
     medicineCtr.text = item['medication_name']?.toString() ?? '';
     selectedMedicationDescription =
-        item['description']?.toString() ?? item['indication']?.toString() ?? '';
+        item['description']?.toString() ??
+        item['medication_description']?.toString() ??
+        '';
 
     dosageCtr.text = item['dosage']?.toString() ?? '';
     selectedForm = item['form']?.toString().isNotEmpty == true
@@ -134,13 +137,15 @@ class _DoctorPrescriptionFormPageState
     selectedMealRule = rule != null && rule.trim().isNotEmpty
         ? rule
         : loadedMealRules.isNotEmpty
-            ? loadedMealRules.first
-            : null;
+        ? loadedMealRules.first
+        : null;
 
     notesCtr.text = item['notes']?.toString() ?? '';
 
-    validFrom = _parseDate(item['start_date'] ?? item['valid_from']) ?? DateTime.now();
-    validUntil = _parseDate(item['end_date'] ?? item['valid_until']) ??
+    validFrom =
+        _parseDate(item['start_date'] ?? item['valid_from']) ?? DateTime.now();
+    validUntil =
+        _parseDate(item['end_date'] ?? item['valid_until']) ??
         DateTime.now().add(const Duration(days: 30));
 
     selectedSessions.clear();
@@ -227,9 +232,7 @@ class _DoctorPrescriptionFormPageState
     }
 
     final schedulesPayload = selectedSessions.values.map((item) {
-      return {
-        'session_id': item['session_id'],
-      };
+      return {'session_id': item['session_id']};
     }).toList();
 
     setState(() => isSaving = true);
@@ -243,9 +246,6 @@ class _DoctorPrescriptionFormPageState
           medicationId: selectedMedicationId!,
           dosage: dosageCtr.text.trim(),
           form: selectedForm,
-          indication: selectedMedicationDescription.trim().isEmpty
-              ? null
-              : selectedMedicationDescription.trim(),
           mealRule: selectedMealRule,
           notes: notesCtr.text.trim().isEmpty ? null : notesCtr.text.trim(),
           validFrom: _dateOnly(validFrom),
@@ -258,9 +258,6 @@ class _DoctorPrescriptionFormPageState
           medicationId: selectedMedicationId!,
           dosage: dosageCtr.text.trim(),
           form: selectedForm,
-          indication: selectedMedicationDescription.trim().isEmpty
-              ? null
-              : selectedMedicationDescription.trim(),
           mealRule: selectedMealRule,
           notes: notesCtr.text.trim().isEmpty ? null : notesCtr.text.trim(),
           validFrom: _dateOnly(validFrom),
@@ -320,10 +317,7 @@ class _DoctorPrescriptionFormPageState
 
                     const SizedBox(height: 14),
                     _label('Dosis*'),
-                    _input(
-                      controller: dosageCtr,
-                      hint: 'Contoh: 500 mg',
-                    ),
+                    _input(controller: dosageCtr, hint: 'Contoh: 500 mg'),
 
                     const SizedBox(height: 14),
                     _label('Bentuk Sediaan*'),
@@ -347,16 +341,16 @@ class _DoctorPrescriptionFormPageState
                       value: selectedMealRule ?? 'Pilih aturan minum',
                       onTap: mealRules.isEmpty
                           ? () => _showSnackBar(
-                                'Data aturan minum belum tersedia',
-                              )
+                              'Data aturan minum belum tersedia',
+                            )
                           : () => _showOptionSheet(
-                                title: 'Pilih Aturan Minum',
-                                options: mealRules,
-                                selected: selectedMealRule ?? '',
-                                onSelected: (value) {
-                                  setState(() => selectedMealRule = value);
-                                },
-                              ),
+                              title: 'Pilih Aturan Minum',
+                              options: mealRules,
+                              selected: selectedMealRule ?? '',
+                              onSelected: (value) {
+                                setState(() => selectedMealRule = value);
+                              },
+                            ),
                     ),
 
                     const SizedBox(height: 14),
@@ -639,7 +633,9 @@ class _DoctorPrescriptionFormPageState
         final selected =
             sessionId != null && selectedSessions.containsKey(sessionId);
 
-        final selectedItem = sessionId == null ? null : selectedSessions[sessionId];
+        final selectedItem = sessionId == null
+            ? null
+            : selectedSessions[sessionId];
         final reminder = _normalizeTime(
           selectedItem?['default_reminder_time'] ?? defaultTime,
         );
@@ -839,17 +835,11 @@ class _DoctorPrescriptionFormPageState
       maxLines: maxLines,
       enabled: !isSaving,
       onChanged: onChanged,
-      decoration: _inputDecoration(
-        hint: hint,
-        suffixIcon: suffixIcon,
-      ),
+      decoration: _inputDecoration(hint: hint, suffixIcon: suffixIcon),
     );
   }
 
-  Widget _optionBox({
-    required String value,
-    required VoidCallback onTap,
-  }) {
+  Widget _optionBox({required String value, required VoidCallback onTap}) {
     return InkWell(
       onTap: isSaving ? null : onTap,
       borderRadius: BorderRadius.circular(10),
@@ -866,10 +856,7 @@ class _DoctorPrescriptionFormPageState
             Expanded(
               child: Text(
                 value,
-                style: const TextStyle(
-                  color: AppColors.dark1,
-                  fontSize: 12,
-                ),
+                style: const TextStyle(color: AppColors.dark1, fontSize: 12),
               ),
             ),
             const Icon(
