@@ -154,60 +154,66 @@ class _PatientDataValidationPageState extends State<PatientDataValidationPage> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (sheetContext) {
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 44,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.light1,
-                  borderRadius: BorderRadius.circular(20),
+        return SafeArea(
+          top: false,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 26),
+            decoration: const BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.light1,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              CircleAvatar(
-                radius: 36,
-                backgroundColor: bg,
-                child: Icon(icon, color: color, size: 36),
-              ),
-              const SizedBox(height: 18),
-              Text(
-                title,
-                style: const TextStyle(
-                  color: AppColors.primaryBlue,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+                const SizedBox(height: 24),
+                CircleAvatar(
+                  radius: 36,
+                  backgroundColor: bg,
+                  child: Icon(icon, color: color, size: 36),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppColors.dark2,
-                  fontSize: 13,
-                  height: 1.4,
+                const SizedBox(height: 18),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.primaryBlue,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 22),
-              SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(sheetContext),
-                  style: AppButtonStyles.primary,
-                  child: const Text('Mengerti'),
+                const SizedBox(height: 8),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.dark2,
+                    fontSize: 13,
+                    height: 1.45,
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 22),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(sheetContext),
+                    style: AppButtonStyles.primary,
+                    child: const Text('Mengerti'),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },

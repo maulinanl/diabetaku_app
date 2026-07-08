@@ -292,6 +292,61 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
     return 'created_at';
   }
 
+  DateTime _dateOnly(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
+  }
+
+  DateTime? _readDateValue(dynamic value) {
+    if (value == null) return null;
+    final parsed = DateTime.tryParse(value.toString());
+    if (parsed == null) return null;
+    return _dateOnly(parsed);
+  }
+
+  DateTime? _extractDateFromMap(dynamic data, List<String> keys) {
+    if (data is! Map) return null;
+
+    for (final key in keys) {
+      final date = _readDateValue(data[key]);
+      if (date != null) return date;
+    }
+
+    for (final nestedKey in ['data', 'profile', 'patient', 'user']) {
+      final nested = data[nestedKey];
+      if (nested is Map) {
+        final date = _extractDateFromMap(nested, keys);
+        if (date != null) return date;
+      }
+    }
+
+    return null;
+  }
+
+  DateTime? get _selectedPatientRegisteredDate {
+    if (patients.isEmpty) return null;
+
+    final selectedPatient = patients[selectedPatientIndex];
+    return _extractDateFromMap(selectedPatient, const [
+          'registered_at',
+          'patient_registered_at',
+          'user_created_at',
+          'patient_created_at',
+          'created_at',
+          'registeredAt',
+        ]) ??
+        _extractDateFromMap(dashboardData?['profile'], const [
+          'registered_at',
+          'patient_registered_at',
+          'user_created_at',
+          'patient_created_at',
+          'created_at',
+          'registeredAt',
+        ]) ??
+        _extractDateFromMap(selectedPatient, const [
+          'connected_at',
+        ]);
+  }
+
   Widget _dailyChecklistCard() {
     final checks = healthChecklistTypes.map((item) {
       final type = item[2] as String;
@@ -437,11 +492,35 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
       }
     }
 
-    return result.map((key, value) {
-      if (value.length >= 4) return MapEntry(key, 'lengkap');
-      if (value.isNotEmpty) return MapEntry(key, 'sebagian');
-      return MapEntry(key, 'tidak');
+    final statusMap = <String, String>{};
+
+    result.forEach((key, value) {
+      if (value.length >= 4) {
+        statusMap[key] = 'lengkap';
+      } else if (value.isNotEmpty) {
+        statusMap[key] = 'sebagian';
+      }
     });
+
+    final registeredDate = _selectedPatientRegisteredDate;
+    if (registeredDate != null) {
+      final today = _dateOnly(DateTime.now());
+      final lastPastDate = today.subtract(const Duration(days: 1));
+      final monthStart = DateTime(currentMonth.year, currentMonth.month, 1);
+      final monthEnd = DateTime(currentMonth.year, currentMonth.month + 1, 0);
+
+      DateTime cursor = registeredDate.isAfter(monthStart)
+          ? registeredDate
+          : monthStart;
+      final endDate = monthEnd.isBefore(lastPastDate) ? monthEnd : lastPastDate;
+
+      while (!cursor.isAfter(endDate)) {
+        statusMap.putIfAbsent(_dateKey(cursor), () => 'tidak');
+        cursor = cursor.add(const Duration(days: 1));
+      }
+    }
+
+    return statusMap;
   }
 
   Widget _calendarCard() {
@@ -1179,49 +1258,115 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (sheetContext) {
-        return Container(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: List.generate(patients.length, (index) {
-              final patient = patients[index];
-              final name = _patientName(patient);
-              final selected = selectedPatientIndex == index;
-
-              return ListTile(
-                onTap: () async {
-                  Navigator.pop(sheetContext);
-                  await _loadSelectedPatientDashboard(index);
-                },
-                leading: CircleAvatar(
-                  backgroundColor: selected
-                      ? AppColors.primaryBlue
-                      : AppColors.lightBlue,
-                  child: Text(
-                    _initial(name),
-                    style: TextStyle(
-                      color: selected ? Colors.white : AppColors.primaryBlue,
-                      fontWeight: FontWeight.bold,
+        return SafeArea(
+          child: Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(sheetContext).size.height * 0.72,
+            ),
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.light1,
+                      borderRadius: BorderRadius.circular(20),
                     ),
                   ),
                 ),
-                title: Text(name),
-                subtitle: Text(
-                  '${_patientRelation(patient)} • ${_patientDm(patient)}',
+                const SizedBox(height: 18),
+                const Text(
+                  'Pilih pasien yang didampingi',
+                  style: TextStyle(
+                    color: AppColors.dark1,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                trailing: Icon(
-                  selected
-                      ? Icons.radio_button_checked
-                      : Icons.radio_button_unchecked,
-                  color: AppColors.primaryBlue,
+                const SizedBox(height: 12),
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: patients.length,
+                    itemBuilder: (context, index) {
+                      final patient = patients[index];
+                      final name = _patientName(patient);
+                      final selected = selectedPatientIndex == index;
+
+                      return InkWell(
+                        onTap: () async {
+                          Navigator.pop(sheetContext);
+                          await _loadSelectedPatientDashboard(index);
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 24,
+                                backgroundColor: selected
+                                    ? AppColors.primaryBlue
+                                    : AppColors.lightBlue,
+                                child: Text(
+                                  _initial(name),
+                                  style: TextStyle(
+                                    color: selected
+                                        ? Colors.white
+                                        : AppColors.primaryBlue,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      name,
+                                      style: const TextStyle(
+                                        color: AppColors.dark1,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      '${_patientRelation(patient)} • ${_patientDm(patient)}',
+                                      style: const TextStyle(
+                                        color: AppColors.dark2,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Icon(
+                                selected
+                                    ? Icons.radio_button_checked
+                                    : Icons.radio_button_unchecked,
+                                color: AppColors.primaryBlue,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 ),
-              );
-            }),
+              ],
+            ),
           ),
         );
       },

@@ -69,9 +69,11 @@ class _PatientValidationDetailPageState
     return '${date.day}/${date.month}/${date.year} • ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 
-
   void _confirmRespond(bool approve) {
     if (isProcessing) return;
+
+    final iconBg = approve ? const Color(0xFFEAFBF3) : AppColors.lightRed;
+    final iconColor = approve ? const Color(0xFF10C878) : AppColors.red;
 
     showModalBottomSheet(
       context: context,
@@ -79,70 +81,63 @@ class _PatientValidationDetailPageState
       isScrollControlled: true,
       builder: (sheetContext) {
         return SafeArea(
+          top: false,
           child: Container(
             width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(22, 18, 22, 24),
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 26),
             decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+              color: AppColors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Center(
-                  child: Container(
-                    width: 44,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.light1,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
+                Container(
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.light1,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                CircleAvatar(
+                  radius: 36,
+                  backgroundColor: iconBg,
+                  child: Icon(
+                    approve
+                        ? Icons.check_rounded
+                        : Icons.close_rounded,
+                    color: iconColor,
+                    size: 36,
                   ),
                 ),
                 const SizedBox(height: 18),
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 24,
-                      backgroundColor: approve
-                          ? AppColors.veryLightBlue
-                          : AppColors.lightRed,
-                      child: Icon(
-                        approve
-                            ? Icons.check_circle_outline
-                            : Icons.cancel_outlined,
-                        color: approve ? AppColors.primaryBlue : AppColors.red,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        approve ? 'Setujui data ini?' : 'Tolak data ini?',
-                        style: TextStyle(
-                          color: approve ? AppColors.primaryBlue : AppColors.red,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ],
+                Text(
+                  approve ? 'Setujui data ini?' : 'Tolak data ini?',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.primaryBlue,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 Text(
                   approve
                       ? 'Pastikan data dari pendamping sudah benar sebelum disetujui.'
                       : 'Pastikan data memang tidak sesuai sebelum ditolak.',
+                  textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: AppColors.dark2,
                     fontSize: 13,
-                    height: 1.4,
+                    height: 1.45,
                   ),
                 ),
                 const SizedBox(height: 18),
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(13),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     color: AppColors.veryLightBlue,
                     borderRadius: BorderRadius.circular(12),
@@ -159,45 +154,60 @@ class _PatientValidationDetailPageState
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 5),
+                      const SizedBox(height: 6),
                       Text(
                         '$value • $time',
                         style: const TextStyle(
                           color: AppColors.dark2,
                           fontSize: 12,
+                          height: 1.35,
                         ),
                       ),
-                      const SizedBox(height: 5),
+                      const SizedBox(height: 6),
                       Text(
                         'Diinput oleh: $name ($relation)',
                         style: const TextStyle(
                           color: AppColors.primaryBlue,
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
+                          height: 1.35,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 22),
                 Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(sheetContext),
-                        style: AppButtonStyles.outlined,
-                        child: const Text('Batal'),
+                      child: SizedBox(
+                        height: 50,
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(sheetContext),
+                          style: approve
+                              ? AppButtonStyles.outlined
+                              : AppButtonStyles.outlinedDanger,
+                          child: const Text('Batal'),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(sheetContext);
-                          _respond(approve);
-                        },
-                        style: AppButtonStyles.danger,
-                        child: Text(approve ? 'Ya, Setujui' : 'Ya, Tolak'),
+                      child: SizedBox(
+                        height: 50,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(sheetContext);
+                            _respond(approve);
+                          },
+                          style: approve
+                              ? AppButtonStyles.primary
+                              : AppButtonStyles.danger,
+                          child: Text(
+                            approve ? 'Setujui' : 'Tolak',
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -268,20 +278,33 @@ class _PatientValidationDetailPageState
                     Row(
                       children: [
                         Expanded(
-                          child: OutlinedButton(
-                            onPressed:
-                                isProcessing ? null : () => _confirmRespond(false),
-                            style: AppButtonStyles.outlinedDanger,
-                            child: const Text('Tolak'),
+                          child: SizedBox(
+                            height: 50,
+                            child: OutlinedButton(
+                              onPressed: isProcessing
+                                  ? null
+                                  : () => _confirmRespond(false),
+                              style: AppButtonStyles.outlinedDanger,
+                              child: const Text('Tolak'),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: ElevatedButton(
-                            onPressed:
-                                isProcessing ? null : () => _confirmRespond(true),
-                            style: AppButtonStyles.primary,
-                            child: Text(isProcessing ? 'Memproses...' : 'Setujui'),
+                          child: SizedBox(
+                            height: 50,
+                            child: ElevatedButton(
+                              onPressed: isProcessing
+                                  ? null
+                                  : () => _confirmRespond(true),
+                              style: AppButtonStyles.primary,
+                              child: Text(
+                                isProcessing ? 'Memproses...' : 'Setujui',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -465,6 +488,7 @@ class _PatientValidationDetailPageState
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (sheetContext) {
         final title = success
             ? (approve ? 'Data berhasil divalidasi' : 'Data ditolak')
@@ -476,60 +500,80 @@ class _PatientValidationDetailPageState
                 : 'Data tidak akan dimasukkan ke riwayat kesehatan pasien.')
             : (errorMessage ?? 'Terjadi kesalahan saat memproses data.');
 
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircleAvatar(
-                radius: 34,
-                backgroundColor:
-                    success && approve ? const Color(0xFFEAFBF3) : AppColors.lightRed,
-                child: Icon(
-                  success
-                      ? (approve ? Icons.check : Icons.close)
-                      : Icons.error_outline,
-                  color:
-                      success && approve ? const Color(0xFF10C878) : AppColors.red,
-                  size: 34,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                title,
-                style: const TextStyle(
-                  color: AppColors.primaryBlue,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.dark2),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(sheetContext);
+        final iconData = success
+            ? (approve ? Icons.check_rounded : Icons.close_rounded)
+            : Icons.error_outline;
+        final bgColor = success && approve
+            ? const Color(0xFFEAFBF3)
+            : AppColors.lightRed;
+        final iconColor = success && approve
+            ? const Color(0xFF10C878)
+            : AppColors.red;
 
-                    if (success) {
-                      Navigator.pop(context, true);
-                    }
-                  },
-                  style: AppButtonStyles.primary,
-                  child: const Text('Selesai'),
+        return SafeArea(
+          top: false,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 26),
+            decoration: const BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.light1,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 24),
+                CircleAvatar(
+                  radius: 36,
+                  backgroundColor: bgColor,
+                  child: Icon(iconData, color: iconColor, size: 36),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.primaryBlue,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.dark2,
+                    fontSize: 13,
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(sheetContext);
+
+                      if (success) {
+                        Navigator.pop(context, true);
+                      }
+                    },
+                    style: AppButtonStyles.primary,
+                    child: const Text('Selesai'),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },

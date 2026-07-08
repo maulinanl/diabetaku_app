@@ -614,22 +614,6 @@ class _CaregiverAddDataPageState extends State<CaregiverAddDataPage> {
                   ),
                 );
               }),
-              const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.veryLightBlue,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Text(
-                  'Data yang disimpan akan masuk sebagai data pasien terpilih dan menunggu validasi pasien.',
-                  style: TextStyle(
-                    color: AppColors.primaryBlue,
-                    fontSize: 11,
-                    height: 1.35,
-                  ),
-                ),
-              ),
             ],
           ),
         );

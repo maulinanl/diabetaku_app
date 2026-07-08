@@ -182,8 +182,6 @@ class _CaregiverPatientDetailPageState extends State<CaregiverPatientDetailPage>
                           children: [
                             _infoCard(),
                             const SizedBox(height: 14),
-                            _accessCard(),
-                            const SizedBox(height: 22),
                             _disconnectButton(context),
                           ],
                         ),
@@ -325,35 +323,6 @@ class _CaregiverPatientDetailPageState extends State<CaregiverPatientDetailPage>
             label: 'Terhubung Sejak',
             value: widget.date,
             isLast: true,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _accessCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.veryLightBlue,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.light1),
-      ),
-      child: const Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.info_outline, color: AppColors.primaryBlue, size: 18),
-          SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Sebagai pendamping pendamping, kamu dapat membantu menginput data kesehatan pasien, melihat riwayat tertentu, dan menerima notifikasi penting terkait kondisi pasien.',
-              style: TextStyle(
-                color: AppColors.primaryBlue,
-                fontSize: 12,
-                height: 1.4,
-              ),
-            ),
           ),
         ],
       ),

@@ -205,12 +205,6 @@ class _PatientCaregiverDetailPageState extends State<PatientCaregiverDetailPage>
             icon: Icons.calendar_today_outlined,
             label: 'Terhubung sejak',
             value: widget.date,
-          ),
-          const _InfoRow(
-            icon: Icons.health_and_safety_outlined,
-            label: 'Akses Pendamping',
-            value:
-                'Dapat membantu input data, melihat riwayat tertentu, dan menerima notifikasi penting.',
             isLast: true,
           ),
         ],

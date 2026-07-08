@@ -187,7 +187,6 @@ class _CaregiverActivityFormPageState extends State<CaregiverActivityFormPage> {
                       name: widget.patientName,
                       info: widget.patientInfo,
                     ),
-                    const CaregiverValidationInfoBox(),
                     const SizedBox(height: 18),
                     const PatientFormSectionTitle('Aktivitas Fisik'),
                     const PatientFormLabel('Tanggal dan waktu*'),

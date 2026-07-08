@@ -80,51 +80,6 @@ class CaregiverPatientFormCard extends StatelessWidget {
   }
 }
 
-class CaregiverValidationInfoBox extends StatelessWidget {
-  final String text;
-
-  const CaregiverValidationInfoBox({
-    super.key,
-    this.text =
-        'Data yang ditambahkan pendamping akan menunggu validasi pasien sebelum masuk ke riwayat kesehatan.',
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(top: 14),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.veryLightBlue,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.light1),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(
-            Icons.info_outline_rounded,
-            color: AppColors.primaryBlue,
-            size: 16,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(
-                color: AppColors.primaryBlue,
-                fontSize: 11,
-                height: 1.35,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 void showCaregiverHealthSuccessSheet({
   required BuildContext context,
   String title = 'Data berhasil disimpan',

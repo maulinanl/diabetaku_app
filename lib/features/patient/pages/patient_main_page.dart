@@ -295,6 +295,47 @@ class _PatientHomePageState extends State<PatientHomePage> {
     return 'created_at';
   }
 
+  DateTime _dateOnly(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
+  }
+
+  DateTime? _readDateValue(dynamic value) {
+    if (value == null) return null;
+    final parsed = DateTime.tryParse(value.toString());
+    if (parsed == null) return null;
+    return _dateOnly(parsed);
+  }
+
+  DateTime? _extractDateFromMap(dynamic data, List<String> keys) {
+    if (data is! Map) return null;
+
+    for (final key in keys) {
+      final date = _readDateValue(data[key]);
+      if (date != null) return date;
+    }
+
+    for (final nestedKey in ['data', 'profile', 'patient', 'user']) {
+      final nested = data[nestedKey];
+      if (nested is Map) {
+        final date = _extractDateFromMap(nested, keys);
+        if (date != null) return date;
+      }
+    }
+
+    return null;
+  }
+
+  DateTime? get _patientRegisteredDate {
+    return _extractDateFromMap(profileData, const [
+      'registered_at',
+      'patient_registered_at',
+      'user_created_at',
+      'patient_created_at',
+      'created_at',
+      'registeredAt',
+    ]);
+  }
+
   Map<String, String> _buildConsistencyStatus() {
     final result = <String, Set<String>>{};
 
@@ -315,11 +356,35 @@ class _PatientHomePageState extends State<PatientHomePage> {
       }
     }
 
-    return result.map((key, value) {
-      if (value.length >= 4) return MapEntry(key, 'lengkap');
-      if (value.isNotEmpty) return MapEntry(key, 'sebagian');
-      return MapEntry(key, 'tidak');
+    final statusMap = <String, String>{};
+
+    result.forEach((key, value) {
+      if (value.length >= 4) {
+        statusMap[key] = 'lengkap';
+      } else if (value.isNotEmpty) {
+        statusMap[key] = 'sebagian';
+      }
     });
+
+    final registeredDate = _patientRegisteredDate;
+    if (registeredDate != null) {
+      final today = _dateOnly(DateTime.now());
+      final lastPastDate = today.subtract(const Duration(days: 1));
+      final monthStart = DateTime(currentMonth.year, currentMonth.month, 1);
+      final monthEnd = DateTime(currentMonth.year, currentMonth.month + 1, 0);
+
+      DateTime cursor = registeredDate.isAfter(monthStart)
+          ? registeredDate
+          : monthStart;
+      final endDate = monthEnd.isBefore(lastPastDate) ? monthEnd : lastPastDate;
+
+      while (!cursor.isAfter(endDate)) {
+        statusMap.putIfAbsent(_dateKey(cursor), () => 'tidak');
+        cursor = cursor.add(const Duration(days: 1));
+      }
+    }
+
+    return statusMap;
   }
 
   String _monthName(int month) {

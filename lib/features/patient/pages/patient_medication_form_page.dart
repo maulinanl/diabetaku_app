@@ -54,12 +54,20 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
         item['session_name']?.toString() == selectedSchedule;
   }
 
-  bool get hasUnsavedCheckedMedicine {
-    return prescriptions.any((item) {
-      return _isSameSchedule(item) &&
-          item['checked'] == true &&
-          item['already_saved'] != true;
-    });
+  bool get hasMedicationChanges {
+    return prescriptions.any((item) => _hasMedicationChange(item));
+  }
+
+  bool _hasMedicationChange(Map<String, dynamic> item) {
+    if (!_isSameSchedule(item)) return false;
+
+    final checked = item['checked'] == true;
+    final alreadySaved = item['already_saved'] == true;
+    final originalChecked = item['original_checked'] == true;
+
+    if (!alreadySaved) return checked;
+
+    return checked != originalChecked;
   }
 
   @override
@@ -99,10 +107,14 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
               item['log_id'] != null ||
               logStatus.isNotEmpty;
 
+          final checked = logStatus == 'Diminum' || item['checked'] == true;
+
           return {
             ...item,
-            'checked': logStatus == 'Diminum' || item['checked'] == true,
+            'checked': checked,
             'already_saved': alreadyLogged,
+            'original_status': logStatus,
+            'original_checked': checked,
           };
         }).toList();
 
@@ -120,14 +132,6 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
   }
 
   void _toggleMedicine(int index, bool? value) {
-    if (prescriptions[index]['already_saved'] == true) {
-      showPatientFormSnackBar(
-        context: context,
-        message: 'Data obat ini sudah dicatat hari ini',
-      );
-      return;
-    }
-
     setState(() {
       prescriptions[index]['checked'] = value ?? false;
     });
@@ -136,16 +140,12 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
   Future<void> _save() async {
     FocusScope.of(context).unfocus();
 
-    final checkedMedicines = prescriptions.where((item) {
-      return _isSameSchedule(item) &&
-          item['checked'] == true &&
-          item['already_saved'] != true;
-    }).toList();
+    final changedMedicines = prescriptions.where(_hasMedicationChange).toList();
 
-    if (checkedMedicines.isEmpty) {
+    if (changedMedicines.isEmpty) {
       showPatientFormSnackBar(
         context: context,
-        message: 'Pilih minimal satu obat yang belum dicatat',
+        message: 'Belum ada perubahan checklist obat',
       );
       return;
     }
@@ -162,12 +162,14 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
 
       final now = DateTime.now();
 
-      for (final item in checkedMedicines) {
+      for (final item in changedMedicines) {
+        final status = item['checked'] == true ? 'Diminum' : 'Dibatalkan';
+
         await ApiService.storeMedication(
           patientId: patientId,
           prescriptionId: int.parse(item['prescription_id'].toString()),
           scheduleId: int.parse(item['prescription_schedule_id'].toString()),
-          status: 'Diminum',
+          status: status,
           consumedAt: now,
           note: noteCtr.text.trim().isEmpty ? null : noteCtr.text.trim(),
         );
@@ -176,17 +178,23 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
       if (!mounted) return;
 
       setState(() {
-        for (final item in checkedMedicines) {
-          item['checked'] = true;
+        for (final item in changedMedicines) {
+          final status = item['checked'] == true ? 'Diminum' : 'Dibatalkan';
+          final checked = status == 'Diminum';
+
+          item['checked'] = checked;
           item['already_saved'] = true;
-          item['log_status'] = 'Diminum';
+          item['log_status'] = status;
+          item['today_status'] = status;
+          item['original_status'] = status;
+          item['original_checked'] = checked;
         }
       });
 
       showPatientHealthSuccessSheet(
         context: context,
         title: 'Kepatuhan obat tersimpan',
-        message: 'Checklist obat yang sudah diminum berhasil disimpan.',
+        message: 'Perubahan checklist obat berhasil disimpan.',
       );
     } catch (e) {
       if (!mounted) return;
@@ -289,6 +297,7 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
                                             checked: item['checked'] == true,
                                             alreadySaved:
                                                 item['already_saved'] == true,
+                                            changed: _hasMedicationChange(item),
                                           ),
                                         );
                                       }).toList(),
@@ -301,7 +310,7 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
                                   const SizedBox(height: 26),
                                   PatientFormSubmitButton(
                                     label: 'Simpan Checklist',
-                                    enabled: hasUnsavedCheckedMedicine,
+                                    enabled: hasMedicationChanges,
                                     isSaving: isSaving,
                                     onPressed: _save,
                                   ),
@@ -359,22 +368,17 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
     required String reminderTime,
     required bool checked,
     required bool alreadySaved,
+    required bool changed,
   }) {
-    final selected = checked || alreadySaved;
+    final selected = checked;
 
     return InkWell(
-      onTap: isSaving || alreadySaved
-          ? null
-          : () => _toggleMedicine(index, !checked),
+      onTap: isSaving ? null : () => _toggleMedicine(index, !checked),
       borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: alreadySaved
-              ? const Color(0xFFEAFBF3)
-              : checked
-                  ? AppColors.veryLightBlue
-                  : AppColors.white,
+          color: checked ? AppColors.veryLightBlue : AppColors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: selected ? AppColors.primaryBlue : AppColors.light1,
@@ -383,18 +387,11 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            alreadySaved
-                ? const Icon(
-                    Icons.check_circle,
-                    color: Color(0xFF10C878),
-                    size: 24,
-                  )
-                : Checkbox(
-                    value: checked,
-                    activeColor: AppColors.primaryBlue,
-                    onChanged:
-                        isSaving ? null : (value) => _toggleMedicine(index, value),
-                  ),
+            Checkbox(
+              value: checked,
+              activeColor: AppColors.primaryBlue,
+              onChanged: isSaving ? null : (value) => _toggleMedicine(index, value),
+            ),
             const SizedBox(width: 8),
             Expanded(
               child: Column(
@@ -412,14 +409,10 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
                           ),
                         ),
                       ),
-                      if (alreadySaved)
-                        const Text(
-                          'Sudah dicatat',
-                          style: TextStyle(
-                            color: Color(0xFF10C878),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                          ),
+                      if (changed || alreadySaved)
+                        _medicationChangeBadge(
+                          changed: changed,
+                          checked: checked,
                         ),
                     ],
                   ),
@@ -473,6 +466,45 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _medicationChangeBadge({
+    required bool changed,
+    required bool checked,
+  }) {
+    final text = changed
+        ? 'Belum disimpan'
+        : checked
+            ? 'Sudah dicatat'
+            : 'Dibatalkan';
+
+    final color = changed
+        ? Colors.orange
+        : checked
+            ? const Color(0xFF10C878)
+            : AppColors.red;
+
+    final bg = changed
+        ? const Color(0xFFFFF4C7)
+        : checked
+            ? const Color(0xFFEAFBF3)
+            : AppColors.lightRed;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );

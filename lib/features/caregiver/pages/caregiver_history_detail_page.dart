@@ -30,7 +30,6 @@ class CaregiverHistoryDetailPage extends StatelessWidget {
                     const SizedBox(height: 14),
                     _noteSection(data),
                     const SizedBox(height: 18),
-                    _readonlyInfo(),
                   ],
                 ),
               ),
@@ -374,33 +373,6 @@ class CaregiverHistoryDetailPage extends StatelessWidget {
                 color: AppColors.dark1,
                 fontSize: 12,
                 height: 1.4,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _readonlyInfo() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(13),
-      decoration: BoxDecoration(
-        color: AppColors.veryLightBlue,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: const Row(
-        children: [
-          Icon(Icons.info_outline, color: AppColors.primaryBlue, size: 18),
-          SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Riwayat pasien hanya dapat dilihat oleh pendamping dan tidak dapat diubah dari halaman ini.',
-              style: TextStyle(
-                color: AppColors.primaryBlue,
-                fontSize: 12,
-                height: 1.35,
               ),
             ),
           ),

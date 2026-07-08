@@ -306,25 +306,7 @@ class _CaregiverPhysiologicalFormPageState
                         FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                       ],
                     ),
-                    const PatientFormLabel('Tinggi Badan (cm)'),
-                    _input(
-                      controller: heightCtr,
-                      hint: isLoadingHeight
-                          ? 'Mengambil tinggi badan...'
-                          : 'Tinggi badan pasien',
-                      keyboardType: TextInputType.number,
-                      readOnly: true,
-                    ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      'Tinggi badan diambil dari profil pasien dan tidak dapat diubah oleh pendamping.',
-                      style: TextStyle(
-                        color: AppColors.dark2,
-                        fontSize: 11,
-                        height: 1.3,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 16),
                     _bmiBox(),
                     const SizedBox(height: 26),
                     PatientFormSubmitButton(
