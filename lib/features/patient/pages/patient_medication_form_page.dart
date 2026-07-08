@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/medication_dose_formatter.dart';
 import '../../../data/services/api_service.dart';
 import '../widgets/patient_health_form_widgets.dart';
 
@@ -418,7 +419,11 @@ class _PatientMedicationFormPageState extends State<PatientMedicationFormPage> {
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    '$dosage • $form • $dosePerSession',
+                    medicationDoseLine(
+                      dosage: dosage,
+                      dosePerSession: dosePerSession,
+                      form: form,
+                    ),
                     style: const TextStyle(
                       color: AppColors.primaryBlue,
                       fontSize: 12,

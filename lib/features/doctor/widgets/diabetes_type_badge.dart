@@ -52,8 +52,8 @@ class DiabetesTypeBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = formatDiabetesType(value);
 
-    final bg = inactive ? AppColors.light1 : AppColors.veryLightBlue;
-    final color = inactive ? AppColors.dark3 : AppColors.primaryBlue;
+    final bg = inactive ? AppColors.light4 : AppColors.veryLightBlue;
+    final color = inactive ? AppColors.dark4 : AppColors.primaryBlue;
 
     return Container(
       padding: EdgeInsets.symmetric(
@@ -64,7 +64,7 @@ class DiabetesTypeBadge extends StatelessWidget {
         color: bg,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: color.withValues(alpha: 0.14),
+          color: color.withValues(alpha: inactive ? 0.18 : 0.14),
         ),
       ),
       child: Row(

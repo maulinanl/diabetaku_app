@@ -451,7 +451,7 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
               : RefreshIndicator(
                   onRefresh: _loadHistory,
                   child: ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
                     itemCount: data.length,
                     itemBuilder: (context, index) {
                       final item = data[index];
@@ -476,9 +476,7 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
                               MaterialPageRoute(
                                 builder: (_) => PatientHealthDetailPage(
                                   type: item['type'] as String,
-                                  item: Map<String, dynamic>.from(
-                                    item['raw'] as Map,
-                                  ),
+                                  item: Map<String, dynamic>.from(item),
                                 ),
                               ),
                             );
@@ -553,7 +551,7 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
               : RefreshIndicator(
                   onRefresh: _loadHistory,
                   child: ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 120),
+                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 28),
                     itemCount: data.length,
                     itemBuilder: (context, index) {
                       final item = data[index];
@@ -1357,7 +1355,8 @@ class PatientHealthDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final data = _getDetailData(type, item);
+    final raw = _rawData;
+    final data = _getDetailData(type, raw);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -1373,11 +1372,10 @@ class PatientHealthDetailPage extends StatelessWidget {
                   children: [
                     _detailSection(data),
                     const SizedBox(height: 14),
-                    _inputInfoSection(),
+                    _inputInfoSection(raw),
                     const SizedBox(height: 14),
                     _noteSection(data),
                     const SizedBox(height: 18),
-                    _readonlyInfo(type),
                   ],
                 ),
               ),
@@ -1388,319 +1386,293 @@ class PatientHealthDetailPage extends StatelessWidget {
     );
   }
 
+  Map<String, dynamic> get _rawData {
+    final raw = item['raw'];
+    if (raw is Map) return Map<String, dynamic>.from(raw);
+    return item;
+  }
 
   String _text(dynamic value, {String fallback = '-'}) {
     if (value == null) return fallback;
-    final text = value.toString().trim();
-    if (text.isEmpty || text == 'null') return fallback;
+    final text = value.toString();
+    if (text.trim().isEmpty || text == 'null') return fallback;
     return text;
   }
 
-  String _bmiText(Map<String, dynamic> item) {
-    final existing = item['bmi'];
-    if (existing != null && existing.toString().trim().isNotEmpty) {
-      return existing.toString();
-    }
-
-    final weight = double.tryParse(item['weight_kg']?.toString() ?? '');
-    final heightCm = double.tryParse(
-      item['height_cm']?.toString() ?? item['patient_height_cm']?.toString() ?? '',
-    );
-
-    if (weight == null || heightCm == null || heightCm <= 0) return '-';
-
-    final heightM = heightCm / 100;
-    final bmi = weight / (heightM * heightM);
-    return bmi.toStringAsFixed(1);
+  bool _hasValue(dynamic value) {
+    if (value == null) return false;
+    final text = value.toString().trim();
+    return text.isNotEmpty && text != '-' && text != 'null';
   }
 
-  Widget _inputInfoSection() {
-    final inputByRole = _text(item['input_by_role'], fallback: 'Pasien');
-    final inputByName = _text(item['input_by_name'], fallback: '-');
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: _cardDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Informasi Input',
-            style: TextStyle(
-              color: AppColors.primaryBlue,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 16),
-          _inputInfoRow('Diinput oleh', inputByRole),
-          _inputInfoRow('Nama Penginput', inputByName),
-        ],
-      ),
-    );
+  List<List<String>> _cleanRows(List<List<String?>> rows) {
+    return rows
+        .where((row) => row.length >= 2 && _hasValue(row[1]))
+        .map((row) => [row[0] ?? '-', row[1] ?? '-'])
+        .toList();
   }
 
-  Widget _inputInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(color: AppColors.dark2, fontSize: 12),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              value,
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                color: AppColors.primaryBlue,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Map<String, dynamic> _getDetailData(String type, Map<String, dynamic> raw) {
+    final history = item;
 
-  Map<String, dynamic> _getDetailData(String type, Map<String, dynamic> item) {
     if (type == 'Glukosa') {
+      final value = _text(raw['glucose_value'] ?? history['value']);
+      final status = _text(
+        raw['validation_status'] ?? history['badge'] ?? history['status'],
+        fallback: 'Valid',
+      );
+      final date = _formatDetailDate(raw['measured_at'] ?? history['date_raw']);
+
       return {
         'icon': Icons.opacity,
-        'value': '${item['glucose_value'] ?? '-'}',
+        'value': value,
         'unit': 'mg/dL',
-        'date': _formatDetailDate(item['measured_at']),
-        'status': item['validation_status'] ?? 'Valid',
-        'sections': [
-          ['Tipe pengukuran', '${item['measurement_type'] ?? '-'}'],
-          ['Nilai', '${item['glucose_value'] ?? '-'} mg/dL'],
-          ['Status', '${item['validation_status'] ?? 'Valid'}'],
-        ],
-        'note': item['note']?.toString() ?? '',
+        'date': date,
+        'status': status,
+        'sections': _cleanRows([
+          ['Jenis Pengukuran', _text(raw['measurement_type'])],
+          ['Nilai Glukosa', '$value mg/dL'],
+          ['Status Validasi', status],
+          ['Waktu Pengukuran', date],
+        ]),
+        'note': _text(raw['note'], fallback: ''),
       };
     }
 
     if (type == 'Fisiologis') {
+      final systolic = _text(raw['systolic']);
+      final diastolic = _text(raw['diastolic']);
+      final weight = _text(raw['weight_kg']);
+      final bmi = _text(raw['bmi']);
+      final hasBloodPressure = _hasValue(raw['systolic']) || _hasValue(raw['diastolic']);
+      final date = _formatDetailDate(raw['measured_at'] ?? history['date_raw']);
+      final status = _text(
+        raw['validation_status'] ?? history['badge'] ?? history['status'],
+        fallback: 'Valid',
+      );
+
+      final mainValue = hasBloodPressure
+          ? '$systolic/$diastolic'
+          : _hasValue(raw['bmi'])
+              ? bmi
+              : weight;
+      final unit = hasBloodPressure
+          ? 'mmHg'
+          : _hasValue(raw['bmi'])
+              ? 'kg/m²'
+              : _hasValue(raw['weight_kg'])
+                  ? 'kg'
+                  : '';
+
       return {
         'icon': Icons.bar_chart_rounded,
-        'value': '${item['systolic'] ?? '-'}/${item['diastolic'] ?? '-'}',
-        'unit': 'mmHg',
-        'date': _formatDetailDate(item['measured_at']),
-        'status': item['validation_status'] ?? 'Valid',
-        'sections': [
-          ['Sistolik', '${item['systolic'] ?? '-'} mmHg'],
-          ['Diastolik', '${item['diastolic'] ?? '-'} mmHg'],
-          ['Berat Badan', '${item['weight_kg'] ?? '-'} kg'],
-          ['BMI', '${_bmiText(item)} kg/m²'],
-          ['Status', '${item['validation_status'] ?? 'Valid'}'],
-        ],
-        'note': item['note']?.toString() ?? '',
+        'value': mainValue,
+        'unit': unit,
+        'date': date,
+        'status': status,
+        'sections': _cleanRows([
+          if (hasBloodPressure) ['Sistolik', '$systolic mmHg'],
+          if (hasBloodPressure) ['Diastolik', '$diastolic mmHg'],
+          ['Berat Badan', _hasValue(raw['weight_kg']) ? '$weight kg' : null],
+          ['BMI', _hasValue(raw['bmi']) ? '$bmi kg/m²' : null],
+          ['Status Validasi', status],
+          ['Waktu Pengukuran', date],
+        ]),
+        'note': _text(raw['note'], fallback: ''),
       };
     }
 
     if (type == 'Aktivitas') {
+      final value = _text(raw['duration_minutes'] ?? history['value']);
+      final date = _formatDetailDate(raw['activity_date'] ?? history['date_raw']);
+      final status = _text(
+        raw['validation_status'] ?? history['badge'],
+        fallback: 'Valid',
+      );
+
       return {
         'icon': Icons.directions_run,
-        'value': '${item['duration_minutes'] ?? '-'}',
+        'value': value,
         'unit': 'menit',
-        'date': _formatDetailDate(item['activity_date']),
-        'status': item['intensity'] ?? '-',
-        'sections': [
-          ['Durasi', '${item['duration_minutes'] ?? '-'} menit'],
-          ['Intensitas', '${item['intensity'] ?? '-'}'],
-          ['Status', '${item['validation_status'] ?? 'Valid'}'],
-        ],
-        'note': item['note']?.toString() ?? '',
+        'date': date,
+        'status': status,
+        'sections': _cleanRows([
+          ['Aktivitas', _text(raw['activity_name'] ?? history['title'], fallback: 'Aktivitas Fisik')],
+          ['Durasi', '$value menit'],
+          ['Intensitas', _text(raw['intensity'])],
+          ['Status Validasi', status],
+          ['Tanggal Aktivitas', date],
+        ]),
+        'note': _text(raw['note'], fallback: ''),
       };
     }
 
     if (type == 'Makan') {
+      final carb = _text(raw['carbohydrate_estimate']);
+      final calories = _text(raw['calories']);
+      final hasCarb = _hasValue(raw['carbohydrate_estimate']);
+      final hasCalories = _hasValue(raw['calories']);
+      final mainValue = hasCarb
+          ? carb
+          : hasCalories
+              ? calories
+              : _text(history['value']);
+      final unit = hasCarb
+          ? 'gram'
+          : hasCalories
+              ? 'kkal'
+              : _text(history['unit'], fallback: '');
+      final date = _formatDetailDate(raw['meal_date'] ?? history['date_raw']);
+      final status = _text(
+        raw['validation_status'] ?? history['badge'] ?? history['status'],
+        fallback: 'Valid',
+      );
+
       return {
         'icon': Icons.restaurant_outlined,
-        'value': '${item['carbohydrate_estimate'] ?? '-'}',
-        'unit': 'gram',
-        'date': _formatDetailDate(item['meal_date']),
-        'status': item['validation_status'] ?? 'Valid',
-        'sections': [
-          [
-            'Estimasi karbohidrat',
-            '${item['carbohydrate_estimate'] ?? '-'} gram',
-          ],
-          ['Kalori', '${item['calories'] ?? '-'} kkal'],
-          ['Status', '${item['validation_status'] ?? 'Valid'}'],
-        ],
-        'note': item['food_description']?.toString() ?? '',
+        'value': mainValue,
+        'unit': unit,
+        'date': date,
+        'status': status,
+        'sections': _cleanRows([
+          ['Jenis Makan', _text(raw['meal_type_name'] ?? history['title'], fallback: 'Pola Makan')],
+          ['Deskripsi Makanan', _text(raw['food_description'])],
+          ['Estimasi Karbohidrat', hasCarb ? '$carb gram' : null],
+          ['Kalori', hasCalories ? '$calories kkal' : null],
+          ['Status Validasi', status],
+          ['Tanggal Makan', date],
+        ]),
+        'note': _text(raw['food_description'], fallback: ''),
       };
     }
 
+    final medicationName = _text(
+      raw['medication_name'] ?? history['title'],
+      fallback: 'Obat',
+    );
+    final date = _formatDetailDate(raw['log_date'] ?? history['date_raw']);
+    final status = _text(raw['status'] ?? history['badge'] ?? history['status']);
+    final validationStatus = _text(raw['validation_status'], fallback: 'Valid');
+
     return {
       'icon': Icons.medication_outlined,
-      'value': item['medication_name']?.toString() ?? 'Obat',
-      'unit': item['session']?.toString() ?? '',
-      'date': _formatDetailDate(item['log_date']),
-      'status': item['status']?.toString() ?? '-',
-      'sections': [
-        ['Nama Obat', '${item['medication_name'] ?? '-'}'],
-        ['Jadwal', '${item['session'] ?? '-'}'],
-        ['Dosis', '${item['dose_per_session'] ?? '-'}'],
-        ['Status Konsumsi', '${item['status'] ?? '-'}'],
-        ['Waktu Checklist', _formatDetailDate(item['checked_at'])],
-        ['Status Validasi', '${item['validation_status'] ?? 'Valid'}'],
-      ],
-      'note': item['note']?.toString() ?? '',
+      'value': medicationName,
+      'unit': _text(raw['session'] ?? raw['session_name'], fallback: ''),
+      'date': date,
+      'status': status,
+      'sections': _cleanRows([
+        ['Nama Obat', medicationName],
+        ['Dokter', _text(history['doctor'] ?? raw['doctor_name'])],
+        ['Status Konsumsi', status],
+        ['Status Resep', _text(history['prescriptionStatus'], fallback: 'Resep aktif')],
+        ['Jadwal', _text(raw['session'] ?? raw['session_name'])],
+        ['Dosis', _text(raw['dose_per_session'] ?? raw['dosage'])],
+        ['Tanggal Konsumsi', date],
+        ['Waktu Checklist', _formatDetailDate(raw['checked_at'] ?? raw['taken_at'])],
+        ['Status Validasi', validationStatus],
+      ]),
+      'note': _text(raw['note'], fallback: ''),
     };
   }
 
-  String _formatDetailDate(dynamic value) {
-    if (value == null) return '-';
-
-    final date = DateTime.tryParse(value.toString());
-    if (date == null) return value.toString();
-
-    const months = [
-      'Januari',
-      'Februari',
-      'Maret',
-      'April',
-      'Mei',
-      'Juni',
-      'Juli',
-      'Agustus',
-      'September',
-      'Oktober',
-      'November',
-      'Desember',
-    ];
-
-    return '${date.day} ${months[date.month - 1]} ${date.year} • ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
-  }
-
   Widget _header(BuildContext context, Map<String, dynamic> data) {
-  final topPad = MediaQuery.of(context).padding.top;
-  final isBad = data['status'] == 'Abnormal';
+    final topPad = MediaQuery.of(context).padding.top;
+    final status = data['status'].toString();
 
-  return Container(
-    width: double.infinity,
-    padding: EdgeInsets.fromLTRB(16, topPad + 16, 16, 24),
-    decoration: const BoxDecoration(
-      color: AppColors.primaryBlue,
-      borderRadius: BorderRadius.only(
-        bottomLeft: Radius.circular(24),
-        bottomRight: Radius.circular(24),
-      ),
-    ),
-    child: Column(
-      children: [
-        Row(
-          children: [
-            IconButton(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
-            ),
+    final isBad = status == 'Abnormal' ||
+        status == 'Ditolak' ||
+        status == 'Terlewat' ||
+        status == 'Tidak Diminum';
 
-            const Expanded(
-              child: Text(
-                'Detail Riwayat',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 21,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-
-            const SizedBox(width: 48),
-          ],
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(16, topPad + 12, 16, 28),
+      decoration: const BoxDecoration(
+        color: AppColors.primaryBlue,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
         ),
-
-        const SizedBox(height: 18),
-
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Row(
+      ),
+      child: Column(
+        children: [
+          Row(
             children: [
-              CircleAvatar(
-                radius: 28,
-                backgroundColor: AppColors.lightBlue,
-                child: Icon(
-                  data['icon'] as IconData,
-                  color: AppColors.primaryBlue,
-                  size: 26,
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+              ),
+              const Expanded(
+                child: Text(
+                  'Detail Riwayat',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                  ),
                 ),
               ),
-
-              const SizedBox(width: 14),
-
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      data['value'].toString(),
-                      style: const TextStyle(
-                        color: AppColors.dark1,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-
-                    const SizedBox(height: 4),
-
-                    Text(
-                      '${data['unit']} • ${data['date']}',
-                      style: const TextStyle(
-                        color: AppColors.dark2,
-                        fontSize: 11,
-                      ),
-                    ),
-
-                    const SizedBox(height: 7),
-
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.veryLightBlue,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: AppColors.primaryBlue.withValues(alpha: .15),
-                        ),
-                      ),
-                      child: Text(
-                        data['status'].toString(),
-                        style: TextStyle(
-                          color: isBad
-                              ? AppColors.red
-                              : AppColors.primaryBlue,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              const SizedBox(width: 48),
             ],
           ),
-        ),
-      ],
-    ),
-  );
-}
+          const SizedBox(height: 14),
+          CircleAvatar(
+            radius: 30,
+            backgroundColor: AppColors.lightBlue,
+            child: Icon(
+              data['icon'] as IconData,
+              color: AppColors.primaryBlue,
+              size: 30,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            data['value'].toString(),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 30,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          if (data['unit'].toString().isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              data['unit'].toString(),
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+            ),
+          ],
+          const SizedBox(height: 6),
+          Text(
+            data['date'].toString(),
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white, fontSize: 11),
+          ),
+          if (status.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                status,
+                style: TextStyle(
+                  color: isBad ? AppColors.red : AppColors.primaryBlue,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 
   Widget _detailSection(Map<String, dynamic> data) {
     final sections = data['sections'] as List<List<String>>;
@@ -1720,44 +1692,46 @@ class PatientHealthDetailPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          ...sections.map(
-            (row) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      row[0],
-                      style: const TextStyle(
-                        color: AppColors.dark2,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      row[1],
-                      textAlign: TextAlign.right,
-                      style: const TextStyle(
-                        color: AppColors.primaryBlue,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+          ...sections.map((row) => _detailRow(row[0], row[1])),
+        ],
+      ),
+    );
+  }
+
+  Widget _inputInfoSection(Map<String, dynamic> raw) {
+    final inputByRole = _text(
+      item['input_by_role'] ?? raw['input_by_role'],
+      fallback: 'Pasien',
+    );
+
+    final inputByName = _text(
+      item['input_by_name'] ?? raw['input_by_name'],
+    );
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: _cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Informasi Input',
+            style: TextStyle(
+              color: AppColors.primaryBlue,
+              fontWeight: FontWeight.w700,
             ),
           ),
+          const SizedBox(height: 16),
+          _detailRow('Diinput oleh', inputByRole),
+          _detailRow('Nama Penginput', inputByName),
         ],
       ),
     );
   }
 
   Widget _noteSection(Map<String, dynamic> data) {
-    final note = data['note'] as String;
+    final note = _text(data['note'], fallback: '');
 
     if (note.isEmpty) return const SizedBox();
 
@@ -1797,39 +1771,57 @@ class PatientHealthDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _readonlyInfo(String type) {
-    final message = type == 'Obat'
-        ? 'Data obat berasal dari checklist kepatuhan pasien. Riwayat ini hanya dapat dilihat dan tidak dapat diubah dari halaman ini.'
-        : 'Riwayat ini hanya dapat dilihat dari halaman detail. Penghapusan data belum diaktifkan agar data backend tetap aman.';
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(13),
-      decoration: BoxDecoration(
-        color: AppColors.veryLightBlue,
-        borderRadius: BorderRadius.circular(10),
-      ),
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            Icons.info_outline,
-            color: AppColors.primaryBlue,
-            size: 18,
-          ),
-          const SizedBox(width: 10),
           Expanded(
             child: Text(
-              message,
+              label,
+              style: const TextStyle(color: AppColors.dark2, fontSize: 12),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
               style: const TextStyle(
                 color: AppColors.primaryBlue,
                 fontSize: 12,
-                height: 1.35,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  String _formatDetailDate(dynamic value) {
+    if (value == null) return '-';
+
+    final date = DateTime.tryParse(value.toString());
+    if (date == null) return value.toString();
+
+    const months = [
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember',
+    ];
+
+    return '${date.day} ${months[date.month - 1]} ${date.year} • ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 
   BoxDecoration _cardDecoration() {

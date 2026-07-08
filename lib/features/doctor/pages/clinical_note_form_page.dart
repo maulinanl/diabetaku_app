@@ -236,7 +236,7 @@ class _ClinicalNoteFormPageState extends State<ClinicalNoteFormPage> {
             _buildHeader(),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 18, 16, 20),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -307,7 +307,7 @@ class _ClinicalNoteFormPageState extends State<ClinicalNoteFormPage> {
   Widget _buildKondisiCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -322,7 +322,11 @@ class _ClinicalNoteFormPageState extends State<ClinicalNoteFormPage> {
               SizedBox(width: 8),
               Text(
                 'Kondisi Pasien *',
-                style: TextStyle(fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  color: AppColors.primaryBlue,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
@@ -382,10 +386,10 @@ class _ClinicalNoteFormPageState extends State<ClinicalNoteFormPage> {
         width: width,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? AppColors.lightBlue : AppColors.white,
-          borderRadius: BorderRadius.circular(12),
+          color: selected ? AppColors.veryLightBlue : AppColors.white,
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: selected ? AppColors.lightBlue : AppColors.light1,
+            color: selected ? AppColors.primaryBlue : AppColors.light1,
           ),
           boxShadow: selected
               ? [
@@ -440,7 +444,7 @@ class _ClinicalNoteFormPageState extends State<ClinicalNoteFormPage> {
   }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -455,7 +459,11 @@ class _ClinicalNoteFormPageState extends State<ClinicalNoteFormPage> {
               const SizedBox(width: 8),
               Text(
                 label + (label.endsWith('*') ? '' : ''),
-                style: const TextStyle(fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  color: AppColors.primaryBlue,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
@@ -470,26 +478,30 @@ class _ClinicalNoteFormPageState extends State<ClinicalNoteFormPage> {
                 onChanged: (_) => setState(() {}),
                 decoration: InputDecoration(
                   hintText: hint,
+                  hintStyle: const TextStyle(
+                    color: AppColors.dark4,
+                    fontSize: 13,
+                  ),
                   filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(8)),
+                  fillColor: AppColors.white,
+                  border: const OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(6)),
                     borderSide: BorderSide(color: AppColors.light1),
                   ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(8)),
+                  enabledBorder: const OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(6)),
                     borderSide: BorderSide(color: AppColors.light1),
                   ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(8)),
+                  focusedBorder: const OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(6)),
                     borderSide: BorderSide(
                       color: AppColors.primaryBlue,
-                      width: 1.6,
+                      width: 1.4,
                     ),
                   ),
                   isDense: true,
-                  counterText: '', // custom counter shown below
-                  contentPadding: const EdgeInsets.fromLTRB(12, 12, 12, 36),
+                  counterText: '',
+                  contentPadding: const EdgeInsets.fromLTRB(14, 14, 14, 36),
                 ),
                 validator: (v) => (v == null || v.trim().isEmpty)
                     ? '$label wajib diisi'
@@ -521,7 +533,7 @@ class _ClinicalNoteFormPageState extends State<ClinicalNoteFormPage> {
   Widget _buildFollowUpCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -530,21 +542,35 @@ class _ClinicalNoteFormPageState extends State<ClinicalNoteFormPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Jadwal Kontrol',
-            style: TextStyle(fontWeight: FontWeight.w600),
+          const Row(
+            children: [
+              Icon(Icons.calendar_month, color: AppColors.primaryBlue, size: 18),
+              SizedBox(width: 8),
+              Text(
+                'Jadwal Kontrol',
+                style: TextStyle(
+                  color: AppColors.primaryBlue,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
 
-          OutlinedButton.icon(
-            onPressed: _pickFollowUpDate,
-            icon: const Icon(Icons.calendar_month, size: 18),
-            label: Text(
-              _followUpDate == null
-                  ? 'Pilih Tanggal Kontrol'
-                  : _formatDate(_followUpDate!),
+          SizedBox(
+            width: double.infinity,
+            height: 46,
+            child: OutlinedButton.icon(
+              onPressed: _pickFollowUpDate,
+              icon: const Icon(Icons.calendar_month, size: 18),
+              label: Text(
+                _followUpDate == null
+                    ? 'Pilih Tanggal Kontrol'
+                    : _formatDate(_followUpDate!),
+              ),
+              style: AppButtonStyles.outlined,
             ),
-            style: AppButtonStyles.outlined,
           ),
         ],
       ),

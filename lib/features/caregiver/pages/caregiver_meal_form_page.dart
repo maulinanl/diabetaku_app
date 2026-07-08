@@ -232,6 +232,7 @@ class _CaregiverMealFormPageState extends State<CaregiverMealFormPage> {
                     ),
                     const PatientFormLabel('Tipe makan*'),
                     GridView.builder(
+                      padding: EdgeInsets.zero,
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: mealTypes.length,

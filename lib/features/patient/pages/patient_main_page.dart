@@ -430,7 +430,7 @@ class _PatientHomePageState extends State<PatientHomePage> {
               child: Container(
                 color: AppColors.background,
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 120),
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
                   child: Column(
                     children: [
                       if (hasPendingValidation) ...[

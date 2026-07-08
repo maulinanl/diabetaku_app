@@ -139,7 +139,7 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
                   onRefresh: _loadProfile,
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(20, 22, 20, 120),
+                    padding: const EdgeInsets.fromLTRB(20, 22, 20, 28),
                     child: Column(
                       children: [
                         Row(

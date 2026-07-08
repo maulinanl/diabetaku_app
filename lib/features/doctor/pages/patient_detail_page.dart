@@ -164,32 +164,25 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
               child: Container(
                 color: AppColors.background,
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 52),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const SizedBox(height: 24),
-
-                      if (!widget.isConnected) ...[
-                        _disconnectedBanner(),
-                        const SizedBox(height: 20),
-                      ],
-
                       if (selectedTab != 3) ...[
                         _buildSummaryCards(),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 16),
                         _buildThresholdSection(),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 16),
                       ],
 
                       _buildTabs(),
 
                       if (selectedTab != 3) ...[
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 12),
                         _buildPeriods(),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 18),
                       ] else
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 14),
 
                       _buildDynamicContent(),
 
@@ -313,7 +306,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                                 _badge(
                                   text: 'Tidak Terhubung',
                                   bg: AppColors.light4,
-                                  color: AppColors.dark2,
+                                  color: AppColors.dark4,
                                   icon: Icons.link_off_rounded,
                                 ),
                             ],
@@ -356,36 +349,6 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                   ),
                 ],
               ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _disconnectedBanner() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(13),
-      decoration: BoxDecoration(
-        color: AppColors.light1,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.light4.withValues(alpha: 0.18)),
-      ),
-      child: const Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.info_outline, color: AppColors.dark4, size: 18),
-          SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Pasien ini sudah tidak terhubung. Dokter hanya dapat melihat data lama sebelum relasi terputus.',
-              style: TextStyle(
-                color: AppColors.dark4,
-                fontSize: 12,
-                height: 1.4,
-                fontWeight: FontWeight.w500,
-              ),
             ),
           ),
         ],
@@ -453,38 +416,140 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
     return bmi.toStringAsFixed(1);
   }
 
+  Map<String, dynamic>? _thresholdByKeyword(List<String> keywords) {
+    final loweredKeywords = keywords.map((e) => e.toLowerCase()).toList();
+
+    for (final item in thresholdRecords) {
+      final name = (item['parameter_name'] ?? item['name'] ?? '')
+          .toString()
+          .toLowerCase();
+
+      if (loweredKeywords.any((keyword) => name.contains(keyword))) {
+        return item;
+      }
+    }
+
+    return null;
+  }
+
+  bool _isOutsideThreshold(double? value, List<String> keywords) {
+    if (value == null) return false;
+
+    final threshold = _thresholdByKeyword(keywords);
+    if (threshold == null) return false;
+
+    final min = _asDouble(threshold['custom_min'] ?? threshold['default_min']);
+    final max = _asDouble(threshold['custom_max'] ?? threshold['default_max']);
+
+    if (min != null && value < min) return true;
+    if (max != null && value > max) return true;
+
+    return false;
+  }
+
+  bool _isLatestGlucoseAbnormal() {
+    final value = _asDouble(latestGlucose?['glucose_value']);
+    final type = latestGlucose?['measurement_type']?.toString().toLowerCase() ?? '';
+
+    final keywords = <String>['glukosa'];
+    if (type.contains('puasa')) keywords.add('puasa');
+    if (type.contains('sewaktu')) keywords.add('sewaktu');
+    if (type.contains('makan')) keywords.add('makan');
+
+    return _isOutsideThreshold(value, keywords);
+  }
+
+  bool _isLatestBloodPressureAbnormal() {
+    final systolic = _asDouble(latestPhysiological?['systolic']);
+    final diastolic = _asDouble(latestPhysiological?['diastolic']);
+
+    return _isOutsideThreshold(systolic, ['sistol', 'tekanan darah']) ||
+        _isOutsideThreshold(diastolic, ['diastol', 'tekanan darah']);
+  }
+
+  bool _isLatestBmiAbnormal(String bmiText) {
+    final value = _asDouble(bmiText);
+    return _isOutsideThreshold(value, ['bmi', 'imt']);
+  }
+
+  String _summaryStatus({required bool hasData, required bool abnormal}) {
+    if (!hasData) return 'Belum ada';
+    return abnormal ? 'Abnormal' : 'Tercatat';
+  }
+
+  String _bloodPressureText(Map<String, dynamic>? item) {
+    final systolic = item?['systolic']?.toString();
+    final diastolic = item?['diastolic']?.toString();
+
+    final hasSystolic = systolic != null && systolic.trim().isNotEmpty && systolic != '-';
+    final hasDiastolic = diastolic != null && diastolic.trim().isNotEmpty && diastolic != '-';
+
+    if (hasSystolic && hasDiastolic) return '$systolic/$diastolic';
+    if (hasSystolic) return '$systolic/-';
+    if (hasDiastolic) return '-/$diastolic';
+
+    return 'Tidak dicatat';
+  }
+
+  String _physiologicalHistoryValue(Map<String, dynamic> item) {
+    final bp = _bloodPressureText(item);
+    final bmi = _calculatedBmi(item);
+    final parts = <String>[];
+
+    if (bp != 'Tidak dicatat') parts.add('$bp mmHg');
+    if (bmi != '-') parts.add('BMI $bmi');
+
+    return parts.isEmpty ? '-' : parts.join(' • ');
+  }
+
   Widget _buildSummaryCards() {
     final glucoseValue = latestGlucose?['glucose_value']?.toString() ?? '-';
+    final hasGlucose = glucoseValue != '-';
+    final glucoseAbnormal = _isLatestGlucoseAbnormal();
 
-    final systolic = latestPhysiological?['systolic']?.toString() ?? '-';
-    final diastolic = latestPhysiological?['diastolic']?.toString() ?? '-';
+    final bpText = _bloodPressureText(latestPhysiological);
+    final hasBloodPressure = bpText != 'Tidak dicatat';
+    final bpAbnormal = _isLatestBloodPressureAbnormal();
+
     final bmi = _calculatedBmi(latestPhysiological);
+    final hasBmi = bmi != '-';
+    final bmiAbnormal = _isLatestBmiAbnormal(bmi);
 
     final items = [
-      [
-        'Glukosa',
-        glucoseValue,
-        'mg/dL',
-        glucoseValue == '-' ? 'Belum ada' : 'Tercatat',
-        AppColors.primaryBlue,
-      ],
-      [
-        'Tekanan Darah',
-        '$systolic/$diastolic',
-        'mmHg',
-        systolic == '-' ? 'Belum ada' : 'Tercatat',
-        Colors.orange,
-      ],
-      ['BMI', bmi, '', bmi == '-' ? 'Belum ada' : 'Tercatat', Colors.blue],
-      [
-        'Kepatuhan Obat',
-        medicationRecords.isEmpty
+      {
+        'title': 'Glukosa',
+        'value': glucoseValue,
+        'unit': 'mg/dL',
+        'status': _summaryStatus(hasData: hasGlucose, abnormal: glucoseAbnormal),
+        'color': glucoseAbnormal ? AppColors.red : AppColors.primaryBlue,
+        'abnormal': glucoseAbnormal,
+      },
+      {
+        'title': 'Tekanan Darah',
+        'value': bpText,
+        'unit': hasBloodPressure ? 'mmHg' : '',
+        'status': _summaryStatus(hasData: hasBloodPressure, abnormal: bpAbnormal),
+        'color': bpAbnormal ? AppColors.red : Colors.orange,
+        'abnormal': bpAbnormal,
+      },
+      {
+        'title': 'BMI',
+        'value': bmi,
+        'unit': '',
+        'status': _summaryStatus(hasData: hasBmi, abnormal: bmiAbnormal),
+        'color': bmiAbnormal ? AppColors.red : Colors.blue,
+        'abnormal': bmiAbnormal,
+      },
+      {
+        'title': 'Kepatuhan Obat',
+        'value': medicationRecords.isEmpty
             ? '-'
             : '${_medicationAdherencePercent().toStringAsFixed(0)}',
-        medicationRecords.isEmpty ? '' : '%',
-        _latestMedicationStatus(),
-        const Color(0xFF10C878),
-      ],
+        'unit': medicationRecords.isEmpty ? '' : '%',
+        'status': _latestMedicationStatus(),
+        'color': const Color(0xFF10C878),
+        'abnormal': false,
+      },
     ];
 
     return GridView.builder(
@@ -499,37 +564,59 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
       ),
       itemBuilder: (context, index) {
         final item = items[index];
-        final color = item[4] as Color;
+        final color = item['color'] as Color;
+        final abnormal = item['abnormal'] == true;
 
         return Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.light1),
+            color: abnormal ? const Color(0xFFFFFBFB) : AppColors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: abnormal
+                  ? AppColors.red.withValues(alpha: 0.18)
+                  : AppColors.light1,
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                item[0] as String,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      item['title'] as String,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.dark1,
+                      ),
+                    ),
+                  ),
+                  if (abnormal)
+                    const Icon(
+                      Icons.warning_amber_rounded,
+                      color: AppColors.red,
+                      size: 16,
+                    ),
+                ],
               ),
               const Spacer(),
               RichText(
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 text: TextSpan(
-                  text: item[1] as String,
+                  text: item['value'] as String,
                   style: TextStyle(
                     color: color,
                     fontWeight: FontWeight.bold,
-                    fontSize: 20,
+                    fontSize: item['value'] == 'Tidak dicatat' ? 15 : 20,
                   ),
                   children: [
                     TextSpan(
-                      text: ' ${item[2]}',
+                      text: (item['unit'] as String).isEmpty
+                          ? ''
+                          : ' ${item['unit']}',
                       style: const TextStyle(
                         color: AppColors.dark2,
                         fontSize: 11,
@@ -539,9 +626,26 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                   ],
                 ),
               ),
-              Text(
-                item[3] as String,
-                style: TextStyle(color: color, fontSize: 12),
+              const SizedBox(height: 3),
+              Row(
+                children: [
+                  if (abnormal) ...[
+                    const Icon(
+                      Icons.error_outline_rounded,
+                      color: AppColors.red,
+                      size: 12,
+                    ),
+                    const SizedBox(width: 4),
+                  ],
+                  Text(
+                    item['status'] as String,
+                    style: TextStyle(
+                      color: abnormal ? AppColors.red : color,
+                      fontSize: 12,
+                      fontWeight: abnormal ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -952,14 +1056,12 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
 
       final history = sortedPhysiological.take(5).map((item) {
         final date = item['measured_at']?.toString() ?? '-';
-        final systolic = item['systolic']?.toString() ?? '-';
-        final diastolic = item['diastolic']?.toString() ?? '-';
-        final bmi = _calculatedBmi(item);
+        final valueText = _physiologicalHistoryValue(item);
 
         return [
           'Data Fisiologis',
           date,
-          '$systolic/$diastolic mmHg • BMI $bmi',
+          valueText,
         ];
       }).toList();
 

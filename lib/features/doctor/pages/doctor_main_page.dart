@@ -293,7 +293,7 @@ class _DoctorHomeContentState extends State<DoctorHomeContent> {
                     : filteredPatients.isEmpty
                     ? _emptySearch()
                     : ListView(
-                        padding: const EdgeInsets.fromLTRB(18, 18, 18, 120),
+                        padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
                         children: [
                           Text(
                             'DAFTAR PASIEN - ${filteredPatients.length} DATA',
@@ -581,7 +581,7 @@ class _PatientCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final statusColor = isNormal ? const Color(0xFF10C878) : AppColors.red;
-    final statusBg = isNormal ? const Color(0xFFEAFBF3) : AppColors.lightRed;
+    final statusBg = isNormal ? const Color(0xFFEAFBF3) : const Color(0xFFFFF4F4);
 
     final mainTextColor = isConnected ? AppColors.dark1 : AppColors.dark4;
     final subTextColor = isConnected ? AppColors.dark2 : AppColors.dark4;
@@ -634,7 +634,7 @@ class _PatientCard extends StatelessWidget {
                     spacing: 6,
                     runSpacing: 6,
                     children: [
-                      DiabetesTypeBadge(value: type, dense: true),
+                      DiabetesTypeBadge(value: type, dense: true, inactive: !isConnected),
                       if (isConnected)
                         _statusBadge(
                           text: status,
@@ -706,20 +706,27 @@ class _PatientCard extends StatelessWidget {
 
   BoxDecoration _cardDecoration(bool isNormal, bool isConnected) {
     return BoxDecoration(
-      color: isConnected ? AppColors.white : const Color(0xFFF1F3F5),
+      color: !isConnected
+          ? const Color(0xFFF1F3F5)
+          : isNormal
+              ? AppColors.white
+              : const Color(0xFFFFFBFB),
       borderRadius: BorderRadius.circular(12),
       border: Border.all(
-        color: isConnected
-            ? (isNormal
-                  ? AppColors.light1
-                  : AppColors.red.withValues(alpha: 0.35))
-            : AppColors.dark4.withValues(alpha: 0.25),
+        color: !isConnected
+            ? AppColors.dark4.withValues(alpha: 0.22)
+            : isNormal
+                ? AppColors.light1
+                : AppColors.red.withValues(alpha: 0.18),
+        width: 1,
       ),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withValues(alpha: isConnected ? 0.12 : 0.04),
+          color: isConnected && !isNormal
+              ? AppColors.red.withValues(alpha: 0.05)
+              : Colors.black.withValues(alpha: isConnected ? 0.06 : 0.03),
           blurRadius: 8,
-          offset: const Offset(0, 4),
+          offset: const Offset(0, 3),
         ),
       ],
     );

@@ -93,7 +93,7 @@ class _DoctorHistoryPageState extends State<DoctorHistoryPage> {
                                   18,
                                   12,
                                   18,
-                                  120,
+                                  72,
                                 ),
                                 children: [
                                   ...filtered.map((item) {

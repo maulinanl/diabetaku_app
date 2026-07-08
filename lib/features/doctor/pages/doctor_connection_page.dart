@@ -887,7 +887,9 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
                   height: 46,
                   child: ElevatedButton(
                     onPressed: onPrimaryTap,
-                    style: AppButtonStyles.danger,
+                    style: isReject
+                        ? AppButtonStyles.danger
+                        : AppButtonStyles.primary,
                     child: Text(buttonText),
                   ),
                 ),

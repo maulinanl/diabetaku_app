@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../../core/utils/medication_dose_formatter.dart';
 import 'api_service.dart';
 
 class MedicationReminderService {
@@ -27,6 +28,7 @@ class MedicationReminderService {
     if (_initialized) return;
 
     tz_data.initializeTimeZones();
+    _configureLocalTimeZone();
 
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     const darwinSettings = DarwinInitializationSettings(
@@ -56,6 +58,26 @@ class MedicationReminderService {
             AndroidFlutterLocalNotificationsPlugin>();
 
     await androidPlugin?.requestNotificationsPermission();
+  }
+
+
+  static void _configureLocalTimeZone() {
+    final offset = DateTime.now().timeZoneOffset;
+
+    // Fallback sederhana untuk zona waktu Indonesia supaya jadwal obat
+    // mengikuti jam lokal perangkat, bukan UTC default dari package timezone.
+    final locationName = switch (offset.inHours) {
+      8 => 'Asia/Makassar',
+      9 => 'Asia/Jayapura',
+      _ => 'Asia/Jakarta',
+    };
+
+    try {
+      tz.setLocalLocation(tz.getLocation(locationName));
+    } catch (e) {
+      debugPrint('SET LOCAL TIMEZONE ERROR: $e');
+      tz.setLocalLocation(tz.getLocation('Asia/Jakarta'));
+    }
   }
 
   static void _onNotificationTap(NotificationResponse response) {
@@ -179,14 +201,16 @@ class MedicationReminderService {
     required DateTime dateTime,
   }) async {
     final medicationName = _text(item['medication_name'], fallback: 'Obat');
-    final dosage = _text(item['dosage']);
-    final dosePerSession = _text(item['dose_per_session']);
+    final doseLine = medicationDoseLine(
+      dosage: item['dosage'],
+      dosePerSession: item['dose_per_session'],
+      form: item['form'] ?? item['dosage_form'],
+    );
     final sessionName = _text(item['session_name'], fallback: 'Jadwal minum');
     final mealRule = _text(item['meal_rule']);
 
     final bodyParts = <String>[
-      if (dosage != '-') dosage,
-      if (dosePerSession != '-') dosePerSession,
+      if (doseLine != '-') doseLine,
       sessionName,
       if (mealRule != '-') mealRule,
     ];
@@ -219,15 +243,31 @@ class MedicationReminderService {
       iOS: darwinDetails,
     );
 
-    await _plugin.zonedSchedule(
-      id: id,
-      title: 'Waktunya minum obat',
-      body: '$medicationName — ${bodyParts.join(' • ')}',
-      scheduledDate: tz.TZDateTime.from(dateTime, tz.local),
-      notificationDetails: notificationDetails,
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      payload: payload,
-    );
+    final scheduledDate = tz.TZDateTime.from(dateTime, tz.local);
+
+    try {
+      await _plugin.zonedSchedule(
+        id: id,
+        title: 'Waktunya minum obat',
+        body: '$medicationName — ${bodyParts.join(' • ')}',
+        scheduledDate: scheduledDate,
+        notificationDetails: notificationDetails,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        payload: payload,
+      );
+    } catch (e) {
+      debugPrint('EXACT MEDICATION REMINDER FALLBACK TO INEXACT: $e');
+
+      await _plugin.zonedSchedule(
+        id: id,
+        title: 'Waktunya minum obat',
+        body: '$medicationName — ${bodyParts.join(' • ')}',
+        scheduledDate: scheduledDate,
+        notificationDetails: notificationDetails,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        payload: payload,
+      );
+    }
   }
 
   static _ReminderTime? _parseTime(dynamic value) {

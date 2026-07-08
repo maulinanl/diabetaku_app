@@ -246,7 +246,7 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
                   onRefresh: _loadCaregiverHome,
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 120),
+                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
                     child: Column(
                       children: [
                         _nextMedicationCard(),
@@ -1006,7 +1006,7 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
             Expanded(
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(24, 42, 24, 120),
+                padding: const EdgeInsets.fromLTRB(24, 42, 24, 28),
                 child: Column(
                   children: [
                     Container(

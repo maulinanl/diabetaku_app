@@ -482,7 +482,7 @@ class _CaregiverHistoryPageState extends State<CaregiverHistoryPage> {
             _header(context),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 48, 24, 120),
+                padding: const EdgeInsets.fromLTRB(24, 48, 24, 28),
                 child: Column(
                   children: [
                     Container(
@@ -724,7 +724,7 @@ class _CaregiverHistoryPageState extends State<CaregiverHistoryPage> {
         ),
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
             children: [
               const Text(
                 'DATA KESEHATAN',
@@ -791,7 +791,7 @@ class _CaregiverHistoryPageState extends State<CaregiverHistoryPage> {
 
   Widget _recommendationContent(List<Map<String, dynamic>> data) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 120),
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
       children: [
         const Text(
           'REKOMENDASI DOKTER',

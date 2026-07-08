@@ -113,10 +113,14 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
                       _buildRecommendationInput(),
                       const SizedBox(height: 16),
                       _buildAddedRecommendation(),
-                      const SizedBox(height: 16),
-                      _buildCaregiverSwitch(),
-                      const SizedBox(height: 16),
-                      if (sendToCaregiver) _buildRecipientSection(),
+                      if (caregivers.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        _buildCaregiverSwitch(),
+                        if (sendToCaregiver) ...[
+                          const SizedBox(height: 16),
+                          _buildRecipientSection(),
+                        ],
+                      ],
                       const SizedBox(height: 24),
                       CustomButton(
                         text: _isSending ? 'Mengirim...' : 'Kirim Rekomendasi',
@@ -358,17 +362,64 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
     }
 
     if (caregivers.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    if (caregivers.length == 1) {
+      final caregiver = caregivers.first;
+      final name = caregiver['full_name']?.toString() ?? '-';
+      final relation = caregiver['relation_name']?.toString() ?? 'Pendamping';
+
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: AppColors.veryLightBlue,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: AppColors.light1),
         ),
-        child: const Text(
-          'Belum ada pendamping yang terhubung dengan pasien.',
-          style: TextStyle(color: AppColors.dark2, fontSize: 12),
+        child: Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: AppColors.lightBlue,
+              child: Text(
+                _getInitials(name),
+                style: const TextStyle(
+                  color: AppColors.primaryBlue,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Pendamping terpilih otomatis',
+                    style: TextStyle(
+                      color: AppColors.primaryBlue,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    '$name • $relation',
+                    style: const TextStyle(
+                      color: AppColors.dark2,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.check_circle,
+              color: AppColors.primaryBlue,
+              size: 20,
+            ),
+          ],
         ),
       );
     }
@@ -548,11 +599,11 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
             child: Icon(Icons.groups, color: AppColors.primaryBlue),
           ),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'Beritahu pendamping',
                   style: TextStyle(
                     color: AppColors.primaryBlue,
@@ -561,8 +612,10 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
                   ),
                 ),
                 Text(
-                  'Teruskan ke pendamping pasien',
-                  style: TextStyle(color: AppColors.dark3, fontSize: 11),
+                  caregivers.length == 1
+                      ? 'Otomatis diteruskan ke 1 pendamping'
+                      : 'Pilih pendamping yang akan diberitahu',
+                  style: const TextStyle(color: AppColors.dark3, fontSize: 11),
                 ),
               ],
             ),
@@ -593,13 +646,17 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
 
       setState(() {
         caregivers = data;
-        selectedCaregiverUserIds.addAll(
-          data.map((e) => int.parse(e['user_id'].toString())),
-        );
+        selectedCaregiverUserIds
+          ..clear()
+          ..addAll(data.map((e) => int.parse(e['user_id'].toString())));
+        sendToCaregiver = data.isNotEmpty;
         isLoadingCaregivers = false;
       });
     } catch (_) {
-      setState(() => isLoadingCaregivers = false);
+      setState(() {
+        sendToCaregiver = false;
+        isLoadingCaregivers = false;
+      });
     }
   }
 
@@ -620,7 +677,7 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
     try {
       final recipientUserIds = <int>[int.parse(patientUserId.toString())];
 
-      if (sendToCaregiver) {
+      if (sendToCaregiver && caregivers.isNotEmpty) {
         recipientUserIds.addAll(selectedCaregiverUserIds);
       }
 
@@ -639,7 +696,6 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
       if (!mounted) return;
 
       setState(() => _isSending = false);
-      _showSuccessDialog(context);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
@@ -790,7 +846,7 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
 
                   _successRecipient('$patientName (Pasien)', Icons.person),
 
-                  if (sendToCaregiver)
+                  if (sendToCaregiver && caregivers.isNotEmpty)
                     ...caregivers
                         .where((caregiver) {
                           final userId = int.parse(

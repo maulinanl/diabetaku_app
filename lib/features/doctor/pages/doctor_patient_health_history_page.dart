@@ -166,17 +166,33 @@ class _DoctorPatientHealthHistoryPageState
     List<Map<String, dynamic>> data,
   ) {
     return data.map((item) {
-      final systolic = item['systolic']?.toString() ?? '-';
-      final diastolic = item['diastolic']?.toString() ?? '-';
-      final weight = item['weight_kg']?.toString() ?? '-';
-      final bmi = item['bmi']?.toString() ?? '-';
+      final systolic = item['systolic']?.toString();
+      final diastolic = item['diastolic']?.toString();
+      final weight = item['weight_kg']?.toString();
+      final bmi = item['bmi']?.toString();
+
+      final hasSystolic = systolic != null && systolic.trim().isNotEmpty && systolic != '-';
+      final hasDiastolic = diastolic != null && diastolic.trim().isNotEmpty && diastolic != '-';
+      final hasBp = hasSystolic || hasDiastolic;
+      final hasBmi = bmi != null && bmi.trim().isNotEmpty && bmi != '-';
+      final hasWeight = weight != null && weight.trim().isNotEmpty && weight != '-';
+
+      final value = hasBp
+          ? '${hasSystolic ? systolic : '-'}/${hasDiastolic ? diastolic : '-'}'
+          : hasBmi
+              ? 'BMI $bmi'
+              : '-';
+
+      final descriptions = <String>[];
+      if (hasWeight) descriptions.add('Berat $weight kg');
+      if (hasBmi && hasBp) descriptions.add('BMI $bmi');
 
       return {
         'type': 'Fisiologis',
-        'title': 'Data Fisiologis',
-        'value': '$systolic/$diastolic',
-        'unit': 'mmHg',
-        'description': 'Berat $weight kg • BMI $bmi',
+        'title': hasBp ? 'Tekanan Darah' : 'Data Fisiologis',
+        'value': value,
+        'unit': hasBp ? 'mmHg' : '',
+        'description': descriptions.isEmpty ? 'Data fisiologis tercatat' : descriptions.join(' • '),
         'time': _formatDateTime(item['measured_at']),
         'date_raw': item['measured_at'],
         'badge': item['validation_status'] ?? 'Valid',

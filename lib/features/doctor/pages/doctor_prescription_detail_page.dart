@@ -285,15 +285,6 @@ class _DoctorPrescriptionDetailPageState
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        scheduleText,
-                        style: const TextStyle(
-                          color: AppColors.dark2,
-                          fontSize: 12,
-                          height: 1.35,
-                        ),
-                      ),
                       const SizedBox(height: 10),
                       Wrap(
                         spacing: 6,
