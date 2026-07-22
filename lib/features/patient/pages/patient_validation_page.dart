@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 import 'patient_validation_detail_page.dart';

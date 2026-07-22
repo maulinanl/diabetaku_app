@@ -731,5 +731,4 @@ class _PatientCard extends StatelessWidget {
       ],
     );
   }
-
 }

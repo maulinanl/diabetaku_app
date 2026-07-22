@@ -6,7 +6,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 class ApiService {
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.183.15.130/api',
+    defaultValue: 'https://si.its.ac.id/labs/ikti/diabetaku/api',
   );
 
   static Future<void> registerDoctor({
