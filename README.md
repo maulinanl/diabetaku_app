@@ -313,7 +313,7 @@ Update the API base URL according to your backend environment.
 Example:
 
 ```dart
-baseUrl = "https://github.com/maulinanl/diabetaku-backend.git";
+baseUrl = "http://your-backend-url/api";
 ```
 
 Make sure the backend server is running before launching the application.
