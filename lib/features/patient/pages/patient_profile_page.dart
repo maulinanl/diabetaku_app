@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../data/services/api_service.dart';
-import '../../../data/services/medication_reminder_service.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 import '../../auth/pages/login_page.dart';
 import '../../auth/pages/change_password_page.dart';
-import 'patient_edit_profile_page.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/profile_badge.dart';
-import 'package:diabetaku_app/core/theme/app_button_styles.dart';
+import '../../../data/services/api_service.dart';
+import '../../../data/services/medication_reminder_service.dart';
+import 'patient_edit_profile_page.dart';
 
 class PatientProfilePage extends StatefulWidget {
   const PatientProfilePage({super.key});
@@ -252,7 +252,6 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
     final verifiedAt = data['email_verified_at'];
     return verifiedAt == null ? 'Belum Verifikasi' : 'Terverifikasi';
   }
-
 
   Widget _statCard(String value, String label) {
     return Container(

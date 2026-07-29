@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/diabetes_type_badge.dart';
+import '../widgets/doctor_bottom_nav.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../data/services/api_service.dart';
+import '../../../core/widgets/lazy_indexed_stack.dart';
 import 'doctor_connection_page.dart';
 import 'doctor_history_page.dart';
 import 'doctor_profile_page.dart';
 import 'doctor_notification_page.dart';
 import 'patient_detail_page.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../../data/services/api_service.dart';
-import '../../../core/widgets/lazy_indexed_stack.dart';
-import '../widgets/doctor_bottom_nav.dart';
 
 class DoctorMainPage extends StatefulWidget {
   const DoctorMainPage({super.key});
@@ -52,10 +52,7 @@ class _DoctorMainPageState extends State<DoctorMainPage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       extendBody: false,
-      body: LazyIndexedStack(
-        index: currentIndex,
-        children: pages,
-      ),
+      body: LazyIndexedStack(index: currentIndex, children: pages),
       bottomNavigationBar: DoctorBottomNavBar(
         currentIndex: currentIndex,
         onTap: (index) {
@@ -72,10 +69,7 @@ class _DoctorMainPageState extends State<DoctorMainPage> {
 class DoctorHomeContent extends StatefulWidget {
   final void Function(int patientId)? onOpenConnectionRequest;
 
-  const DoctorHomeContent({
-    super.key,
-    this.onOpenConnectionRequest,
-  });
+  const DoctorHomeContent({super.key, this.onOpenConnectionRequest});
 
   @override
   State<DoctorHomeContent> createState() => _DoctorHomeContentState();
@@ -207,8 +201,6 @@ class _DoctorHomeContentState extends State<DoctorHomeContent> {
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      // sementara pakai doctor_id = 1 dulu
-      // nanti kita rapikan supaya doctor_id disimpan dari login
       final doctorId = prefs.getInt('doctor_id') ?? 1;
 
       final data = await ApiService.getDoctorPatients(doctorId);
@@ -581,7 +573,9 @@ class _PatientCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final statusColor = isNormal ? const Color(0xFF10C878) : AppColors.red;
-    final statusBg = isNormal ? const Color(0xFFEAFBF3) : const Color(0xFFFFF4F4);
+    final statusBg = isNormal
+        ? const Color(0xFFEAFBF3)
+        : const Color(0xFFFFF4F4);
 
     final mainTextColor = isConnected ? AppColors.dark1 : AppColors.dark4;
     final subTextColor = isConnected ? AppColors.dark2 : AppColors.dark4;
@@ -634,7 +628,11 @@ class _PatientCard extends StatelessWidget {
                     spacing: 6,
                     runSpacing: 6,
                     children: [
-                      DiabetesTypeBadge(value: type, dense: true, inactive: !isConnected),
+                      DiabetesTypeBadge(
+                        value: type,
+                        dense: true,
+                        inactive: !isConnected,
+                      ),
                       if (isConnected)
                         _statusBadge(
                           text: status,
@@ -709,15 +707,15 @@ class _PatientCard extends StatelessWidget {
       color: !isConnected
           ? const Color(0xFFF1F3F5)
           : isNormal
-              ? AppColors.white
-              : const Color(0xFFFFFBFB),
+          ? AppColors.white
+          : const Color(0xFFFFFBFB),
       borderRadius: BorderRadius.circular(12),
       border: Border.all(
         color: !isConnected
             ? AppColors.dark4.withValues(alpha: 0.22)
             : isNormal
-                ? AppColors.light1
-                : AppColors.red.withValues(alpha: 0.18),
+            ? AppColors.light1
+            : AppColors.red.withValues(alpha: 0.18),
         width: 1,
       ),
       boxShadow: [

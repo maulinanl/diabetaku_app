@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/app_option_bottom_sheet.dart';
 import '../../../data/services/api_service.dart';
 import 'email_verification_page.dart';
-import 'package:diabetaku_app/core/theme/app_button_styles.dart';
-import '../../../core/widgets/app_option_bottom_sheet.dart';
 
 class RegisterDoctorStep2Page extends StatefulWidget {
   final String fullName;
@@ -144,7 +144,8 @@ class _RegisterDoctorStep2PageState extends State<RegisterDoctorStep2Page> {
           icon: Icons.medical_services_outlined,
           items: specializations,
           maxHeightFactor: 0.62,
-          labelBuilder: (item) => item['specialization_name']?.toString() ?? '-',
+          labelBuilder: (item) =>
+              item['specialization_name']?.toString() ?? '-',
           isSelected: (item) {
             final id = int.tryParse(item['specialization_id'].toString()) ?? 0;
             return id == specializationId;

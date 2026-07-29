@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/services/api_service.dart';
 import 'patient_doctor_detail_page.dart';
 import 'patient_caregiver_detail_page.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../../data/services/api_service.dart';
-import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class PatientConnectionPage extends StatefulWidget {
   const PatientConnectionPage({super.key});
@@ -74,7 +74,9 @@ class _PatientConnectionPageState extends State<PatientConnectionPage> {
 
       final doctorData = await ApiService.getConnectedDoctors(patientId);
       final caregiverData = await ApiService.getConnectedCaregivers(patientId);
-      final requestData = await ApiService.getIncomingCaregiverRequests(patientId);
+      final requestData = await ApiService.getIncomingCaregiverRequests(
+        patientId,
+      );
 
       if (!mounted) return;
 
@@ -423,7 +425,9 @@ class _PatientConnectionPageState extends State<PatientConnectionPage> {
                             date: date,
                           )
                         : PatientCaregiverDetailPage(
-                            caregiverId: int.parse(item['caregiver_id'].toString()),
+                            caregiverId: int.parse(
+                              item['caregiver_id'].toString(),
+                            ),
                             initial: initial,
                             name: name,
                             relation: info,
@@ -968,7 +972,6 @@ class _RequestCard extends StatelessWidget {
   }
 }
 
-
 class PatientRequestDetailPage extends StatefulWidget {
   final String initial;
   final String name;
@@ -992,7 +995,8 @@ class PatientRequestDetailPage extends StatefulWidget {
   });
 
   @override
-  State<PatientRequestDetailPage> createState() => _PatientRequestDetailPageState();
+  State<PatientRequestDetailPage> createState() =>
+      _PatientRequestDetailPageState();
 }
 
 class _PatientRequestDetailPageState extends State<PatientRequestDetailPage> {

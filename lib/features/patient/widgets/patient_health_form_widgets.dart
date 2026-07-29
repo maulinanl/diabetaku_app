@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../../../core/theme/app_button_styles.dart';
 import '../../../core/theme/app_colors.dart';
 
@@ -32,7 +31,9 @@ class PatientFormHeader extends StatelessWidget {
       child: Row(
         children: [
           IconButton(
-            onPressed: disabled ? null : (onBack ?? () => Navigator.pop(context)),
+            onPressed: disabled
+                ? null
+                : (onBack ?? () => Navigator.pop(context)),
             icon: const Icon(Icons.arrow_back, color: Colors.white),
           ),
           Expanded(
@@ -138,9 +139,7 @@ class PatientDateTimeBox extends StatelessWidget {
   }
 }
 
-InputDecoration patientFormInputDecoration({
-  String? hint,
-}) {
+InputDecoration patientFormInputDecoration({String? hint}) {
   return InputDecoration(
     hintText: hint,
     hintStyle: const TextStyle(color: AppColors.dark4, fontSize: 13),
@@ -157,10 +156,7 @@ InputDecoration patientFormInputDecoration({
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(6),
-      borderSide: const BorderSide(
-        color: AppColors.primaryBlue,
-        width: 1.4,
-      ),
+      borderSide: const BorderSide(color: AppColors.primaryBlue, width: 1.4),
     ),
     errorBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(6),
@@ -331,12 +327,12 @@ class PatientFormSelectField extends StatelessWidget {
           onTap: disabled
               ? null
               : () => showPatientOptionSheet(
-                    context: context,
-                    title: label,
-                    items: items,
-                    selectedValue: value,
-                    onSelected: onSelected,
-                  ),
+                  context: context,
+                  title: label,
+                  items: items,
+                  selectedValue: value,
+                  onSelected: onSelected,
+                ),
           borderRadius: BorderRadius.circular(6),
           child: InputDecorator(
             decoration: patientFormInputDecoration(),
@@ -396,10 +392,7 @@ class PatientFormSubmitButton extends StatelessWidget {
                   strokeWidth: 2,
                 ),
               )
-            : Text(
-                label,
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
+            : Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
       ),
     );
   }
@@ -408,20 +401,14 @@ class PatientFormSubmitButton extends StatelessWidget {
 class PatientFormCancelButton extends StatelessWidget {
   final bool disabled;
 
-  const PatientFormCancelButton({
-    super.key,
-    this.disabled = false,
-  });
+  const PatientFormCancelButton({super.key, this.disabled = false});
 
   @override
   Widget build(BuildContext context) {
     return TextButton(
       onPressed: disabled ? null : () => Navigator.pop(context),
       child: const Center(
-        child: Text(
-          'Batal',
-          style: TextStyle(color: AppColors.primaryBlue),
-        ),
+        child: Text('Batal', style: TextStyle(color: AppColors.primaryBlue)),
       ),
     );
   }
@@ -591,8 +578,9 @@ void showPatientOptionSheet({
                               ? AppColors.primaryBlue
                               : AppColors.dark1,
                           fontSize: 13,
-                          fontWeight:
-                              selected ? FontWeight.w600 : FontWeight.w400,
+                          fontWeight: selected
+                              ? FontWeight.w600
+                              : FontWeight.w400,
                         ),
                       ),
                       trailing: selected

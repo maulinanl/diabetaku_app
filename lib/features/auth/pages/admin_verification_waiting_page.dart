@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 import '../../../core/theme/app_colors.dart';
 import 'login_page.dart';
-import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class AdminVerificationWaitingPage extends StatelessWidget {
   const AdminVerificationWaitingPage({super.key});

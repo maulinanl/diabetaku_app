@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 import '../widgets/diabetes_type_badge.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../data/services/api_service.dart';
-import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class RecommendationFormPage extends StatefulWidget {
   final int patientId;
@@ -451,7 +451,9 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
                     selectedCaregiverUserIds
                       ..clear()
                       ..addAll(
-                        caregivers.map((e) => int.parse(e['user_id'].toString())),
+                        caregivers.map(
+                          (e) => int.parse(e['user_id'].toString()),
+                        ),
                       );
                   });
                 },
@@ -464,7 +466,8 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
           ...caregivers.map((caregiver) {
             final userId = int.parse(caregiver['user_id'].toString());
             final name = caregiver['full_name']?.toString() ?? '-';
-            final relation = caregiver['relation_name']?.toString() ?? 'Pendamping';
+            final relation =
+                caregiver['relation_name']?.toString() ?? 'Pendamping';
             final selected = selectedCaregiverUserIds.contains(userId);
 
             return Padding(
@@ -855,9 +858,11 @@ class _RecommendationFormPageState extends State<RecommendationFormPage> {
                           return selectedCaregiverUserIds.contains(userId);
                         })
                         .map((caregiver) {
-                          final name = caregiver['full_name']?.toString() ?? '-';
+                          final name =
+                              caregiver['full_name']?.toString() ?? '-';
                           final relation =
-                              caregiver['relation_name']?.toString() ?? 'Pendamping';
+                              caregiver['relation_name']?.toString() ??
+                              'Pendamping';
 
                           return Padding(
                             padding: const EdgeInsets.only(top: 8),

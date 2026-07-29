@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/profile_badge.dart';
 import '../../../data/services/api_service.dart';
-import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class PatientEditProfilePage extends StatefulWidget {
   final Map<String, dynamic> profile;
@@ -25,9 +25,8 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
   bool isSaving = false;
 
   String get emailBadge {
-    // Response lama profil pasien belum selalu membawa email_verified_at.
-    // Pasien yang sudah masuk aplikasi sudah melewati verifikasi email.
-    if (!widget.profile.containsKey('email_verified_at')) return 'Terverifikasi';
+    if (!widget.profile.containsKey('email_verified_at'))
+      return 'Terverifikasi';
 
     final verifiedAt = widget.profile['email_verified_at'];
     return verifiedAt == null ? 'Belum Verifikasi' : 'Terverifikasi';
@@ -86,9 +85,7 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
     nameCtr = TextEditingController(
       text: profile['full_name']?.toString() ?? '',
     );
-    emailCtr = TextEditingController(
-      text: profile['email']?.toString() ?? '',
-    );
+    emailCtr = TextEditingController(text: profile['email']?.toString() ?? '');
     phoneCtr = TextEditingController(
       text: profile['phone_number']?.toString() ?? '',
     );
@@ -272,10 +269,7 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   children: [
-                    _textField(
-                      label: 'Nama Lengkap',
-                      controller: nameCtr,
-                    ),
+                    _textField(label: 'Nama Lengkap', controller: nameCtr),
                     _textField(
                       label: 'Email',
                       controller: emailCtr,
@@ -448,10 +442,7 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
               Expanded(
                 child: Text(
                   value,
-                  style: const TextStyle(
-                    color: AppColors.dark1,
-                    fontSize: 14,
-                  ),
+                  style: const TextStyle(color: AppColors.dark1, fontSize: 14),
                 ),
               ),
               const Icon(
@@ -496,7 +487,6 @@ class _PatientEditProfilePageState extends State<PatientEditProfilePage> {
       ),
     );
   }
-
 
   void _showGenderSheet() {
     _showOptionSheet<String>(

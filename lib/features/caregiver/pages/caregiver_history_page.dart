@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 import 'caregiver_history_detail_page.dart';
 import 'caregiver_recommendation_detail_page.dart';
 import 'caregiver_connection_page.dart';
-import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class CaregiverHistoryPage extends StatefulWidget {
   const CaregiverHistoryPage({super.key});
@@ -57,7 +56,9 @@ class _CaregiverHistoryPageState extends State<CaregiverHistoryPage> {
         throw Exception('Caregiver ID tidak ditemukan. Coba login ulang.');
       }
 
-      final caregiverPatients = await ApiService.getCaregiverPatients(caregiverId);
+      final caregiverPatients = await ApiService.getCaregiverPatients(
+        caregiverId,
+      );
 
       if (caregiverPatients.isEmpty) {
         if (!mounted) return;
@@ -183,14 +184,18 @@ class _CaregiverHistoryPageState extends State<CaregiverHistoryPage> {
 
     for (final item in rawRecommendations) {
       final enrichedItem = withPatientInfo(item);
-      final clinicalNoteId = enrichedItem['clinical_note_id']?.toString().trim();
-      final recommendationId = enrichedItem['recommendation_id']?.toString().trim();
+      final clinicalNoteId = enrichedItem['clinical_note_id']
+          ?.toString()
+          .trim();
+      final recommendationId = enrichedItem['recommendation_id']
+          ?.toString()
+          .trim();
 
       final key = clinicalNoteId != null && clinicalNoteId.isNotEmpty
           ? 'note_$clinicalNoteId'
           : recommendationId != null && recommendationId.isNotEmpty
-              ? 'recommendation_$recommendationId'
-              : 'item_${grouped.length}';
+          ? 'recommendation_$recommendationId'
+          : 'item_${grouped.length}';
 
       grouped.putIfAbsent(key, () => []);
       grouped[key]!.add(enrichedItem);
@@ -205,10 +210,12 @@ class _CaregiverHistoryPageState extends State<CaregiverHistoryPage> {
           .toList();
 
       final texts = items
-          .map((e) =>
-              e['recommendation_text']?.toString() ??
-              e['description']?.toString() ??
-              '')
+          .map(
+            (e) =>
+                e['recommendation_text']?.toString() ??
+                e['description']?.toString() ??
+                '',
+          )
           .where((e) => e.trim().isNotEmpty)
           .toList();
 
@@ -229,8 +236,8 @@ class _CaregiverHistoryPageState extends State<CaregiverHistoryPage> {
             : categories.join(', '),
         'recommendation_text': texts.isEmpty
             ? first['recommendation_text']?.toString() ??
-                first['description']?.toString() ??
-                '-'
+                  first['description']?.toString() ??
+                  '-'
             : texts.join('\n'),
       };
     }).toList();
@@ -433,7 +440,8 @@ class _CaregiverHistoryPageState extends State<CaregiverHistoryPage> {
       if (!filters.contains(type)) return false;
 
       final matchType = selectedFilter == 0 || type == filters[selectedFilter];
-      final matchDate = selectedRange == null ||
+      final matchDate =
+          selectedRange == null ||
           date == null ||
           (!date.isBefore(selectedRange!.start) &&
               date.isBefore(selectedRange!.end.add(const Duration(days: 1))));

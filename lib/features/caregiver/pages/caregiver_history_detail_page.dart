@@ -71,7 +71,10 @@ class CaregiverHistoryDetailPage extends StatelessWidget {
           ['Jenis Pengukuran', _text(item['measurement_type'])],
           ['Nilai Glukosa', '$value mg/dL'],
           ['Status Validasi', status],
-          ['Waktu Pengukuran', _formatDetailDate(item['measured_at'] ?? history['date_raw'])],
+          [
+            'Waktu Pengukuran',
+            _formatDetailDate(item['measured_at'] ?? history['date_raw']),
+          ],
         ],
         'note': _text(item['note'], fallback: ''),
       };
@@ -97,7 +100,10 @@ class CaregiverHistoryDetailPage extends StatelessWidget {
           ['Berat Badan', '${_text(item['weight_kg'])} kg'],
           ['BMI', '${_text(item['bmi'])} kg/m²'],
           ['Status Validasi', status],
-          ['Waktu Pengukuran', _formatDetailDate(item['measured_at'] ?? history['date_raw'])],
+          [
+            'Waktu Pengukuran',
+            _formatDetailDate(item['measured_at'] ?? history['date_raw']),
+          ],
         ],
         'note': _text(item['note'], fallback: ''),
       };
@@ -116,11 +122,26 @@ class CaregiverHistoryDetailPage extends StatelessWidget {
         'date': _formatDetailDate(item['activity_date'] ?? history['date_raw']),
         'status': status,
         'sections': [
-          ['Aktivitas', _text(item['activity_name'] ?? history['title'], fallback: 'Aktivitas Fisik')],
+          [
+            'Aktivitas',
+            _text(
+              item['activity_name'] ?? history['title'],
+              fallback: 'Aktivitas Fisik',
+            ),
+          ],
           ['Durasi', '$value menit'],
           ['Intensitas', _text(item['intensity'])],
-          ['Status Validasi', _text(item['validation_status'] ?? history['badge'], fallback: 'Valid')],
-          ['Tanggal Aktivitas', _formatDetailDate(item['activity_date'] ?? history['date_raw'])],
+          [
+            'Status Validasi',
+            _text(
+              item['validation_status'] ?? history['badge'],
+              fallback: 'Valid',
+            ),
+          ],
+          [
+            'Tanggal Aktivitas',
+            _formatDetailDate(item['activity_date'] ?? history['date_raw']),
+          ],
         ],
         'note': _text(item['note'], fallback: ''),
       };
@@ -145,12 +166,21 @@ class CaregiverHistoryDetailPage extends StatelessWidget {
         'date': _formatDetailDate(item['meal_date'] ?? history['date_raw']),
         'status': status,
         'sections': [
-          ['Jenis Makan', _text(item['meal_type_name'] ?? history['title'], fallback: 'Pola Makan')],
+          [
+            'Jenis Makan',
+            _text(
+              item['meal_type_name'] ?? history['title'],
+              fallback: 'Pola Makan',
+            ),
+          ],
           ['Deskripsi Makanan', _text(item['food_description'])],
           ['Estimasi Karbohidrat', '$carb gram'],
           ['Kalori', '$calories kkal'],
           ['Status Validasi', status],
-          ['Tanggal Makan', _formatDetailDate(item['meal_date'] ?? history['date_raw'])],
+          [
+            'Tanggal Makan',
+            _formatDetailDate(item['meal_date'] ?? history['date_raw']),
+          ],
         ],
         'note': _text(item['food_description'], fallback: ''),
       };
@@ -175,12 +205,21 @@ class CaregiverHistoryDetailPage extends StatelessWidget {
         ['Nama Obat', medicationName],
         ['Dokter', _text(history['doctor'] ?? item['doctor_name'])],
         ['Status Konsumsi', status],
-        ['Status Resep', _text(history['prescriptionStatus'], fallback: 'Resep aktif')],
+        [
+          'Status Resep',
+          _text(history['prescriptionStatus'], fallback: 'Resep aktif'),
+        ],
         ['Jadwal', _text(item['session'])],
         ['Dosis', _text(item['dose_per_session'])],
-        ['Tanggal Konsumsi', _formatDetailDate(item['log_date'] ?? history['date_raw'])],
+        [
+          'Tanggal Konsumsi',
+          _formatDetailDate(item['log_date'] ?? history['date_raw']),
+        ],
         ['Waktu Checklist', _formatDetailDate(item['checked_at'])],
-        ['Status Validasi', _text(item['validation_status'], fallback: 'Valid')],
+        [
+          'Status Validasi',
+          _text(item['validation_status'], fallback: 'Valid'),
+        ],
       ],
       'note': _text(item['note'], fallback: ''),
     };
@@ -190,7 +229,8 @@ class CaregiverHistoryDetailPage extends StatelessWidget {
     final topPad = MediaQuery.of(context).padding.top;
     final status = data['status'].toString();
 
-    final isBad = status == 'Abnormal' ||
+    final isBad =
+        status == 'Abnormal' ||
         status == 'Ditolak' ||
         status == 'Terlewat' ||
         status == 'Tidak Diminum';

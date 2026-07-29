@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 import 'patient_glucose_form_page.dart';
@@ -8,7 +8,6 @@ import 'patient_physiology_form_page.dart';
 import 'patient_meal_form_page.dart';
 import 'patient_activity_form_page.dart';
 import 'patient_medication_form_page.dart';
-import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class PatientAddDataPage extends StatefulWidget {
   const PatientAddDataPage({super.key});
@@ -183,10 +182,7 @@ class _PatientAddDataPageState extends State<PatientAddDataPage> {
   }
 
   Future<void> _openForm(Widget page) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => page),
-    );
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => page));
 
     if (mounted) {
       await _loadTodayStatus();
@@ -368,4 +364,4 @@ class _PatientAddDataPageState extends State<PatientAddDataPage> {
       ],
     );
   }
-} 
+}

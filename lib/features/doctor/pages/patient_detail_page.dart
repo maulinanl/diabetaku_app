@@ -1,13 +1,13 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 import '../widgets/diabetes_type_badge.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../data/services/api_service.dart';
 import 'patient_threshold_page.dart';
 import 'clinical_note_form_page.dart';
 import 'doctor_prescription_page.dart';
-import '../../../data/services/api_service.dart';
 import 'doctor_patient_health_history_page.dart';
-import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class PatientDetailPage extends StatefulWidget {
   final int patientId;
@@ -301,7 +301,10 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                             spacing: 6,
                             runSpacing: 6,
                             children: [
-                              DiabetesTypeBadge(value: diabetesType, inactive: !widget.isConnected),
+                              DiabetesTypeBadge(
+                                value: diabetesType,
+                                inactive: !widget.isConnected,
+                              ),
                               if (!widget.isConnected)
                                 _badge(
                                   text: 'Tidak Terhubung',
@@ -389,7 +392,6 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
     );
   }
 
-
   double? _asDouble(dynamic value) {
     if (value == null) return null;
 
@@ -449,7 +451,8 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
 
   bool _isLatestGlucoseAbnormal() {
     final value = _asDouble(latestGlucose?['glucose_value']);
-    final type = latestGlucose?['measurement_type']?.toString().toLowerCase() ?? '';
+    final type =
+        latestGlucose?['measurement_type']?.toString().toLowerCase() ?? '';
 
     final keywords = <String>['glukosa'];
     if (type.contains('puasa')) keywords.add('puasa');
@@ -481,8 +484,10 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
     final systolic = item?['systolic']?.toString();
     final diastolic = item?['diastolic']?.toString();
 
-    final hasSystolic = systolic != null && systolic.trim().isNotEmpty && systolic != '-';
-    final hasDiastolic = diastolic != null && diastolic.trim().isNotEmpty && diastolic != '-';
+    final hasSystolic =
+        systolic != null && systolic.trim().isNotEmpty && systolic != '-';
+    final hasDiastolic =
+        diastolic != null && diastolic.trim().isNotEmpty && diastolic != '-';
 
     if (hasSystolic && hasDiastolic) return '$systolic/$diastolic';
     if (hasSystolic) return '$systolic/-';
@@ -520,7 +525,10 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
         'title': 'Glukosa',
         'value': glucoseValue,
         'unit': 'mg/dL',
-        'status': _summaryStatus(hasData: hasGlucose, abnormal: glucoseAbnormal),
+        'status': _summaryStatus(
+          hasData: hasGlucose,
+          abnormal: glucoseAbnormal,
+        ),
         'color': glucoseAbnormal ? AppColors.red : AppColors.primaryBlue,
         'abnormal': glucoseAbnormal,
       },
@@ -528,7 +536,10 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
         'title': 'Tekanan Darah',
         'value': bpText,
         'unit': hasBloodPressure ? 'mmHg' : '',
-        'status': _summaryStatus(hasData: hasBloodPressure, abnormal: bpAbnormal),
+        'status': _summaryStatus(
+          hasData: hasBloodPressure,
+          abnormal: bpAbnormal,
+        ),
         'color': bpAbnormal ? AppColors.red : Colors.orange,
         'abnormal': bpAbnormal,
       },
@@ -1058,11 +1069,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
         final date = item['measured_at']?.toString() ?? '-';
         final valueText = _physiologicalHistoryValue(item);
 
-        return [
-          'Data Fisiologis',
-          date,
-          valueText,
-        ];
+        return ['Data Fisiologis', date, valueText];
       }).toList();
 
       return _buildPhysiologicalContent(
@@ -1486,10 +1493,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                     borderData: FlBorderData(show: false),
                     lineTouchData: _chartTouchData(unitLabel),
                     lineBarsData: [
-                      _lineBarData(
-                        spots: safeSpots,
-                        color: lineColor,
-                      ),
+                      _lineBarData(spots: safeSpots, color: lineColor),
                     ],
                   ),
                 ),
@@ -1630,10 +1634,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
         Container(
           width: 8,
           height: 8,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 4),
         Text(
@@ -1687,10 +1688,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
           getTitlesWidget: (value, meta) {
             return Text(
               value.toInt().toString(),
-              style: const TextStyle(
-                color: AppColors.dark3,
-                fontSize: 10,
-              ),
+              style: const TextStyle(color: AppColors.dark3, fontSize: 10),
             );
           },
         ),
@@ -1705,21 +1703,14 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
               padding: const EdgeInsets.only(top: 8),
               child: Text(
                 _bottomLabel(value.toInt(), spots),
-                style: const TextStyle(
-                  color: AppColors.dark3,
-                  fontSize: 10,
-                ),
+                style: const TextStyle(color: AppColors.dark3, fontSize: 10),
               ),
             );
           },
         ),
       ),
-      rightTitles: const AxisTitles(
-        sideTitles: SideTitles(showTitles: false),
-      ),
-      topTitles: const AxisTitles(
-        sideTitles: SideTitles(showTitles: false),
-      ),
+      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
     );
   }
 

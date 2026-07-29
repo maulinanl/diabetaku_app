@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 import 'doctor_prescription_detail_page.dart';
 import 'doctor_prescription_form_page.dart';
-import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class DoctorPrescriptionPage extends StatefulWidget {
   final int patientId;
@@ -244,7 +243,9 @@ class _DoctorPrescriptionPageState extends State<DoctorPrescriptionPage> {
                   schedule: _buildScheduleText(item),
                   rule: item['meal_rule']?.toString() ?? '-',
                   doctor: item['doctor_name']?.toString() ?? '-',
-                  startDate: _formatDate(item['start_date'] ?? item['valid_from']),
+                  startDate: _formatDate(
+                    item['start_date'] ?? item['valid_from'],
+                  ),
                   endDate: _formatDate(item['valid_until']),
                   status: item['status']?.toString() ?? 'Selesai',
                   reason:

@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
+import '../widgets/caregiver_bottom_nav.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/lazy_indexed_stack.dart';
 import '../../../data/services/api_service.dart';
-import '../widgets/caregiver_bottom_nav.dart';
 import 'caregiver_add_data_page.dart';
 import 'caregiver_connection_page.dart';
 import 'caregiver_history_page.dart';
 import 'caregiver_notification_page.dart';
 import 'caregiver_profile_page.dart';
-import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class CaregiverMainPage extends StatefulWidget {
   const CaregiverMainPage({super.key});
@@ -63,136 +62,140 @@ class _CaregiverMainPageState extends State<CaregiverMainPage> {
   }
 
   Future<void> _loadCaregiverHome() async {
-  setState(() {
-    isLoading = true;
-    errorMessage = null;
-  });
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
 
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    final storedCaregiverId = prefs.getInt('caregiver_id');
-    final storedUserId = prefs.getInt('user_id');
-    final storedName = prefs.getString('full_name') ?? '-';
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final storedCaregiverId = prefs.getInt('caregiver_id');
+      final storedUserId = prefs.getInt('user_id');
+      final storedName = prefs.getString('full_name') ?? '-';
 
-    if (storedCaregiverId == null) {
-      throw Exception('Caregiver ID tidak ditemukan. Coba login ulang.');
-    }
+      if (storedCaregiverId == null) {
+        throw Exception('Caregiver ID tidak ditemukan. Coba login ulang.');
+      }
 
-    final baseResults = await Future.wait([
-      ApiService.getCaregiverProfile(storedCaregiverId),
-      ApiService.getCaregiverPatients(storedCaregiverId),
-      if (storedUserId != null) ApiService.getNotifications(storedUserId),
-    ]);
-
-    final profile = baseResults[0] as Map<String, dynamic>;
-    final rawPatients = List<Map<String, dynamic>>.from(baseResults[1] as List);
-    final acceptedPatients = _acceptedPatientsOnly(rawPatients);
-
-    Map<String, dynamic>? loadedDashboard;
-    List<Map<String, dynamic>> loadedRecommendations = [];
-    Map<String, dynamic> loadedHealthHistories = {};
-    List<Map<String, dynamic>> loadedSelectedPrescriptions = [];
-    List<Map<String, dynamic>> loadedNotifications = storedUserId != null
-        ? List<Map<String, dynamic>>.from(baseResults[2] as List)
-        : [];
-
-    if (acceptedPatients.isNotEmpty) {
-      final firstPatientId = int.parse(
-        acceptedPatients.first['patient_id'].toString(),
-      );
-
-      final patientResults = await Future.wait([
-        ApiService.getCaregiverPatientDashboard(firstPatientId),
-        ApiService.getCaregiverPatientRecommendations(firstPatientId),
-        ApiService.getCaregiverPatientHistories(firstPatientId),
-        ApiService.getCaregiverPatientActivePrescriptions(firstPatientId),
+      final baseResults = await Future.wait([
+        ApiService.getCaregiverProfile(storedCaregiverId),
+        ApiService.getCaregiverPatients(storedCaregiverId),
+        if (storedUserId != null) ApiService.getNotifications(storedUserId),
       ]);
 
-      loadedDashboard = patientResults[0] as Map<String, dynamic>;
-      loadedRecommendations = List<Map<String, dynamic>>.from(
+      final profile = baseResults[0] as Map<String, dynamic>;
+      final rawPatients = List<Map<String, dynamic>>.from(
+        baseResults[1] as List,
+      );
+      final acceptedPatients = _acceptedPatientsOnly(rawPatients);
+
+      Map<String, dynamic>? loadedDashboard;
+      List<Map<String, dynamic>> loadedRecommendations = [];
+      Map<String, dynamic> loadedHealthHistories = {};
+      List<Map<String, dynamic>> loadedSelectedPrescriptions = [];
+      List<Map<String, dynamic>> loadedNotifications = storedUserId != null
+          ? List<Map<String, dynamic>>.from(baseResults[2] as List)
+          : [];
+
+      if (acceptedPatients.isNotEmpty) {
+        final firstPatientId = int.parse(
+          acceptedPatients.first['patient_id'].toString(),
+        );
+
+        final patientResults = await Future.wait([
+          ApiService.getCaregiverPatientDashboard(firstPatientId),
+          ApiService.getCaregiverPatientRecommendations(firstPatientId),
+          ApiService.getCaregiverPatientHistories(firstPatientId),
+          ApiService.getCaregiverPatientActivePrescriptions(firstPatientId),
+        ]);
+
+        loadedDashboard = patientResults[0] as Map<String, dynamic>;
+        loadedRecommendations = List<Map<String, dynamic>>.from(
+          patientResults[1] as List,
+        );
+        loadedHealthHistories = Map<String, dynamic>.from(
+          patientResults[2] as Map,
+        );
+        loadedSelectedPrescriptions = List<Map<String, dynamic>>.from(
+          patientResults[3] as List,
+        );
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        caregiverId = storedCaregiverId;
+        caregiverName = profile['full_name']?.toString() ?? storedName;
+        patients = acceptedPatients;
+        dashboardData = loadedDashboard;
+        recommendations = loadedRecommendations;
+        healthHistories = loadedHealthHistories;
+        selectedPatientPrescriptions = loadedSelectedPrescriptions;
+        selectedPatientIndex = 0;
+
+        hasUnreadNotification = loadedNotifications.any((n) {
+          final isRead = n['is_read'];
+          return isRead == false || isRead == 0 || isRead?.toString() == '0';
+        });
+
+        isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        errorMessage = e.toString().replaceFirst('Exception: ', '');
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _refreshUnreadNotificationStatus() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getInt('user_id');
+
+      if (userId == null) return;
+
+      final data = await ApiService.getNotifications(userId);
+
+      if (!mounted) return;
+
+      setState(() {
+        hasUnreadNotification = data.any((n) {
+          final isRead = n['is_read'];
+          return isRead == false || isRead == 0 || isRead?.toString() == '0';
+        });
+      });
+    } catch (e) {
+      debugPrint('GAGAL REFRESH STATUS NOTIFIKASI PENDAMPING: $e');
+    }
+  }
+
+  Future<void> _loadSelectedPatientDashboard(int index) async {
+    final patientId = int.parse(patients[index]['patient_id'].toString());
+
+    final patientResults = await Future.wait([
+      ApiService.getCaregiverPatientDashboard(patientId),
+      ApiService.getCaregiverPatientRecommendations(patientId),
+      ApiService.getCaregiverPatientHistories(patientId),
+      ApiService.getCaregiverPatientActivePrescriptions(patientId),
+    ]);
+
+    if (!mounted) return;
+
+    setState(() {
+      selectedPatientIndex = index;
+      dashboardData = patientResults[0] as Map<String, dynamic>;
+      recommendations = List<Map<String, dynamic>>.from(
         patientResults[1] as List,
       );
-      loadedHealthHistories = Map<String, dynamic>.from(
-        patientResults[2] as Map,
-      );
-      loadedSelectedPrescriptions = List<Map<String, dynamic>>.from(
+      healthHistories = Map<String, dynamic>.from(patientResults[2] as Map);
+      selectedPatientPrescriptions = List<Map<String, dynamic>>.from(
         patientResults[3] as List,
       );
-
-    }
-
-    if (!mounted) return;
-
-    setState(() {
-      caregiverId = storedCaregiverId;
-      caregiverName = profile['full_name']?.toString() ?? storedName;
-      patients = acceptedPatients;
-      dashboardData = loadedDashboard;
-      recommendations = loadedRecommendations;
-      healthHistories = loadedHealthHistories;
-      selectedPatientPrescriptions = loadedSelectedPrescriptions;
-      selectedPatientIndex = 0;
-
-      hasUnreadNotification = loadedNotifications.any((n) {
-        final isRead = n['is_read'];
-        return isRead == false || isRead == 0 || isRead?.toString() == '0';
-      });
-
-      isLoading = false;
-    });
-
-  } catch (e) {
-    if (!mounted) return;
-
-    setState(() {
-      errorMessage = e.toString().replaceFirst('Exception: ', '');
-      isLoading = false;
     });
   }
-}
-
-Future<void> _refreshUnreadNotificationStatus() async {
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getInt('user_id');
-
-    if (userId == null) return;
-
-    final data = await ApiService.getNotifications(userId);
-
-    if (!mounted) return;
-
-    setState(() {
-      hasUnreadNotification = data.any((n) {
-        final isRead = n['is_read'];
-        return isRead == false || isRead == 0 || isRead?.toString() == '0';
-      });
-    });
-  } catch (e) {
-    debugPrint('GAGAL REFRESH STATUS NOTIFIKASI PENDAMPING: $e');
-  }
-}
-
-Future<void> _loadSelectedPatientDashboard(int index) async {
-  final patientId = int.parse(patients[index]['patient_id'].toString());
-
-  final patientResults = await Future.wait([
-    ApiService.getCaregiverPatientDashboard(patientId),
-    ApiService.getCaregiverPatientRecommendations(patientId),
-    ApiService.getCaregiverPatientHistories(patientId),
-    ApiService.getCaregiverPatientActivePrescriptions(patientId),
-  ]);
-
-  if (!mounted) return;
-
-  setState(() {
-    selectedPatientIndex = index;
-    dashboardData = patientResults[0] as Map<String, dynamic>;
-    recommendations = List<Map<String, dynamic>>.from(patientResults[1] as List);
-    healthHistories = Map<String, dynamic>.from(patientResults[2] as Map);
-    selectedPatientPrescriptions = List<Map<String, dynamic>>.from(patientResults[3] as List);
-  });
-}
 
   @override
   Widget build(BuildContext context) {
@@ -225,7 +228,6 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
       ),
     );
   }
-
 
   Widget _CaregiverHomeContent() {
     if (isLoading) return const Center(child: CircularProgressIndicator());
@@ -342,20 +344,14 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
           'created_at',
           'registeredAt',
         ]) ??
-        _extractDateFromMap(selectedPatient, const [
-          'connected_at',
-        ]);
+        _extractDateFromMap(selectedPatient, const ['connected_at']);
   }
 
   Widget _dailyChecklistCard() {
     final checks = healthChecklistTypes.map((item) {
       final type = item[2] as String;
 
-      return {
-        'label': item[0],
-        'icon': item[1],
-        'done': _hasRecordToday(type),
-      };
+      return {'label': item[0], 'icon': item[1], 'done': _hasRecordToday(type)};
     }).toList();
 
     final doneCount = checks.where((item) => item['done'] == true).length;
@@ -785,7 +781,8 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
   }
 
   int _reminderTimeValue(Map<String, dynamic> item) {
-    final raw = (item['reminder_time'] ?? item['default_reminder_time'] ?? '').toString();
+    final raw = (item['reminder_time'] ?? item['default_reminder_time'] ?? '')
+        .toString();
     final parts = raw.split(':');
     if (parts.length < 2) return 9999;
     final hour = int.tryParse(parts[0]) ?? 99;
@@ -797,7 +794,8 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
     final value = raw?.toString() ?? '';
     if (value.isEmpty || value == 'null') return '-';
     final parts = value.split(':');
-    if (parts.length >= 2) return '${parts[0].padLeft(2, '0')}:${parts[1].padLeft(2, '0')}';
+    if (parts.length >= 2)
+      return '${parts[0].padLeft(2, '0')}:${parts[1].padLeft(2, '0')}';
     return value;
   }
 
@@ -827,7 +825,10 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
     final time = _formatMedicationTime(
       next['reminder_time'] ?? next['default_reminder_time'],
     );
-    final dose = next['dose_per_session']?.toString() ?? next['dosage']?.toString() ?? '-';
+    final dose =
+        next['dose_per_session']?.toString() ??
+        next['dosage']?.toString() ??
+        '-';
 
     return _smallInfoCard(
       icon: Icons.alarm_rounded,
@@ -839,19 +840,14 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
   Widget _summaryCards() {
     final latestGlucose =
         dashboardData?['latest_glucose'] as Map<String, dynamic>?;
-
     final latestPhysiological =
         dashboardData?['latest_physiological'] as Map<String, dynamic>?;
-
     final glucoseValue = latestGlucose?['glucose_value']?.toString() ?? '-';
-
     final systolic = latestPhysiological?['systolic']?.toString();
     final diastolic = latestPhysiological?['diastolic']?.toString();
-
     final bloodPressureValue = systolic != null && diastolic != null
         ? '$systolic/$diastolic'
         : '-';
-
     final weightValue = latestPhysiological?['weight_kg']?.toString() ?? '-';
 
     return Row(
@@ -946,10 +942,7 @@ Future<void> _loadSelectedPatientDashboard(int index) async {
                   subtitle,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.dark2,
-                    fontSize: 10,
-                  ),
+                  style: const TextStyle(color: AppColors.dark2, fontSize: 10),
                 ),
               ],
             ),

@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
+import '../../auth/pages/change_password_page.dart';
+import '../../auth/pages/login_page.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/profile_badge.dart';
 import '../../../data/services/api_service.dart';
-import '../../auth/pages/change_password_page.dart';
-import '../../auth/pages/login_page.dart';
 import 'caregiver_edit_profile_page.dart';
-import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class CaregiverProfilePage extends StatefulWidget {
   const CaregiverProfilePage({super.key});
@@ -234,8 +233,6 @@ class _CaregiverProfilePageState extends State<CaregiverProfilePage> {
     );
   }
 
-
-
   Widget _statCard(String value, String label, {String? suffix}) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 10),
@@ -255,7 +252,10 @@ class _CaregiverProfilePageState extends State<CaregiverProfilePage> {
             Text(
               suffix,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.primaryBlue, fontSize: 10),
+              style: const TextStyle(
+                color: AppColors.primaryBlue,
+                fontSize: 10,
+              ),
             ),
           ],
           const SizedBox(height: 4),

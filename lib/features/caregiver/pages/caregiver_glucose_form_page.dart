@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
+import '../widgets/caregiver_health_form_widgets.dart';
+import '../../patient/widgets/patient_health_form_widgets.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
-import '../../patient/widgets/patient_health_form_widgets.dart';
-import '../widgets/caregiver_health_form_widgets.dart';
 
 class CaregiverGlucoseFormPage extends StatefulWidget {
   final int patientId;
@@ -81,7 +80,9 @@ class _CaregiverGlucoseFormPageState extends State<CaregiverGlucoseFormPage> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(primary: AppColors.primaryBlue),
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primaryBlue,
+            ),
           ),
           child: child!,
         );
@@ -98,7 +99,9 @@ class _CaregiverGlucoseFormPageState extends State<CaregiverGlucoseFormPage> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(primary: AppColors.primaryBlue),
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primaryBlue,
+            ),
           ),
           child: child!,
         );
@@ -143,10 +146,7 @@ class _CaregiverGlucoseFormPageState extends State<CaregiverGlucoseFormPage> {
         top: false,
         child: Column(
           children: [
-            PatientFormHeader(
-              title: 'Tambah Data Glukosa',
-              disabled: isSaving,
-            ),
+            PatientFormHeader(title: 'Tambah Data Glukosa', disabled: isSaving),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
@@ -188,8 +188,8 @@ class _CaregiverGlucoseFormPageState extends State<CaregiverGlucoseFormPage> {
                         final flex = type == 'Dua Jam Setelah Makan'
                             ? 11
                             : type == 'Sewaktu'
-                                ? 5
-                                : 4;
+                            ? 5
+                            : 4;
 
                         return Expanded(
                           flex: flex,
@@ -214,7 +214,9 @@ class _CaregiverGlucoseFormPageState extends State<CaregiverGlucoseFormPage> {
                       controller: glucoseCtr,
                       keyboardType: TextInputType.number,
                       inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'^\d*\.?\d*'),
+                        ),
                       ],
                       enabled: !isSaving,
                       decoration: patientFormInputDecoration(

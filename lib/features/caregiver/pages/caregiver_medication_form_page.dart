@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-
+import '../widgets/caregiver_health_form_widgets.dart';
+import '../../patient/widgets/patient_health_form_widgets.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/medication_dose_formatter.dart';
 import '../../../data/services/api_service.dart';
-import '../../patient/widgets/patient_health_form_widgets.dart';
-import '../widgets/caregiver_health_form_widgets.dart';
 
 class CaregiverMedicationFormPage extends StatefulWidget {
   final int patientId;
@@ -102,8 +101,9 @@ class _CaregiverMedicationFormPageState
         errorMessage = null;
       });
 
-      final data =
-          await ApiService.getCaregiverPatientActivePrescriptions(widget.patientId);
+      final data = await ApiService.getCaregiverPatientActivePrescriptions(
+        widget.patientId,
+      );
 
       if (!mounted) return;
 
@@ -284,7 +284,9 @@ class _CaregiverMedicationFormPageState
             Checkbox(
               value: checked,
               activeColor: AppColors.primaryBlue,
-              onChanged: isSaving ? null : (value) => _toggleMedicine(index, value),
+              onChanged: isSaving
+                  ? null
+                  : (value) => _toggleMedicine(index, value),
             ),
             const SizedBox(width: 8),
             Expanded(
@@ -378,20 +380,20 @@ class _CaregiverMedicationFormPageState
     final text = changed
         ? 'Belum disimpan'
         : checked
-            ? 'Sudah dicatat'
-            : 'Dibatalkan';
+        ? 'Sudah dicatat'
+        : 'Dibatalkan';
 
     final color = changed
         ? Colors.orange
         : checked
-            ? const Color(0xFF10C878)
-            : AppColors.red;
+        ? const Color(0xFF10C878)
+        : AppColors.red;
 
     final bg = changed
         ? const Color(0xFFFFF4C7)
         : checked
-            ? const Color(0xFFEAFBF3)
-            : AppColors.lightRed;
+        ? const Color(0xFFEAFBF3)
+        : AppColors.lightRed;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -408,15 +410,6 @@ class _CaregiverMedicationFormPageState
         ),
       ),
     );
-  }
-
-  String _joinParts(List<String> parts) {
-    final clean = parts.where((part) {
-      return part.trim().isNotEmpty && part.trim() != '-';
-    }).toList();
-
-    if (clean.isEmpty) return '-';
-    return clean.join(' • ');
   }
 
   Widget _noPrescriptionState() {
@@ -563,110 +556,92 @@ class _CaregiverMedicationFormPageState
         top: false,
         child: Column(
           children: [
-            PatientFormHeader(
-              title: 'Tambah Data Obat',
-              disabled: isSaving,
-            ),
+            PatientFormHeader(title: 'Tambah Data Obat', disabled: isSaving),
             Expanded(
               child: isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : errorMessage != null
-                      ? _errorState()
-                      : prescriptions.isEmpty
-                          ? _noPrescriptionState()
-                          : SingleChildScrollView(
-                              padding:
-                                  const EdgeInsets.fromLTRB(20, 18, 20, 28),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  CaregiverPatientFormCard(
-                                    initial: widget.patientInitial,
-                                    name: widget.patientName,
-                                    info: widget.patientInfo,
-                                  ),
-                                                const SizedBox(height: 18),
-                                  const PatientFormSectionTitle(
-                                    'Kepatuhan Obat',
-                                  ),
-                                  const SizedBox(height: 6),
-                                  const Text(
-                                    'Checklist obat sesuai resep aktif dari dokter.',
-                                    style: TextStyle(
-                                      color: AppColors.dark2,
-                                      fontSize: 12,
-                                      height: 1.45,
-                                    ),
-                                  ),
-                                  const PatientFormLabel('Waktu minum*'),
-                                  _scheduleTabs(),
-                                  const PatientFormLabel(
-                                    'Daftar obat dari resep dokter*',
-                                  ),
-                                  if (filteredPrescriptions.isEmpty)
-                                    _emptyPrescription()
-                                  else
-                                    Column(
-                                      children:
-                                          filteredPrescriptions.map((entry) {
-                                        final index = entry.key;
-                                        final item = entry.value;
-
-                                        return Padding(
-                                          padding: const EdgeInsets.only(
-                                            bottom: 12,
-                                          ),
-                                          child: _medicineCard(
-                                            index: index,
-                                            medicine: item['medication_name']
-                                                    ?.toString() ??
-                                                '-',
-                                            sessionName: item['session_name']
-                                                    ?.toString() ??
-                                                '-',
-                                            dosage:
-                                                item['dosage']?.toString() ??
-                                                    '-',
-                                            form:
-                                                item['form']?.toString() ?? '-',
-                                            mealRule: item['meal_rule']
-                                                    ?.toString() ??
-                                                '-',
-                                            notes:
-                                                item['notes']?.toString() ?? '-',
-                                            dosePerSession:
-                                                item['dose_per_session']
-                                                        ?.toString() ??
-                                                    '-',
-                                            reminderTime: _formatTime(
-                                              item['reminder_time'] ??
-                                                  item[
-                                                      'default_reminder_time'],
-                                            ),
-                                            checked: item['checked'] == true,
-                                            alreadySaved:
-                                                item['already_saved'] == true,
-                                            changed: _hasMedicationChange(item),
-                                          ),
-                                        );
-                                      }).toList(),
-                                    ),
-                                  const PatientFormLabel('Catatan (opsional)'),
-                                  _input(
-                                    controller: noteCtr,
-                                    hint: 'Contoh: obat diminum setelah makan',
-                                  ),
-                                  const SizedBox(height: 26),
-                                  PatientFormSubmitButton(
-                                    label: 'Simpan Checklist',
-                                    enabled: hasMedicationChanges,
-                                    isSaving: isSaving,
-                                    onPressed: _save,
-                                  ),
-                                  PatientFormCancelButton(disabled: isSaving),
-                                ],
-                              ),
+                  ? _errorState()
+                  : prescriptions.isEmpty
+                  ? _noPrescriptionState()
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          CaregiverPatientFormCard(
+                            initial: widget.patientInitial,
+                            name: widget.patientName,
+                            info: widget.patientInfo,
+                          ),
+                          const SizedBox(height: 18),
+                          const PatientFormSectionTitle('Kepatuhan Obat'),
+                          const SizedBox(height: 6),
+                          const Text(
+                            'Checklist obat sesuai resep aktif dari dokter.',
+                            style: TextStyle(
+                              color: AppColors.dark2,
+                              fontSize: 12,
+                              height: 1.45,
                             ),
+                          ),
+                          const PatientFormLabel('Waktu minum*'),
+                          _scheduleTabs(),
+                          const PatientFormLabel(
+                            'Daftar obat dari resep dokter*',
+                          ),
+                          if (filteredPrescriptions.isEmpty)
+                            _emptyPrescription()
+                          else
+                            Column(
+                              children: filteredPrescriptions.map((entry) {
+                                final index = entry.key;
+                                final item = entry.value;
+
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: _medicineCard(
+                                    index: index,
+                                    medicine:
+                                        item['medication_name']?.toString() ??
+                                        '-',
+                                    sessionName:
+                                        item['session_name']?.toString() ?? '-',
+                                    dosage: item['dosage']?.toString() ?? '-',
+                                    form: item['form']?.toString() ?? '-',
+                                    mealRule:
+                                        item['meal_rule']?.toString() ?? '-',
+                                    notes: item['notes']?.toString() ?? '-',
+                                    dosePerSession:
+                                        item['dose_per_session']?.toString() ??
+                                        '-',
+                                    reminderTime: _formatTime(
+                                      item['reminder_time'] ??
+                                          item['default_reminder_time'],
+                                    ),
+                                    checked: item['checked'] == true,
+                                    alreadySaved: item['already_saved'] == true,
+                                    changed: _hasMedicationChange(item),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          const PatientFormLabel('Catatan (opsional)'),
+                          _input(
+                            controller: noteCtr,
+                            hint: 'Contoh: obat diminum setelah makan',
+                          ),
+                          const SizedBox(height: 26),
+                          PatientFormSubmitButton(
+                            label: 'Simpan Checklist',
+                            enabled: hasMedicationChanges,
+                            isSaving: isSaving,
+                            onPressed: _save,
+                          ),
+                          PatientFormCancelButton(disabled: isSaving),
+                        ],
+                      ),
+                    ),
             ),
           ],
         ),

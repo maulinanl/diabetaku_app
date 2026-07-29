@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
-import 'role_selection_page.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 import '../../doctor/pages/doctor_main_page.dart';
 import '../../patient/pages/patient_main_page.dart';
 import '../../caregiver/pages/caregiver_main_page.dart';
-import 'forgot_password_page.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
-import 'email_verification_page.dart';
-import 'admin_verification_waiting_page.dart';
 import '../../../data/services/push_notification_service.dart';
 import '../../../data/services/medication_reminder_service.dart';
-import 'package:diabetaku_app/core/theme/app_button_styles.dart';
+import 'email_verification_page.dart';
+import 'admin_verification_waiting_page.dart';
+import 'forgot_password_page.dart';
+import 'role_selection_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -203,10 +203,7 @@ class _LoginPageState extends State<LoginPage> {
     await Future.delayed(const Duration(milliseconds: 100));
     if (!mounted) return;
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => page),
-    );
+    Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
 
   @override
@@ -327,9 +324,7 @@ class _LoginPageState extends State<LoginPage> {
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: () {
-                    _navigateAfterKeyboardDismiss(
-                      const ForgotPasswordPage(),
-                    );
+                    _navigateAfterKeyboardDismiss(const ForgotPasswordPage());
                   },
                   child: const Text('Lupa kata sandi?'),
                 ),
@@ -382,9 +377,7 @@ class _LoginPageState extends State<LoginPage> {
                 height: 50,
                 child: ElevatedButton(
                   onPressed: () {
-                    _navigateAfterKeyboardDismiss(
-                      const RoleSelectionPage(),
-                    );
+                    _navigateAfterKeyboardDismiss(const RoleSelectionPage());
                   },
                   style: AppButtonStyles.primary,
                   child: const Text(

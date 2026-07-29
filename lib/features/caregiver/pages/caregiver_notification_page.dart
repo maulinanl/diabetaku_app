@@ -1,20 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
-import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class CaregiverNotificationPage extends StatefulWidget {
   final int? initialNotificationId;
 
-  const CaregiverNotificationPage({
-    super.key,
-    this.initialNotificationId,
-  });
+  const CaregiverNotificationPage({super.key, this.initialNotificationId});
 
   @override
-  State<CaregiverNotificationPage> createState() => _CaregiverNotificationPageState();
+  State<CaregiverNotificationPage> createState() =>
+      _CaregiverNotificationPageState();
 }
 
 class _CaregiverNotificationPageState extends State<CaregiverNotificationPage> {
@@ -92,10 +89,10 @@ class _CaregiverNotificationPageState extends State<CaregiverNotificationPage> {
       data.sort((a, b) {
         final dateA =
             DateTime.tryParse(a['created_at']?.toString() ?? '') ??
-                DateTime(2000);
+            DateTime(2000);
         final dateB =
             DateTime.tryParse(b['created_at']?.toString() ?? '') ??
-                DateTime(2000);
+            DateTime(2000);
 
         return dateB.compareTo(dateA);
       });
@@ -126,7 +123,6 @@ class _CaregiverNotificationPageState extends State<CaregiverNotificationPage> {
         value == '0' ||
         value?.toString().toLowerCase() == 'false';
   }
-
 
   bool get hasUnreadNotification {
     return notifications.any(_isUnread);
@@ -220,7 +216,8 @@ class _CaregiverNotificationPageState extends State<CaregiverNotificationPage> {
   }
 
   String _type(Map<String, dynamic> item) {
-    final rawType = item['type_code'] ??
+    final rawType =
+        item['type_code'] ??
         item['reference_type'] ??
         item['type'] ??
         item['notification_type_name'] ??
@@ -393,7 +390,9 @@ class _CaregiverNotificationPageState extends State<CaregiverNotificationPage> {
 
     if (notificationId != null) {
       try {
-        final fetchedDetail = await ApiService.getNotificationDetail(notificationId);
+        final fetchedDetail = await ApiService.getNotificationDetail(
+          notificationId,
+        );
         detail = _mergeNotificationSummaryAndDetail(item, fetchedDetail);
       } catch (_) {}
     }
@@ -446,7 +445,10 @@ class _CaregiverNotificationPageState extends State<CaregiverNotificationPage> {
 
       final patterns = [
         RegExp(r'^(.+?)\s+(?:menerima|menolak)\s+data\b', caseSensitive: false),
-        RegExp(r'^(.+?)\s+(?:menerima|menolak)\s+[^.,\n]+\s+yang\s+anda\s+tambahkan', caseSensitive: false),
+        RegExp(
+          r'^(.+?)\s+(?:menerima|menolak)\s+[^.,\n]+\s+yang\s+anda\s+tambahkan',
+          caseSensitive: false,
+        ),
         RegExp(r'untuk pasien\s+([^.,\n]+)', caseSensitive: false),
         RegExp(r'nama pasien\s*:?\s*([^.,\n]+)', caseSensitive: false),
         RegExp(r'pasien\s*:?\s*([^.,\n]+)', caseSensitive: false),
@@ -515,7 +517,8 @@ class _CaregiverNotificationPageState extends State<CaregiverNotificationPage> {
       if (textValue.isEmpty || textValue.toLowerCase() == 'null') return;
 
       final normalizedKey = key.toLowerCase();
-      final isPatientNameKey = normalizedKey.contains('patient') ||
+      final isPatientNameKey =
+          normalizedKey.contains('patient') ||
           normalizedKey == 'full_name' ||
           normalizedKey == 'name';
 
@@ -672,10 +675,7 @@ class _CaregiverNotificationPageState extends State<CaregiverNotificationPage> {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
-                color: AppColors.dark2,
-                fontSize: 12,
-              ),
+              style: const TextStyle(color: AppColors.dark2, fontSize: 12),
             ),
           ),
           Text(
@@ -907,10 +907,7 @@ class _CaregiverNotificationPageState extends State<CaregiverNotificationPage> {
           border: Border.all(color: AppColors.light1),
         ),
         child: Row(
-          children: [
-            _tabItem('Semua', 0),
-            _tabItem('Belum Dibaca', 1),
-          ],
+          children: [_tabItem('Semua', 0), _tabItem('Belum Dibaca', 1)],
         ),
       ),
     );
@@ -1021,25 +1018,24 @@ class _CaregiverNotificationPageState extends State<CaregiverNotificationPage> {
   }
 }
 
-
 class CaregiverNotificationDetailPage extends StatelessWidget {
   final Map<String, dynamic> item;
 
-  const CaregiverNotificationDetailPage({
-    super.key,
-    required this.item,
-  });
+  const CaregiverNotificationDetailPage({super.key, required this.item});
 
-  String get title => item['title']?.toString() ??
+  String get title =>
+      item['title']?.toString() ??
       item['notification_title']?.toString() ??
       'Notifikasi';
 
-  String get message => item['message']?.toString() ??
+  String get message =>
+      item['message']?.toString() ??
       item['notification_message']?.toString() ??
       '-';
 
   String get type {
-    final rawType = item['type_code'] ??
+    final rawType =
+        item['type_code'] ??
         item['reference_type'] ??
         item['type'] ??
         item['notification_type_name'] ??
@@ -1070,7 +1066,9 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
     if (_isValidationRejected) return Icons.cancel_outlined;
     if (_isValidation) return Icons.assignment_outlined;
     if (_isPrescription || _isMedication) {
-      return _isStoppedPrescription ? Icons.cancel_outlined : Icons.medication_outlined;
+      return _isStoppedPrescription
+          ? Icons.cancel_outlined
+          : Icons.medication_outlined;
     }
     if (_isRecommendation) return Icons.send_outlined;
     if (_isDisconnected) return Icons.link_off_rounded;
@@ -1173,7 +1171,8 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
   bool get _isDoctorPatientRelation {
     return type.contains('doctor_patient') ||
         type.contains('doctor_connection') ||
-        (_combinedText.contains('dokter') && (_isDisconnected || _isConnection));
+        (_combinedText.contains('dokter') &&
+            (_isDisconnected || _isConnection));
   }
 
   String get _combinedText =>
@@ -1201,7 +1200,8 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
   }
 
   bool get _isUpdatedPrescription {
-    return _combinedText.contains('diperbarui') || _combinedText.contains('updated');
+    return _combinedText.contains('diperbarui') ||
+        _combinedText.contains('updated');
   }
 
   String get _pageTitle {
@@ -1214,7 +1214,8 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
     if (_isValidationRejected) return 'Data Ditolak';
     if (_isValidation) return 'Detail Validasi Data';
     if (_isRecommendation) return 'Detail Rekomendasi';
-    if (_isDoctorPatientRelation && _isDisconnected) return 'Relasi Dokter Terputus';
+    if (_isDoctorPatientRelation && _isDisconnected)
+      return 'Relasi Dokter Terputus';
     if (_isDisconnected) return 'Relasi Pendamping Terputus';
     if (_isRejectedConnection) return 'Koneksi Ditolak';
     if (_isAcceptedConnection) return 'Koneksi Diterima';
@@ -1235,12 +1236,18 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
     }
     if (_isDoctorPatientRelation && _isDisconnected) {
       final patientName = _resolvedPatientName(fallback: 'Pasien');
-      final doctorName = _text(item['doctor_name'] ?? item['doctor'], fallback: 'Dokter');
+      final doctorName = _text(
+        item['doctor_name'] ?? item['doctor'],
+        fallback: 'Dokter',
+      );
       return '$patientName\n$doctorName • ${_dateTime(item['disconnected_at'] ?? item['relation_updated_at'] ?? item['created_at'] ?? item['time'])}';
     }
     if (_isConnection || _isDisconnected) {
       final name = _text(
-        item['patient_name'] ?? item['caregiver_name'] ?? item['full_name'] ?? item['name'],
+        item['patient_name'] ??
+            item['caregiver_name'] ??
+            item['full_name'] ??
+            item['name'],
         fallback: categoryLabel,
       );
       return '$name\n${_dateTime(item['created_at'] ?? item['time'])}';
@@ -1264,8 +1271,8 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
   }
 
   String get time => _dateTime(
-        item['created_at'] ?? item['notification_date'] ?? item['time'],
-      );
+    item['created_at'] ?? item['notification_date'] ?? item['time'],
+  );
 
   String _text(dynamic value, {String fallback = '-'}) {
     if (value == null) return fallback;
@@ -1310,7 +1317,10 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
     }
 
     final singleText = _text(
-      item['recommendation_text'] ?? item['description'] ?? item['content'] ?? item['message'],
+      item['recommendation_text'] ??
+          item['description'] ??
+          item['content'] ??
+          item['message'],
     );
 
     if (singleText == '-') return [];
@@ -1319,7 +1329,7 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
       {
         'category': item['category'] ?? item['status'] ?? 'Rekomendasi',
         'recommendation_text': singleText,
-      }
+      },
     ];
   }
 
@@ -1330,7 +1340,8 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
         .toSet()
         .toList();
 
-    if (values.isEmpty) return _text(item['category'] ?? item['status'], fallback: 'Rekomendasi');
+    if (values.isEmpty)
+      return _text(item['category'] ?? item['status'], fallback: 'Rekomendasi');
     return values.join(', ');
   }
 
@@ -1351,7 +1362,8 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
   List<Widget> _detailChildren() {
     if (_isPrescription) return _prescriptionCards();
     if (_isRecommendation) return _recommendationCards();
-    if (_isDoctorPatientRelation && _isDisconnected) return [_doctorPatientRelationCard()];
+    if (_isDoctorPatientRelation && _isDisconnected)
+      return [_doctorPatientRelationCard()];
     if (_isConnection || _isDisconnected) return [_connectionCard()];
     if (_isValidation) {
       return [
@@ -1415,13 +1427,17 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
       children: [
         _InfoRow(label: 'Kategori', value: categoryLabel),
         _InfoRow(label: 'Waktu', value: time),
-        if (_text(item['status']) != '-') _InfoRow(label: 'Status', value: _text(item['status'])),
+        if (_text(item['status']) != '-')
+          _InfoRow(label: 'Status', value: _text(item['status'])),
       ],
     );
   }
 
   List<Widget> _prescriptionCards() {
-    final medicationName = _text(item['medication_name'], fallback: 'Resep Obat');
+    final medicationName = _text(
+      item['medication_name'],
+      fallback: 'Resep Obat',
+    );
     final patientName = _resolvedPatientName(fallback: 'Pasien');
     final doctorName = _text(item['doctor_name'], fallback: 'Dokter');
     final dosage = _text(item['dosage']);
@@ -1488,7 +1504,9 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
     ];
   }
 
-  String _resolvedPatientName({String fallback = 'Nama pasien tidak tersedia'}) {
+  String _resolvedPatientName({
+    String fallback = 'Nama pasien tidak tersedia',
+  }) {
     final sources = [
       item['summary_patient_name'],
       item['patient_name'],
@@ -1518,7 +1536,9 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
     return fallback;
   }
 
-  String _recommendationPatientName(List<Map<String, dynamic>> recommendations) {
+  String _recommendationPatientName(
+    List<Map<String, dynamic>> recommendations,
+  ) {
     final directSources = [
       item['patient_name'],
       item['patient_full_name'],
@@ -1596,7 +1616,10 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
 
     final patterns = [
       RegExp(r'^(.+?)\s+(?:menerima|menolak)\s+data\b', caseSensitive: false),
-      RegExp(r'^(.+?)\s+(?:menerima|menolak)\s+[^.,\n]+\s+yang\s+anda\s+tambahkan', caseSensitive: false),
+      RegExp(
+        r'^(.+?)\s+(?:menerima|menolak)\s+[^.,\n]+\s+yang\s+anda\s+tambahkan',
+        caseSensitive: false,
+      ),
       RegExp(r'untuk pasien\s+([^.,\n]+)', caseSensitive: false),
       RegExp(r'nama pasien\s*:?\s*([^.,\n]+)', caseSensitive: false),
       RegExp(r'pasien\s*:?\s*([^.,\n]+)', caseSensitive: false),
@@ -1622,7 +1645,8 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
     if (text.contains('fisiologis') || text.contains('tekanan darah')) {
       return 'Fisiologis';
     }
-    if (text.contains('aktivitas') || text.contains('olahraga')) return 'Aktivitas';
+    if (text.contains('aktivitas') || text.contains('olahraga'))
+      return 'Aktivitas';
     if (text.contains('makan') || text.contains('pola makan')) return 'Makan';
     if (text.contains('obat') || text.contains('kepatuhan')) return 'Obat';
 
@@ -1631,15 +1655,21 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
 
   String _validationTypeLabel() {
     final recordType = _text(item['record_type']).toLowerCase();
-    final title = _text(item['record_title'] ?? item['data_title'] ?? item['title']);
+    final title = _text(
+      item['record_title'] ?? item['data_title'] ?? item['title'],
+    );
 
     if (recordType.contains('glucose')) return title != '-' ? title : 'Glukosa';
-    if (recordType.contains('physiological')) return title != '-' ? title : 'Fisiologis';
-    if (recordType.contains('activity')) return title != '-' ? title : 'Aktivitas';
+    if (recordType.contains('physiological'))
+      return title != '-' ? title : 'Fisiologis';
+    if (recordType.contains('activity'))
+      return title != '-' ? title : 'Aktivitas';
     if (recordType.contains('meal')) return title != '-' ? title : 'Makan';
     if (recordType.contains('medication')) return title != '-' ? title : 'Obat';
 
-    final fromMessage = _validationTypeFromMessage(item['message'] ?? item['notification_message']);
+    final fromMessage = _validationTypeFromMessage(
+      item['message'] ?? item['notification_message'],
+    );
     if (fromMessage.isNotEmpty) return fromMessage;
 
     if (title != '-' &&
@@ -1681,7 +1711,9 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
       }
     }
 
-    return parts.where((part) => part.trim().isNotEmpty && part != '-').join(' • ');
+    return parts
+        .where((part) => part.trim().isNotEmpty && part != '-')
+        .join(' • ');
   }
 
   String _validationDataOwner() {
@@ -1765,25 +1797,31 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
   Widget _validationCard() {
     final patientName = _resolvedPatientName();
     final dataDate = _dateTime(
-      item['date'] ?? item['measured_at'] ?? item['checked_at'] ?? item['log_date'],
+      item['date'] ??
+          item['measured_at'] ??
+          item['checked_at'] ??
+          item['log_date'],
     );
     final validatedAt = _dateTime(
-      item['validated_at'] ?? item['responded_at'] ?? item['updated_at'] ?? item['created_at'],
+      item['validated_at'] ??
+          item['responded_at'] ??
+          item['updated_at'] ??
+          item['created_at'],
     );
     final rawStatus = _text(
       item['validation_status'] ?? item['status'] ?? item['validation_result'],
       fallback: _isValidationAccepted
           ? 'Diterima'
           : _isValidationRejected
-              ? 'Ditolak'
-              : 'Menunggu',
+          ? 'Ditolak'
+          : 'Menunggu',
     );
     final normalizedStatus = rawStatus.toLowerCase();
     final status = normalizedStatus == 'valid'
         ? 'Diterima'
         : normalizedStatus == 'tidak valid'
-            ? 'Ditolak'
-            : rawStatus;
+        ? 'Ditolak'
+        : rawStatus;
     final dataSummary = _validationDataSummary();
     final dataOwner = _validationDataOwner();
 
@@ -1795,7 +1833,8 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
         if (dataDate != '-') _InfoRow(label: 'Waktu Data', value: dataDate),
         _InfoRow(label: 'Diinput oleh', value: dataOwner),
         _InfoRow(label: 'Hasil Validasi', value: status),
-        if (validatedAt != '-') _InfoRow(label: 'Waktu Validasi', value: validatedAt),
+        if (validatedAt != '-')
+          _InfoRow(label: 'Waktu Validasi', value: validatedAt),
       ],
     );
   }
@@ -1823,11 +1862,16 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
 
   Widget _doctorPatientRelationCard() {
     final patientName = _resolvedPatientName(fallback: 'Pasien');
-    final doctorName = _text(item['doctor_name'] ?? item['doctor'], fallback: 'Dokter');
+    final doctorName = _text(
+      item['doctor_name'] ?? item['doctor'],
+      fallback: 'Dokter',
+    );
     final specialization = _text(item['specialization_name']);
     final institution = _text(item['institution']);
     final doctorInfo = _text(item['doctor_info']);
-    final connectedAt = _dateTime(item['connected_at'] ?? item['connected_since']);
+    final connectedAt = _dateTime(
+      item['connected_at'] ?? item['connected_since'],
+    );
     final disconnectedAt = _dateTime(
       item['disconnected_at'] ??
           item['relation_updated_at'] ??
@@ -1848,8 +1892,10 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
         if (infoParts.isNotEmpty)
           _InfoRow(label: 'Informasi Dokter', value: infoParts.join(' • ')),
         const _InfoRow(label: 'Status Relasi', value: 'Tidak Terhubung'),
-        if (connectedAt != '-') _InfoRow(label: 'Terhubung Sejak', value: connectedAt),
-        if (disconnectedAt != '-') _InfoRow(label: 'Relasi Berakhir', value: disconnectedAt),
+        if (connectedAt != '-')
+          _InfoRow(label: 'Terhubung Sejak', value: connectedAt),
+        if (disconnectedAt != '-')
+          _InfoRow(label: 'Relasi Berakhir', value: disconnectedAt),
         if (message.trim().isNotEmpty && message != '-') ...[
           const SizedBox(height: 8),
           Text(
@@ -1875,23 +1921,41 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
     final status = _isDisconnected
         ? 'Tidak Terhubung'
         : _isRejectedConnection
-            ? 'Ditolak'
-            : _isAcceptedConnection
-                ? 'Terhubung'
-                : statusRaw;
-    final requestedAt = _dateTime(item['requested_at'] ?? item['created_at'] ?? item['time']);
-    final respondedAt = _dateTime(item['responded_at'] ?? item['relation_updated_at'] ?? item['created_at'] ?? item['time']);
-    final connectedAt = _dateTime(item['connected_at'] ?? item['connected_since'] ?? item['responded_at'] ?? item['created_at'] ?? item['time']);
-    final disconnectedAt = _dateTime(item['disconnected_at'] ?? item['relation_updated_at'] ?? item['created_at'] ?? item['time']);
+        ? 'Ditolak'
+        : _isAcceptedConnection
+        ? 'Terhubung'
+        : statusRaw;
+    final requestedAt = _dateTime(
+      item['requested_at'] ?? item['created_at'] ?? item['time'],
+    );
+    final respondedAt = _dateTime(
+      item['responded_at'] ??
+          item['relation_updated_at'] ??
+          item['created_at'] ??
+          item['time'],
+    );
+    final connectedAt = _dateTime(
+      item['connected_at'] ??
+          item['connected_since'] ??
+          item['responded_at'] ??
+          item['created_at'] ??
+          item['time'],
+    );
+    final disconnectedAt = _dateTime(
+      item['disconnected_at'] ??
+          item['relation_updated_at'] ??
+          item['created_at'] ??
+          item['time'],
+    );
     final updatedAt = _dateTime(item['relation_updated_at']);
 
     final title = _isDisconnected
         ? 'Informasi Relasi'
         : _isRejectedConnection
-            ? 'Status Permintaan'
-            : _isAcceptedConnection
-                ? 'Informasi Koneksi'
-                : 'Detail Permintaan Koneksi';
+        ? 'Status Permintaan'
+        : _isAcceptedConnection
+        ? 'Informasi Koneksi'
+        : 'Detail Permintaan Koneksi';
 
     return _whiteCard(
       title: title,
@@ -1911,9 +1975,15 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
           _InfoRow(label: 'Tanggal Ditolak', value: respondedAt),
         if (_isDisconnected && disconnectedAt != '-')
           _InfoRow(label: 'Relasi Berakhir', value: disconnectedAt),
-        if (!_isDisconnected && !_isAcceptedConnection && !_isRejectedConnection && requestedAt != '-')
+        if (!_isDisconnected &&
+            !_isAcceptedConnection &&
+            !_isRejectedConnection &&
+            requestedAt != '-')
           _InfoRow(label: 'Diajukan', value: requestedAt),
-        if (!_isDisconnected && !_isAcceptedConnection && !_isRejectedConnection && respondedAt != '-')
+        if (!_isDisconnected &&
+            !_isAcceptedConnection &&
+            !_isRejectedConnection &&
+            respondedAt != '-')
           _InfoRow(label: 'Direspons', value: respondedAt),
         if (!_isDisconnected && !_isAcceptedConnection && updatedAt != '-')
           _InfoRow(label: 'Diperbarui', value: updatedAt),
@@ -1931,7 +2001,6 @@ class CaregiverNotificationDetailPage extends StatelessWidget {
       ],
     );
   }
-
 }
 
 class _NotificationDetailScaffold extends StatelessWidget {
@@ -2014,9 +2083,7 @@ class _NotificationDetailScaffold extends StatelessWidget {
                           child: Icon(icon, color: iconColor),
                         ),
                         const SizedBox(width: 12),
-                        Expanded(
-                          child: _HeaderInfoText(text: headerText),
-                        ),
+                        Expanded(child: _HeaderInfoText(text: headerText)),
                       ],
                     ),
                   ),
@@ -2199,10 +2266,7 @@ class _RecommendationItem extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _InlineBadge(
-            text: category,
-            icon: _categoryIcon(category),
-          ),
+          _InlineBadge(text: category, icon: _categoryIcon(category)),
           const SizedBox(height: 10),
           Text(
             description,
@@ -2222,10 +2286,7 @@ class _InlineBadge extends StatelessWidget {
   final String text;
   final IconData? icon;
 
-  const _InlineBadge({
-    required this.text,
-    this.icon,
-  });
+  const _InlineBadge({required this.text, this.icon});
 
   @override
   Widget build(BuildContext context) {
@@ -2234,7 +2295,9 @@ class _InlineBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.lightBlue,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.primaryBlue.withValues(alpha: 0.18)),
+        border: Border.all(
+          color: AppColors.primaryBlue.withValues(alpha: 0.18),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -2345,10 +2408,7 @@ class _CaregiverNotificationItem extends StatelessWidget {
             Container(
               width: 44,
               height: 44,
-              decoration: BoxDecoration(
-                color: iconBg,
-                shape: BoxShape.circle,
-              ),
+              decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
               child: Icon(icon, color: iconColor, size: 22),
             ),
             const SizedBox(width: 14),

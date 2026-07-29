@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import '../widgets/patient_health_form_widgets.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
-import '../widgets/patient_health_form_widgets.dart';
 
 class PatientActivityFormPage extends StatefulWidget {
   const PatientActivityFormPage({super.key});
@@ -125,7 +124,9 @@ class _PatientActivityFormPageState extends State<PatientActivityFormPage> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(primary: AppColors.primaryBlue),
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primaryBlue,
+            ),
           ),
           child: child!,
         );
@@ -144,7 +145,9 @@ class _PatientActivityFormPageState extends State<PatientActivityFormPage> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(primary: AppColors.primaryBlue),
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primaryBlue,
+            ),
           ),
           child: child!,
         );
@@ -231,8 +234,8 @@ class _PatientActivityFormPageState extends State<PatientActivityFormPage> {
                               onTap: isSaving
                                   ? null
                                   : () => setState(() {
-                                        selectedIntensity = item;
-                                      }),
+                                      selectedIntensity = item;
+                                    }),
                             ),
                           ),
                         );

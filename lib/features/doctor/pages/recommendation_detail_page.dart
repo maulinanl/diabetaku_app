@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
 import '../widgets/diabetes_type_badge.dart';
+import '../../../core/theme/app_colors.dart';
 
 class RecommendationDetailPage extends StatelessWidget {
   final String patientName;
@@ -242,10 +242,7 @@ class RecommendationDetailPage extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   patientInfo,
-                  style: const TextStyle(
-                    color: AppColors.dark2,
-                    fontSize: 13,
-                  ),
+                  style: const TextStyle(color: AppColors.dark2, fontSize: 13),
                 ),
                 const SizedBox(height: 8),
                 Wrap(
@@ -319,10 +316,7 @@ class RecommendationDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _recommendationCard({
-    required String category,
-    required String text,
-  }) {
+  Widget _recommendationCard({required String category, required String text}) {
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 12),
@@ -364,10 +358,7 @@ class RecommendationDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _recipientCard({
-    required String name,
-    required String role,
-  }) {
+  Widget _recipientCard({required String name, required String role}) {
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 10),

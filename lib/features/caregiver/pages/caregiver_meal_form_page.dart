@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
+import '../widgets/caregiver_health_form_widgets.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 import '../../patient/widgets/patient_health_form_widgets.dart';
-import '../widgets/caregiver_health_form_widgets.dart';
 
 class CaregiverMealFormPage extends StatefulWidget {
   final int patientId;
@@ -107,7 +106,9 @@ class _CaregiverMealFormPageState extends State<CaregiverMealFormPage> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(primary: AppColors.primaryBlue),
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primaryBlue,
+            ),
           ),
           child: child!,
         );
@@ -124,7 +125,9 @@ class _CaregiverMealFormPageState extends State<CaregiverMealFormPage> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(primary: AppColors.primaryBlue),
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primaryBlue,
+            ),
           ),
           child: child!,
         );
@@ -150,8 +153,9 @@ class _CaregiverMealFormPageState extends State<CaregiverMealFormPage> {
         calories: calorieCtr.text.trim().isEmpty
             ? null
             : double.parse(calorieCtr.text.trim()),
-        description:
-            descriptionCtr.text.trim().isEmpty ? null : descriptionCtr.text.trim(),
+        description: descriptionCtr.text.trim().isEmpty
+            ? null
+            : descriptionCtr.text.trim(),
         mealDate: mealDate,
       );
 
@@ -238,11 +242,11 @@ class _CaregiverMealFormPageState extends State<CaregiverMealFormPage> {
                       itemCount: mealTypes.length,
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 4,
-                        mainAxisSpacing: 8,
-                        crossAxisSpacing: 8,
-                        childAspectRatio: 0.95,
-                      ),
+                            crossAxisCount: 4,
+                            mainAxisSpacing: 8,
+                            crossAxisSpacing: 8,
+                            childAspectRatio: 0.95,
+                          ),
                       itemBuilder: (context, index) {
                         final item = mealTypes[index];
                         final title = item[0] as String;
@@ -264,7 +268,9 @@ class _CaregiverMealFormPageState extends State<CaregiverMealFormPage> {
                       hint: 'Masukkan estimasi karbohidrat',
                       keyboardType: TextInputType.number,
                       inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'^\d*\.?\d*'),
+                        ),
                       ],
                     ),
                     const PatientFormLabel('Estimasi kalori (kkal)'),
@@ -273,7 +279,9 @@ class _CaregiverMealFormPageState extends State<CaregiverMealFormPage> {
                       hint: 'Masukkan estimasi kalori',
                       keyboardType: TextInputType.number,
                       inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'^\d*\.?\d*'),
+                        ),
                       ],
                     ),
                     const PatientFormLabel('Deskripsi makanan'),

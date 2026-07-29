@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../widgets/patient_bottom_nav.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/services/api_service.dart';
+import '../../../data/services/medication_reminder_service.dart';
+import '../../../core/widgets/lazy_indexed_stack.dart';
 import 'patient_notification_page.dart';
 import 'patient_connection_page.dart';
-import '../widgets/patient_bottom_nav.dart';
 import 'patient_add_data_page.dart';
 import 'patient_history_page.dart';
 import 'patient_profile_page.dart';
 import 'patient_validation_page.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../../data/services/api_service.dart';
-import '../../../data/services/medication_reminder_service.dart';
-import '../../../core/widgets/lazy_indexed_stack.dart';
 
 class PatientMainPage extends StatefulWidget {
   const PatientMainPage({super.key});
@@ -51,10 +51,7 @@ class _PatientMainPageState extends State<PatientMainPage> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: LazyIndexedStack(
-        index: activeIndex,
-        children: pages,
-      ),
+      body: LazyIndexedStack(index: activeIndex, children: pages),
       bottomNavigationBar: PatientBottomNavBar(
         currentIndex: currentIndex,
         isAddSelected: isAddPage,
@@ -681,7 +678,9 @@ class _PatientHomePageState extends State<PatientHomePage> {
             ),
             alignment: Alignment.centerLeft,
             child: FractionallySizedBox(
-              widthFactor: total == 0 ? 0.0 : (completed / total).clamp(0.0, 1.0),
+              widthFactor: total == 0
+                  ? 0.0
+                  : (completed / total).clamp(0.0, 1.0),
               child: Container(
                 decoration: BoxDecoration(
                   color: AppColors.primaryBlue,
@@ -838,12 +837,10 @@ class _PatientHomePageState extends State<PatientHomePage> {
                 final prevDay = prevMonthDays + dayNumber;
                 final date = DateTime(prevMonth.year, prevMonth.month, prevDay);
                 final status = statusMap[_dateKey(date)]?.toLowerCase();
-                final prevStatus = statusMap[
-                  _dateKey(date.subtract(const Duration(days: 1)))
-                ];
-                final nextStatus = statusMap[
-                  _dateKey(date.add(const Duration(days: 1)))
-                ];
+                final prevStatus =
+                    statusMap[_dateKey(date.subtract(const Duration(days: 1)))];
+                final nextStatus =
+                    statusMap[_dateKey(date.add(const Duration(days: 1)))];
 
                 if (status == 'lengkap' ||
                     status == 'sebagian' ||
@@ -864,12 +861,10 @@ class _PatientHomePageState extends State<PatientHomePage> {
                 final nextDay = dayNumber - totalDays;
                 final date = DateTime(year, month + 1, nextDay);
                 final status = statusMap[_dateKey(date)]?.toLowerCase();
-                final prevStatus = statusMap[
-                  _dateKey(date.subtract(const Duration(days: 1)))
-                ];
-                final nextStatus = statusMap[
-                  _dateKey(date.add(const Duration(days: 1)))
-                ];
+                final prevStatus =
+                    statusMap[_dateKey(date.subtract(const Duration(days: 1)))];
+                final nextStatus =
+                    statusMap[_dateKey(date.add(const Duration(days: 1)))];
 
                 if (status == 'lengkap' ||
                     status == 'sebagian' ||

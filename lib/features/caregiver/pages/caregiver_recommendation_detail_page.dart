@@ -4,20 +4,13 @@ import '../../../core/theme/app_colors.dart';
 class CaregiverRecommendationDetailPage extends StatelessWidget {
   final Map<String, dynamic> item;
 
-  const CaregiverRecommendationDetailPage({
-    super.key,
-    required this.item,
-  });
+  const CaregiverRecommendationDetailPage({super.key, required this.item});
 
   String get doctorName =>
-      item['doctor_name']?.toString() ??
-      item['doctor']?.toString() ??
-      'Dokter';
+      item['doctor_name']?.toString() ?? item['doctor']?.toString() ?? 'Dokter';
 
   String get date =>
-      item['created_at']?.toString() ??
-      item['date']?.toString() ??
-      '-';
+      item['created_at']?.toString() ?? item['date']?.toString() ?? '-';
 
   String get category =>
       item['category']?.toString() ??
@@ -33,7 +26,8 @@ class CaregiverRecommendationDetailPage extends StatelessWidget {
     if (value == null) return '';
 
     if (value is Map) {
-      final fromMap = value['patient_name'] ??
+      final fromMap =
+          value['patient_name'] ??
           value['patient_full_name'] ??
           value['patientName'] ??
           value['patient_user_name'] ??
@@ -325,7 +319,8 @@ class CaregiverRecommendationDetailPage extends StatelessWidget {
           const SizedBox(height: 12),
           ...recommendationItems.map((rec) {
             final recCategory = rec['category']?.toString() ?? 'Rekomendasi';
-            final recText = rec['recommendation_text']?.toString() ??
+            final recText =
+                rec['recommendation_text']?.toString() ??
                 rec['description']?.toString() ??
                 '-';
 

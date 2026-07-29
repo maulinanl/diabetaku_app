@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
-import 'email_sent_page.dart';
-import '../../../data/services/api_service.dart';
-import 'login_page.dart';
 import 'package:diabetaku_app/core/theme/app_button_styles.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../data/services/api_service.dart';
+import 'email_sent_page.dart';
+import 'login_page.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -119,8 +119,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       width: double.infinity,
                       height: 46,
                       child: ElevatedButton(
-                        onPressed:
-                            isValid && !isLoading ? _sendResetEmail : null,
+                        onPressed: isValid && !isLoading
+                            ? _sendResetEmail
+                            : null,
                         style: AppButtonStyles.primary,
                         child: isLoading
                             ? const SizedBox(

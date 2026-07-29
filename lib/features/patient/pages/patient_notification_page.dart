@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 import 'patient_connection_page.dart';
@@ -9,15 +9,11 @@ import 'patient_recommendation_detail_page.dart';
 import 'patient_history_page.dart';
 import 'patient_validation_detail_page.dart';
 import 'patient_validation_page.dart';
-import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class PatientNotificationPage extends StatefulWidget {
   final int? initialNotificationId;
 
-  const PatientNotificationPage({
-    super.key,
-    this.initialNotificationId,
-  });
+  const PatientNotificationPage({super.key, this.initialNotificationId});
 
   @override
   State<PatientNotificationPage> createState() =>
@@ -274,7 +270,9 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
   }
 
   String _initialFromName(String name) {
-    final cleaned = name.replaceFirst(RegExp(r'^Dr\.\s*', caseSensitive: false), '').trim();
+    final cleaned = name
+        .replaceFirst(RegExp(r'^Dr\.\s*', caseSensitive: false), '')
+        .trim();
     final parts = cleaned.split(' ').where((part) => part.isNotEmpty).toList();
 
     if (parts.isEmpty) return 'D';
@@ -298,8 +296,12 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
     return '$specialization • $institution';
   }
 
-  String _doctorRelationStatus(Map<String, dynamic> item, {String fallback = 'Terhubung'}) {
-    final raw = item['current_relation_status'] ??
+  String _doctorRelationStatus(
+    Map<String, dynamic> item, {
+    String fallback = 'Terhubung',
+  }) {
+    final raw =
+        item['current_relation_status'] ??
         item['relation_status'] ??
         item['connection_status'] ??
         item['status'] ??
@@ -307,7 +309,9 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
 
     final normalized = raw.toString().toLowerCase().trim();
 
-    if (normalized == 'diterima' || normalized == 'disetujui' || normalized == 'terhubung') {
+    if (normalized == 'diterima' ||
+        normalized == 'disetujui' ||
+        normalized == 'terhubung') {
       return 'Terhubung';
     }
 
@@ -337,10 +341,7 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
 
     try {
       final detail = await ApiService.getNotificationDetail(notificationId);
-      return {
-        ...item,
-        ...detail,
-      };
+      return {...item, ...detail};
     } catch (_) {
       return Map<String, dynamic>.from(item);
     }
@@ -355,10 +356,12 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
 
     final fallback = <String, dynamic>{
       ...item,
-      'doctor': item['doctor_name']?.toString() ?? _doctorFromMessage(_desc(item)),
+      'doctor':
+          item['doctor_name']?.toString() ?? _doctorFromMessage(_desc(item)),
       'date': _formatDateTime(item['created_at'] ?? item['time']),
       'category': item['category']?.toString() ?? 'Rekomendasi',
-      'description': item['recommendation_text']?.toString() ??
+      'description':
+          item['recommendation_text']?.toString() ??
           item['content']?.toString() ??
           _desc(item),
     };
@@ -370,21 +373,26 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
       final first = recommendations.first;
       final description = recommendations.length == 1
           ? first['recommendation_text']?.toString() ?? _desc(item)
-          : recommendations.map((recommendation) {
-              final category =
-                  recommendation['category']?.toString() ?? 'Rekomendasi';
-              final text =
-                  recommendation['recommendation_text']?.toString() ?? '-';
-              return '• $category: $text';
-            }).join('\n\n');
+          : recommendations
+                .map((recommendation) {
+                  final category =
+                      recommendation['category']?.toString() ?? 'Rekomendasi';
+                  final text =
+                      recommendation['recommendation_text']?.toString() ?? '-';
+                  return '• $category: $text';
+                })
+                .join('\n\n');
 
       return {
         ...fallback,
         ...detail,
         'clinical_note_id':
-            clinicalNoteId ?? first['clinical_note_id'] ?? detail['clinical_note_id'],
+            clinicalNoteId ??
+            first['clinical_note_id'] ??
+            detail['clinical_note_id'],
         'recommendations': recommendations,
-        'doctor': detail['doctor_name']?.toString() ??
+        'doctor':
+            detail['doctor_name']?.toString() ??
             item['doctor_name']?.toString() ??
             _doctorFromMessage(_desc(item)),
         'date': _formatDateTime(
@@ -461,10 +469,7 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
 
       if (!mounted) return false;
 
-      await _showCaregiverRequestResultSheet(
-        name: name,
-        isAccept: isAccept,
-      );
+      await _showCaregiverRequestResultSheet(name: name, isAccept: isAccept);
 
       await _loadNotifications();
       return true;
@@ -556,10 +561,8 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
         routeKey.contains('pengingat_obat');
   }
 
-
   bool _isCaregiverRoute(String routeKey) {
-    return routeKey.contains('caregiver') ||
-        routeKey.contains('pendamping');
+    return routeKey.contains('caregiver') || routeKey.contains('pendamping');
   }
 
   bool _isCaregiverDisconnectedRoute(String routeKey) {
@@ -602,9 +605,8 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
       await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => PatientRecommendationDetailPage(
-            item: recommendationPayload,
-          ),
+          builder: (_) =>
+              PatientRecommendationDetailPage(item: recommendationPayload),
         ),
       );
     } else if (routeKey.contains('validation') ||
@@ -614,7 +616,8 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
       await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => PatientPrescriptionNotificationDetailPage(item: detail),
+          builder: (_) =>
+              PatientPrescriptionNotificationDetailPage(item: detail),
         ),
       );
     } else if (_isCaregiverDisconnectedRoute(routeKey)) {
@@ -678,8 +681,11 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
         MaterialPageRoute(
           builder: (_) => DoctorDisconnectedDetailPage(
             doctorId:
-                _asInt(detail['doctor_id']) ?? _asInt(detail['reference_id']) ?? 0,
-            initial: detail['initial']?.toString() ?? _initialFromName(doctorName),
+                _asInt(detail['doctor_id']) ??
+                _asInt(detail['reference_id']) ??
+                0,
+            initial:
+                detail['initial']?.toString() ?? _initialFromName(doctorName),
             name: doctorName,
             info: _doctorInfo(detail),
             status: detail['status']?.toString() ?? 'Tidak Terhubung',
@@ -700,19 +706,27 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
         MaterialPageRoute(
           builder: (_) => DoctorConnectionAcceptedDetailPage(
             doctorId:
-                _asInt(detail['doctor_id']) ?? _asInt(detail['reference_id']) ?? 0,
-            initial: detail['initial']?.toString() ?? _initialFromName(doctorName),
+                _asInt(detail['doctor_id']) ??
+                _asInt(detail['reference_id']) ??
+                0,
+            initial:
+                detail['initial']?.toString() ?? _initialFromName(doctorName),
             name: doctorName,
             info: _doctorInfo(detail),
             status: relationStatus,
             date: _formatDateTime(
-              detail['connected_since'] ?? detail['created_at'] ?? detail['time'],
+              detail['connected_since'] ??
+                  detail['created_at'] ??
+                  detail['time'],
             ),
           ),
         ),
       );
-    } else if (routeKey.contains('caregiver') || routeKey.contains('pendamping')) {
-      final caregiverId = _asInt(detail['caregiver_id'] ?? detail['reference_id']);
+    } else if (routeKey.contains('caregiver') ||
+        routeKey.contains('pendamping')) {
+      final caregiverId = _asInt(
+        detail['caregiver_id'] ?? detail['reference_id'],
+      );
       final caregiverName = _safeText(
         detail['caregiver_name'] ?? detail['full_name'] ?? detail['name'],
         fallback: _caregiverFromMessage(_desc(detail)),
@@ -743,20 +757,20 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
                     return false;
                   }
                 : () => _handleCaregiverRequestFromNotification(
-                      caregiverId: caregiverId,
-                      name: caregiverName,
-                      isAccept: true,
-                    ),
+                    caregiverId: caregiverId,
+                    name: caregiverName,
+                    isAccept: true,
+                  ),
             onReject: caregiverId == null
                 ? () async {
                     _showSnackBar('Caregiver ID tidak ditemukan');
                     return false;
                   }
                 : () => _handleCaregiverRequestFromNotification(
-                      caregiverId: caregiverId,
-                      name: caregiverName,
-                      isAccept: false,
-                    ),
+                    caregiverId: caregiverId,
+                    name: caregiverName,
+                    isAccept: false,
+                  ),
           ),
         ),
       );
@@ -770,7 +784,6 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
       _loadNotifications();
     }
   }
-
 
   Future<void> _openValidationNotification(Map<String, dynamic> detail) async {
     final recordType = detail['record_type']?.toString() ?? '';
@@ -1098,7 +1111,8 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
     final read = _isRead(item);
     final type = _type(item);
     final refType = item['reference_type']?.toString().toLowerCase() ?? '';
-    final routeKey = '$type $refType ${_title(item).toLowerCase()} ${_desc(item).toLowerCase()}';
+    final routeKey =
+        '$type $refType ${_title(item).toLowerCase()} ${_desc(item).toLowerCase()}';
     final visual = _notificationVisual(routeKey);
 
     return InkWell(
@@ -1221,7 +1235,6 @@ class _PatientNotificationPageState extends State<PatientNotificationPage> {
   }
 }
 
-
 _NotificationVisual _notificationVisual(String routeKey) {
   if (routeKey.contains('validation') || routeKey.contains('validasi')) {
     return const _NotificationVisual(
@@ -1302,7 +1315,6 @@ _NotificationVisual _notificationVisual(String routeKey) {
     color: AppColors.primaryBlue,
   );
 }
-
 
 class _CaregiverRequestActionSheet extends StatelessWidget {
   final String title;
@@ -1483,10 +1495,7 @@ class _CaregiverRequestSuccessSheet extends StatelessWidget {
                 style: AppButtonStyles.primary,
                 child: const Text(
                   'Mengerti',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
                 ),
               ),
             ),
@@ -1508,7 +1517,6 @@ class _NotificationVisual {
     required this.color,
   });
 }
-
 
 class PatientPrescriptionNotificationDetailPage extends StatelessWidget {
   final Map<String, dynamic> item;
@@ -1563,12 +1571,18 @@ class PatientPrescriptionNotificationDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final medicationName = _text(item['medication_name'], fallback: 'Resep Obat');
+    final medicationName = _text(
+      item['medication_name'],
+      fallback: 'Resep Obat',
+    );
     final doctorName = _text(item['doctor_name'], fallback: 'Dokter');
     final dosage = _text(item['dosage']);
     final form = _text(item['form']);
     final mealRule = _text(item['meal_rule']);
-    final status = _text(item['status'], fallback: _isStopped ? 'Selesai' : 'Aktif');
+    final status = _text(
+      item['status'],
+      fallback: _isStopped ? 'Selesai' : 'Aktif',
+    );
     final validFrom = _date(item['valid_from']);
     final validUntil = _date(item['valid_until']);
     final schedules = _schedules();
@@ -1578,8 +1592,8 @@ class PatientPrescriptionNotificationDetailPage extends StatelessWidget {
     final title = _isUpdated
         ? 'Resep Obat Diperbarui'
         : _isStopped
-            ? 'Resep Obat Dihentikan'
-            : 'Detail Resep Obat';
+        ? 'Resep Obat Dihentikan'
+        : 'Detail Resep Obat';
 
     return _NotificationDetailScaffold(
       title: title,
@@ -1605,7 +1619,10 @@ class PatientPrescriptionNotificationDetailPage extends StatelessWidget {
           _whiteCard(
             title: 'Jadwal Minum',
             children: schedules.map((schedule) {
-              final session = _text(schedule['session_name'], fallback: 'Jadwal');
+              final session = _text(
+                schedule['session_name'],
+                fallback: 'Jadwal',
+              );
               final dose = _text(schedule['dose_per_session']);
               final reminder = _text(
                 schedule['reminder_time'] ?? schedule['default_reminder_time'],
@@ -1638,7 +1655,8 @@ class PatientPrescriptionNotificationDetailPage extends StatelessWidget {
             }).toList(),
           ),
         ],
-        if (_text(item['message']).isNotEmpty && _text(item['message']) != '-') ...[
+        if (_text(item['message']).isNotEmpty &&
+            _text(item['message']) != '-') ...[
           const SizedBox(height: 14),
           _whiteCard(
             title: 'Keterangan',
@@ -1680,7 +1698,8 @@ class DoctorConnectionAcceptedDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final normalizedStatus = status.toLowerCase().trim();
-    final isStillConnected = normalizedStatus == 'terhubung' ||
+    final isStillConnected =
+        normalizedStatus == 'terhubung' ||
         normalizedStatus == 'diterima' ||
         normalizedStatus == 'disetujui';
     final displayedStatus = isStillConnected ? 'Terhubung' : status;
@@ -1726,7 +1745,9 @@ class DoctorConnectionAcceptedDetailPage extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      isStillConnected ? 'Lihat Detail Dokter' : 'Lihat Data Dokter',
+                      isStillConnected
+                          ? 'Lihat Detail Dokter'
+                          : 'Lihat Data Dokter',
                       style: const TextStyle(
                         color: AppColors.primaryBlue,
                         fontSize: 12,
@@ -1743,7 +1764,6 @@ class DoctorConnectionAcceptedDetailPage extends StatelessWidget {
       ],
     );
   }
-
 }
 
 class DoctorConnectionRejectedDetailPage extends StatelessWidget {
@@ -1786,7 +1806,6 @@ class DoctorConnectionRejectedDetailPage extends StatelessWidget {
   }
 }
 
-
 class _HeaderInfoText extends StatelessWidget {
   final String text;
 
@@ -1803,11 +1822,7 @@ class _HeaderInfoText extends StatelessWidget {
     if (lines.isEmpty) {
       return const Text(
         '-',
-        style: TextStyle(
-          color: AppColors.dark2,
-          fontSize: 12,
-          height: 1.35,
-        ),
+        style: TextStyle(color: AppColors.dark2, fontSize: 12, height: 1.35),
       );
     }
 
@@ -1932,9 +1947,7 @@ class _NotificationDetailScaffold extends StatelessWidget {
                           child: Icon(icon, color: iconColor),
                         ),
                         const SizedBox(width: 12),
-                        Expanded(
-                          child: _HeaderInfoText(text: headerText),
-                        ),
+                        Expanded(child: _HeaderInfoText(text: headerText)),
                       ],
                     ),
                   ),

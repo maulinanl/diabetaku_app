@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
-
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
-import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class PatientValidationDetailPage extends StatefulWidget {
   final Map<String, dynamic> item;
 
-  const PatientValidationDetailPage({
-    super.key,
-    required this.item,
-  });
+  const PatientValidationDetailPage({super.key, required this.item});
 
   @override
   State<PatientValidationDetailPage> createState() =>
@@ -105,9 +101,7 @@ class _PatientValidationDetailPageState
                   radius: 36,
                   backgroundColor: iconBg,
                   child: Icon(
-                    approve
-                        ? Icons.check_rounded
-                        : Icons.close_rounded,
+                    approve ? Icons.check_rounded : Icons.close_rounded,
                     color: iconColor,
                     size: 36,
                   ),
@@ -496,8 +490,8 @@ class _PatientValidationDetailPageState
 
         final message = success
             ? (approve
-                ? 'Data telah masuk ke riwayat kesehatan pasien.'
-                : 'Data tidak akan dimasukkan ke riwayat kesehatan pasien.')
+                  ? 'Data telah masuk ke riwayat kesehatan pasien.'
+                  : 'Data tidak akan dimasukkan ke riwayat kesehatan pasien.')
             : (errorMessage ?? 'Terjadi kesalahan saat memproses data.');
 
         final iconData = success

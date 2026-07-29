@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
-import 'register_doctor_step2_page.dart';
 import 'package:flutter/services.dart';
-import '../../../data/services/api_service.dart';
 import 'package:diabetaku_app/core/theme/app_button_styles.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_option_bottom_sheet.dart';
+import '../../../data/services/api_service.dart';
+import 'register_doctor_step2_page.dart';
 
 class RegisterDoctorStep1Page extends StatefulWidget {
   const RegisterDoctorStep1Page({super.key});

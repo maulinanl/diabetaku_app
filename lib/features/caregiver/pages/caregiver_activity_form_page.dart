@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
+import '../widgets/caregiver_health_form_widgets.dart';
+import '../../patient/widgets/patient_health_form_widgets.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
-import '../../patient/widgets/patient_health_form_widgets.dart';
-import '../widgets/caregiver_health_form_widgets.dart';
 
 class CaregiverActivityFormPage extends StatefulWidget {
   final int patientId;
@@ -94,7 +93,9 @@ class _CaregiverActivityFormPageState extends State<CaregiverActivityFormPage> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(primary: AppColors.primaryBlue),
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primaryBlue,
+            ),
           ),
           child: child!,
         );
@@ -111,7 +112,9 @@ class _CaregiverActivityFormPageState extends State<CaregiverActivityFormPage> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(primary: AppColors.primaryBlue),
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primaryBlue,
+            ),
           ),
           child: child!,
         );
@@ -243,8 +246,8 @@ class _CaregiverActivityFormPageState extends State<CaregiverActivityFormPage> {
                               onTap: isSaving
                                   ? null
                                   : () => setState(
-                                        () => selectedIntensity = item,
-                                      ),
+                                      () => selectedIntensity = item,
+                                    ),
                             ),
                           ),
                         );

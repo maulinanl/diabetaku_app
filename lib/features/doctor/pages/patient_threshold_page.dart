@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
-import '../widgets/diabetes_type_badge.dart';
-import '../../../data/services/api_service.dart';
 import 'package:diabetaku_app/core/theme/app_button_styles.dart';
+import '../widgets/diabetes_type_badge.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../data/services/api_service.dart';
 
 class PatientThresholdPage extends StatefulWidget {
   final int patientId;
@@ -47,14 +47,16 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
         _items.clear();
 
         for (final item in data) {
-          final lower = _parseDouble(
-            item['custom_min'] ?? item['default_min'],
-          )?.toStringAsFixed(2) ??
+          final lower =
+              _parseDouble(
+                item['custom_min'] ?? item['default_min'],
+              )?.toStringAsFixed(2) ??
               '';
 
-          final upper = _parseDouble(
-            item['custom_max'] ?? item['default_max'],
-          )?.toStringAsFixed(2) ??
+          final upper =
+              _parseDouble(
+                item['custom_max'] ?? item['default_max'],
+              )?.toStringAsFixed(2) ??
               '';
 
           _items.add(
@@ -64,12 +66,10 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
               lower: lower,
               upper: upper,
               unit: item['unit']?.toString() ?? '',
-              defaultLower: _parseDouble(item['default_min'])
-                      ?.toStringAsFixed(2) ??
-                  '',
-              defaultUpper: _parseDouble(item['default_max'])
-                      ?.toStringAsFixed(2) ??
-                  '',
+              defaultLower:
+                  _parseDouble(item['default_min'])?.toStringAsFixed(2) ?? '',
+              defaultUpper:
+                  _parseDouble(item['default_max'])?.toStringAsFixed(2) ?? '',
               validMin: _parseDouble(item['valid_min']),
               validMax: _parseDouble(item['valid_max']),
             ),
@@ -183,9 +183,7 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
       _showSuccessBottomSheet();
     } catch (e) {
       if (!mounted) return;
-      _showSnackBar(
-        e.toString().replaceFirst('Exception: ', ''),
-      );
+      _showSnackBar(e.toString().replaceFirst('Exception: ', ''));
     }
   }
 
@@ -303,9 +301,7 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
       _showSuccessBottomSheet();
     } catch (e) {
       if (!mounted) return;
-      _showSnackBar(
-        e.toString().replaceFirst('Exception: ', ''),
-      );
+      _showSnackBar(e.toString().replaceFirst('Exception: ', ''));
     }
   }
 
@@ -355,7 +351,11 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _thresholdHeader(item: item, index: i, editing: editing),
+                        _thresholdHeader(
+                          item: item,
+                          index: i,
+                          editing: editing,
+                        ),
                         const SizedBox(height: 12),
                         if (!editing)
                           _thresholdReadContent(item)
@@ -553,10 +553,16 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.primaryBlue, width: 1.6),
+          borderSide: const BorderSide(
+            color: AppColors.primaryBlue,
+            width: 1.6,
+          ),
         ),
         isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
       ),
     );
   }
@@ -661,8 +667,11 @@ class _PatientThresholdPageState extends State<PatientThresholdPage> {
     final topPad = MediaQuery.of(context).padding.top;
     final name = widget.patientProfile['full_name']?.toString() ?? '-';
     final gender = widget.patientProfile['gender']?.toString() ?? '-';
-    final diabetesType = widget.patientProfile['diabetes_type']?.toString() ?? '-';
-    final age = _calculateAge(widget.patientProfile['date_of_birth']?.toString());
+    final diabetesType =
+        widget.patientProfile['diabetes_type']?.toString() ?? '-';
+    final age = _calculateAge(
+      widget.patientProfile['date_of_birth']?.toString(),
+    );
     final initials = _getInitials(name);
 
     return Container(

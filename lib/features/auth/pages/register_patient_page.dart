@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../data/services/api_service.dart';
-import '../../auth/pages/email_verification_page.dart';
 import 'package:diabetaku_app/core/theme/app_button_styles.dart';
+import '../../auth/pages/email_verification_page.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_option_bottom_sheet.dart';
+import '../../../data/services/api_service.dart';
 
 class RegisterPatientPage extends StatefulWidget {
   const RegisterPatientPage({super.key});
@@ -618,9 +618,9 @@ class _RegisterPatientPageState extends State<RegisterPatientPage> {
     final icon = displayTitle.toLowerCase().contains('jenis kelamin')
         ? Icons.wc_outlined
         : displayTitle.toLowerCase().contains('darah') ||
-                displayTitle.toLowerCase().contains('rhesus')
-            ? Icons.bloodtype_outlined
-            : Icons.check_circle_outline;
+              displayTitle.toLowerCase().contains('rhesus')
+        ? Icons.bloodtype_outlined
+        : Icons.check_circle_outline;
 
     showModalBottomSheet(
       context: context,

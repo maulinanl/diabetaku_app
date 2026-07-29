@@ -4,10 +4,7 @@ import '../../../core/theme/app_colors.dart';
 class PatientRecommendationDetailPage extends StatelessWidget {
   final Map<String, dynamic> item;
 
-  const PatientRecommendationDetailPage({
-    super.key,
-    required this.item,
-  });
+  const PatientRecommendationDetailPage({super.key, required this.item});
 
   @override
   Widget build(BuildContext context) {
@@ -78,7 +75,8 @@ class PatientRecommendationDetailPage extends StatelessWidget {
     return [
       {
         'category': item['category'] ?? item['status'] ?? 'Rekomendasi',
-        'recommendation_text': item['recommendation_text'] ??
+        'recommendation_text':
+            item['recommendation_text'] ??
             item['description'] ??
             item['content'] ??
             item['message'] ??

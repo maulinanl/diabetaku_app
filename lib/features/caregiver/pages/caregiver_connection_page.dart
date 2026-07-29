@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 import 'caregiver_patient_detail_page.dart';
-import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class CaregiverConnectionPage extends StatefulWidget {
   const CaregiverConnectionPage({super.key});
 
   @override
-  State<CaregiverConnectionPage> createState() => _CaregiverConnectionPageState();
+  State<CaregiverConnectionPage> createState() =>
+      _CaregiverConnectionPageState();
 }
 
 class _CaregiverConnectionPageState extends State<CaregiverConnectionPage> {
@@ -592,11 +592,7 @@ class _CaregiverConnectionPageState extends State<CaregiverConnectionPage> {
     return const Column(
       children: [
         SizedBox(height: 60),
-        Icon(
-          Icons.alternate_email_rounded,
-          size: 64,
-          color: AppColors.dark3,
-        ),
+        Icon(Icons.alternate_email_rounded, size: 64, color: AppColors.dark3),
         SizedBox(height: 14),
         Text(
           'Lengkapi email pasien',
@@ -942,11 +938,8 @@ class _CaregiverPatientSearchDetailPageState
       '-';
 
   String get email => widget.patient['email']?.toString() ?? '-';
-
   String get gender => widget.patient['gender']?.toString() ?? '-';
-
   String get dm => widget.patient['diabetes_type']?.toString() ?? '-';
-
   String get initial {
     final parts = name.trim().split(' ').where((e) => e.isNotEmpty).toList();
 

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
 import '../widgets/diabetes_type_badge.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 
 class ClinicalNoteDetailPage extends StatefulWidget {
@@ -162,7 +162,6 @@ class _ClinicalNoteDetailPageState extends State<ClinicalNoteDetailPage> {
     );
   }
 
-
   Widget _buildHeader({
     required BuildContext context,
     required String name,
@@ -319,8 +318,11 @@ class _ClinicalNoteDetailPageState extends State<ClinicalNoteDetailPage> {
         children: [
           const Row(
             children: [
-              Icon(Icons.recommend_outlined,
-                  size: 16, color: AppColors.primaryBlue),
+              Icon(
+                Icons.recommend_outlined,
+                size: 16,
+                color: AppColors.primaryBlue,
+              ),
               SizedBox(width: 6),
               Text(
                 'Rekomendasi Dokter',
@@ -350,8 +352,11 @@ class _ClinicalNoteDetailPageState extends State<ClinicalNoteDetailPage> {
           const SizedBox(height: 12),
           const Row(
             children: [
-              Icon(Icons.groups_outlined,
-                  size: 16, color: AppColors.primaryBlue),
+              Icon(
+                Icons.groups_outlined,
+                size: 16,
+                color: AppColors.primaryBlue,
+              ),
               SizedBox(width: 6),
               Text(
                 'Rekomendasi Dikirim Kepada',
@@ -426,10 +431,7 @@ class _ClinicalNoteDetailPageState extends State<ClinicalNoteDetailPage> {
     );
   }
 
-  Widget _recipientItem({
-    required String name,
-    required String role,
-  }) {
+  Widget _recipientItem({required String name, required String role}) {
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 8),

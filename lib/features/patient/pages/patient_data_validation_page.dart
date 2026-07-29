@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
-import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class PatientDataValidationPage extends StatefulWidget {
   const PatientDataValidationPage({super.key});
@@ -248,19 +247,12 @@ class _PatientDataValidationPageState extends State<PatientDataValidationPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
-                Icons.error_outline,
-                color: AppColors.red,
-                size: 42,
-              ),
+              const Icon(Icons.error_outline, color: AppColors.red, size: 42),
               const SizedBox(height: 12),
               Text(
                 errorMessage!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppColors.dark2,
-                  fontSize: 13,
-                ),
+                style: const TextStyle(color: AppColors.dark2, fontSize: 13),
               ),
               const SizedBox(height: 16),
               ElevatedButton(
@@ -538,7 +530,11 @@ class _ValidationCard extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const Icon(Icons.person, color: AppColors.primaryBlue, size: 16),
+                const Icon(
+                  Icons.person,
+                  color: AppColors.primaryBlue,
+                  size: 16,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(

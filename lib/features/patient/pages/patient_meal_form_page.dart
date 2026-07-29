@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import '../widgets/patient_health_form_widgets.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
-import '../widgets/patient_health_form_widgets.dart';
 
 class PatientMealFormPage extends StatefulWidget {
   const PatientMealFormPage({super.key});
@@ -124,7 +123,9 @@ class _PatientMealFormPageState extends State<PatientMealFormPage> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(primary: AppColors.primaryBlue),
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primaryBlue,
+            ),
           ),
           child: child!,
         );
@@ -143,7 +144,9 @@ class _PatientMealFormPageState extends State<PatientMealFormPage> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(primary: AppColors.primaryBlue),
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primaryBlue,
+            ),
           ),
           child: child!,
         );
@@ -204,11 +207,11 @@ class _PatientMealFormPageState extends State<PatientMealFormPage> {
                       itemCount: mealTypes.length,
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 4,
-                        mainAxisSpacing: 8,
-                        crossAxisSpacing: 8,
-                        childAspectRatio: 0.95,
-                      ),
+                            crossAxisCount: 4,
+                            mainAxisSpacing: 8,
+                            crossAxisSpacing: 8,
+                            childAspectRatio: 0.95,
+                          ),
                       itemBuilder: (context, index) {
                         final item = mealTypes[index];
                         final title = item['name'] as String;
@@ -231,7 +234,9 @@ class _PatientMealFormPageState extends State<PatientMealFormPage> {
                       hint: 'Masukkan estimasi karbohidrat',
                       keyboardType: TextInputType.number,
                       inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'^\d*\.?\d*'),
+                        ),
                       ],
                     ),
                     const PatientFormLabel('Estimasi kalori (kkal)'),
@@ -240,7 +245,9 @@ class _PatientMealFormPageState extends State<PatientMealFormPage> {
                       hint: 'Masukkan estimasi kalori',
                       keyboardType: TextInputType.number,
                       inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'^\d*\.?\d*'),
+                        ),
                       ],
                     ),
                     const PatientFormLabel('Deskripsi makanan'),

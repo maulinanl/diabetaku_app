@@ -1,11 +1,9 @@
 import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
-
 import '../../core/utils/medication_dose_formatter.dart';
 import 'api_service.dart';
 
@@ -63,9 +61,6 @@ class MedicationReminderService {
 
   static void _configureLocalTimeZone() {
     final offset = DateTime.now().timeZoneOffset;
-
-    // Fallback sederhana untuk zona waktu Indonesia supaya jadwal obat
-    // mengikuti jam lokal perangkat, bukan UTC default dari package timezone.
     final locationName = switch (offset.inHours) {
       8 => 'Asia/Makassar',
       9 => 'Asia/Jayapura',

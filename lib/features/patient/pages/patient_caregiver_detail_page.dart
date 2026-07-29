@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
-import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class PatientCaregiverDetailPage extends StatefulWidget {
   final int caregiverId;
@@ -26,7 +25,8 @@ class PatientCaregiverDetailPage extends StatefulWidget {
       _PatientCaregiverDetailPageState();
 }
 
-class _PatientCaregiverDetailPageState extends State<PatientCaregiverDetailPage> {
+class _PatientCaregiverDetailPageState
+    extends State<PatientCaregiverDetailPage> {
   bool isProcessing = false;
 
   Future<int> _getPatientId() async {

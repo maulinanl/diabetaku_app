@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 import 'patient_recommendation_detail_page.dart';
-import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class PatientHistoryPage extends StatefulWidget {
   const PatientHistoryPage({super.key});
@@ -123,7 +122,9 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
       });
     }
 
-    for (final item in List<Map<String, dynamic>>.from(data['activity'] ?? [])) {
+    for (final item in List<Map<String, dynamic>>.from(
+      data['activity'] ?? [],
+    )) {
       result.add({
         'type': 'Aktivitas',
         'title': item['activity_name']?.toString() ?? 'Aktivitas Fisik',
@@ -641,7 +642,8 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
                       doctor['doctor_id']?.toString() ?? '',
                     );
 
-                    final name = doctor['full_name']?.toString() ??
+                    final name =
+                        doctor['full_name']?.toString() ??
                         doctor['doctor_name']?.toString() ??
                         'Dokter';
 
@@ -948,7 +950,10 @@ class _PatientHistoryPageState extends State<PatientHistoryPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: AppColors.dark2, fontSize: 10)),
+          Text(
+            label,
+            style: const TextStyle(color: AppColors.dark2, fontSize: 10),
+          ),
           const SizedBox(height: 3),
           Text(
             value,
@@ -1444,7 +1449,8 @@ class PatientHealthDetailPage extends StatelessWidget {
       final diastolic = _text(raw['diastolic']);
       final weight = _text(raw['weight_kg']);
       final bmi = _text(raw['bmi']);
-      final hasBloodPressure = _hasValue(raw['systolic']) || _hasValue(raw['diastolic']);
+      final hasBloodPressure =
+          _hasValue(raw['systolic']) || _hasValue(raw['diastolic']);
       final date = _formatDetailDate(raw['measured_at'] ?? history['date_raw']);
       final status = _text(
         raw['validation_status'] ?? history['badge'] ?? history['status'],
@@ -1454,15 +1460,15 @@ class PatientHealthDetailPage extends StatelessWidget {
       final mainValue = hasBloodPressure
           ? '$systolic/$diastolic'
           : _hasValue(raw['bmi'])
-              ? bmi
-              : weight;
+          ? bmi
+          : weight;
       final unit = hasBloodPressure
           ? 'mmHg'
           : _hasValue(raw['bmi'])
-              ? 'kg/m²'
-              : _hasValue(raw['weight_kg'])
-                  ? 'kg'
-                  : '';
+          ? 'kg/m²'
+          : _hasValue(raw['weight_kg'])
+          ? 'kg'
+          : '';
 
       return {
         'icon': Icons.bar_chart_rounded,
@@ -1484,7 +1490,9 @@ class PatientHealthDetailPage extends StatelessWidget {
 
     if (type == 'Aktivitas') {
       final value = _text(raw['duration_minutes'] ?? history['value']);
-      final date = _formatDetailDate(raw['activity_date'] ?? history['date_raw']);
+      final date = _formatDetailDate(
+        raw['activity_date'] ?? history['date_raw'],
+      );
       final status = _text(
         raw['validation_status'] ?? history['badge'],
         fallback: 'Valid',
@@ -1497,7 +1505,13 @@ class PatientHealthDetailPage extends StatelessWidget {
         'date': date,
         'status': status,
         'sections': _cleanRows([
-          ['Aktivitas', _text(raw['activity_name'] ?? history['title'], fallback: 'Aktivitas Fisik')],
+          [
+            'Aktivitas',
+            _text(
+              raw['activity_name'] ?? history['title'],
+              fallback: 'Aktivitas Fisik',
+            ),
+          ],
           ['Durasi', '$value menit'],
           ['Intensitas', _text(raw['intensity'])],
           ['Status Validasi', status],
@@ -1515,13 +1529,13 @@ class PatientHealthDetailPage extends StatelessWidget {
       final mainValue = hasCarb
           ? carb
           : hasCalories
-              ? calories
-              : _text(history['value']);
+          ? calories
+          : _text(history['value']);
       final unit = hasCarb
           ? 'gram'
           : hasCalories
-              ? 'kkal'
-              : _text(history['unit'], fallback: '');
+          ? 'kkal'
+          : _text(history['unit'], fallback: '');
       final date = _formatDetailDate(raw['meal_date'] ?? history['date_raw']);
       final status = _text(
         raw['validation_status'] ?? history['badge'] ?? history['status'],
@@ -1535,7 +1549,13 @@ class PatientHealthDetailPage extends StatelessWidget {
         'date': date,
         'status': status,
         'sections': _cleanRows([
-          ['Jenis Makan', _text(raw['meal_type_name'] ?? history['title'], fallback: 'Pola Makan')],
+          [
+            'Jenis Makan',
+            _text(
+              raw['meal_type_name'] ?? history['title'],
+              fallback: 'Pola Makan',
+            ),
+          ],
           ['Deskripsi Makanan', _text(raw['food_description'])],
           ['Estimasi Karbohidrat', hasCarb ? '$carb gram' : null],
           ['Kalori', hasCalories ? '$calories kkal' : null],
@@ -1551,7 +1571,9 @@ class PatientHealthDetailPage extends StatelessWidget {
       fallback: 'Obat',
     );
     final date = _formatDetailDate(raw['log_date'] ?? history['date_raw']);
-    final status = _text(raw['status'] ?? history['badge'] ?? history['status']);
+    final status = _text(
+      raw['status'] ?? history['badge'] ?? history['status'],
+    );
     final validationStatus = _text(raw['validation_status'], fallback: 'Valid');
 
     return {
@@ -1564,11 +1586,17 @@ class PatientHealthDetailPage extends StatelessWidget {
         ['Nama Obat', medicationName],
         ['Dokter', _text(history['doctor'] ?? raw['doctor_name'])],
         ['Status Konsumsi', status],
-        ['Status Resep', _text(history['prescriptionStatus'], fallback: 'Resep aktif')],
+        [
+          'Status Resep',
+          _text(history['prescriptionStatus'], fallback: 'Resep aktif'),
+        ],
         ['Jadwal', _text(raw['session'] ?? raw['session_name'])],
         ['Dosis', _text(raw['dose_per_session'] ?? raw['dosage'])],
         ['Tanggal Konsumsi', date],
-        ['Waktu Checklist', _formatDetailDate(raw['checked_at'] ?? raw['taken_at'])],
+        [
+          'Waktu Checklist',
+          _formatDetailDate(raw['checked_at'] ?? raw['taken_at']),
+        ],
         ['Status Validasi', validationStatus],
       ]),
       'note': _text(raw['note'], fallback: ''),
@@ -1579,7 +1607,8 @@ class PatientHealthDetailPage extends StatelessWidget {
     final topPad = MediaQuery.of(context).padding.top;
     final status = data['status'].toString();
 
-    final isBad = status == 'Abnormal' ||
+    final isBad =
+        status == 'Abnormal' ||
         status == 'Ditolak' ||
         status == 'Terlewat' ||
         status == 'Tidak Diminum';
@@ -1704,9 +1733,7 @@ class PatientHealthDetailPage extends StatelessWidget {
       fallback: 'Pasien',
     );
 
-    final inputByName = _text(
-      item['input_by_name'] ?? raw['input_by_name'],
-    );
+    final inputByName = _text(item['input_by_name'] ?? raw['input_by_name']);
 
     return Container(
       width: double.infinity,

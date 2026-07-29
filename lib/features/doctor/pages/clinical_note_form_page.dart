@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
-import '../widgets/diabetes_type_badge.dart';
-import 'recommendation_form_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../../data/services/api_service.dart';
 import 'package:diabetaku_app/core/theme/app_button_styles.dart';
+import '../widgets/diabetes_type_badge.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../data/services/api_service.dart';
+import 'recommendation_form_page.dart';
 
 class ClinicalNoteFormPage extends StatefulWidget {
   final int patientId;
@@ -27,7 +27,6 @@ class _ClinicalNoteFormPageState extends State<ClinicalNoteFormPage> {
   final TextEditingController _catatanCtr = TextEditingController();
   final TextEditingController _rencanaCtr = TextEditingController();
   DateTime? _followUpDate;
-  
 
   String _getInitials(String name) {
     final parts = name.trim().split(' ');
@@ -544,7 +543,11 @@ class _ClinicalNoteFormPageState extends State<ClinicalNoteFormPage> {
         children: [
           const Row(
             children: [
-              Icon(Icons.calendar_month, color: AppColors.primaryBlue, size: 18),
+              Icon(
+                Icons.calendar_month,
+                color: AppColors.primaryBlue,
+                size: 18,
+              ),
               SizedBox(width: 8),
               Text(
                 'Jadwal Kontrol',

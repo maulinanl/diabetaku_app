@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 
@@ -45,8 +44,6 @@ class _DoctorPatientHealthHistoryPageState
     _loadData();
   }
 
-
-
   String _mealSummary(Map<String, dynamic> item) {
     final parts = <String>[];
 
@@ -66,14 +63,14 @@ class _DoctorPatientHealthHistoryPageState
   String _medicationDescription(Map<String, dynamic> item) {
     final parts = <String>[];
 
-    final session = item['session']?.toString() ??
-        item['session_name']?.toString() ??
-        '';
+    final session =
+        item['session']?.toString() ?? item['session_name']?.toString() ?? '';
     if (session.trim().isNotEmpty && session.trim() != '-') {
       parts.add('Sesi $session');
     }
 
-    final dose = item['dose_per_session']?.toString() ??
+    final dose =
+        item['dose_per_session']?.toString() ??
         item['dosage']?.toString() ??
         '';
     if (dose.trim().isNotEmpty && dose.trim() != '-') {
@@ -115,16 +112,16 @@ class _DoctorPatientHealthHistoryPageState
         ..._mapActivity(
           List<Map<String, dynamic>>.from(behavioral['activities'] ?? []),
         ),
-        ..._mapMeal(
-          List<Map<String, dynamic>>.from(behavioral['meals'] ?? []),
-        ),
+        ..._mapMeal(List<Map<String, dynamic>>.from(behavioral['meals'] ?? [])),
         ..._mapMedication(medication),
       ];
 
       mapped.sort((a, b) {
-        final dateA = DateTime.tryParse(a['date_raw']?.toString() ?? '') ??
+        final dateA =
+            DateTime.tryParse(a['date_raw']?.toString() ?? '') ??
             DateTime(2000);
-        final dateB = DateTime.tryParse(b['date_raw']?.toString() ?? '') ??
+        final dateB =
+            DateTime.tryParse(b['date_raw']?.toString() ?? '') ??
             DateTime(2000);
 
         return dateB.compareTo(dateA);
@@ -171,17 +168,20 @@ class _DoctorPatientHealthHistoryPageState
       final weight = item['weight_kg']?.toString();
       final bmi = item['bmi']?.toString();
 
-      final hasSystolic = systolic != null && systolic.trim().isNotEmpty && systolic != '-';
-      final hasDiastolic = diastolic != null && diastolic.trim().isNotEmpty && diastolic != '-';
+      final hasSystolic =
+          systolic != null && systolic.trim().isNotEmpty && systolic != '-';
+      final hasDiastolic =
+          diastolic != null && diastolic.trim().isNotEmpty && diastolic != '-';
       final hasBp = hasSystolic || hasDiastolic;
       final hasBmi = bmi != null && bmi.trim().isNotEmpty && bmi != '-';
-      final hasWeight = weight != null && weight.trim().isNotEmpty && weight != '-';
+      final hasWeight =
+          weight != null && weight.trim().isNotEmpty && weight != '-';
 
       final value = hasBp
           ? '${hasSystolic ? systolic : '-'}/${hasDiastolic ? diastolic : '-'}'
           : hasBmi
-              ? 'BMI $bmi'
-              : '-';
+          ? 'BMI $bmi'
+          : '-';
 
       final descriptions = <String>[];
       if (hasWeight) descriptions.add('Berat $weight kg');
@@ -192,7 +192,9 @@ class _DoctorPatientHealthHistoryPageState
         'title': hasBp ? 'Tekanan Darah' : 'Data Fisiologis',
         'value': value,
         'unit': hasBp ? 'mmHg' : '',
-        'description': descriptions.isEmpty ? 'Data fisiologis tercatat' : descriptions.join(' • '),
+        'description': descriptions.isEmpty
+            ? 'Data fisiologis tercatat'
+            : descriptions.join(' • '),
         'time': _formatDateTime(item['measured_at']),
         'date_raw': item['measured_at'],
         'badge': item['validation_status'] ?? 'Valid',
@@ -277,26 +279,24 @@ class _DoctorPatientHealthHistoryPageState
               child: isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : errorMessage != null
-                      ? _errorState()
-                      : RefreshIndicator(
-                          onRefresh: _loadData,
-                          child: filteredHistories.isEmpty
-                              ? _emptyState()
-                              : ListView.builder(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    18,
-                                    12,
-                                    18,
-                                    28,
-                                  ),
-                                  itemCount: filteredHistories.length,
-                                  itemBuilder: (context, index) {
-                                    return _historyCard(
-                                      filteredHistories[index],
-                                    );
-                                  },
-                                ),
-                        ),
+                  ? _errorState()
+                  : RefreshIndicator(
+                      onRefresh: _loadData,
+                      child: filteredHistories.isEmpty
+                          ? _emptyState()
+                          : ListView.builder(
+                              padding: const EdgeInsets.fromLTRB(
+                                18,
+                                12,
+                                18,
+                                28,
+                              ),
+                              itemCount: filteredHistories.length,
+                              itemBuilder: (context, index) {
+                                return _historyCard(filteredHistories[index]);
+                              },
+                            ),
+                    ),
             ),
           ],
         ),
@@ -410,8 +410,11 @@ class _DoctorPatientHealthHistoryPageState
               color: color.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(item['icon'] as IconData? ?? Icons.history,
-                color: color, size: 21),
+            child: Icon(
+              item['icon'] as IconData? ?? Icons.history,
+              color: color,
+              size: 21,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -549,10 +552,7 @@ class _DoctorPatientHealthHistoryPageState
         Center(
           child: Text(
             'Belum ada data pada kategori ini',
-            style: TextStyle(
-              color: AppColors.dark2,
-              fontSize: 13,
-            ),
+            style: TextStyle(color: AppColors.dark2, fontSize: 13),
           ),
         ),
       ],

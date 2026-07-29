@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-import '../../../core/theme/app_colors.dart';
-import '../../../data/services/medication_reminder_service.dart';
-import '../../../data/services/push_notification_service.dart';
 import '../../caregiver/pages/caregiver_main_page.dart';
 import '../../doctor/pages/doctor_main_page.dart';
 import '../../patient/pages/patient_main_page.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../data/services/medication_reminder_service.dart';
+import '../../../data/services/push_notification_service.dart';
 import 'login_page.dart';
 
 class SplashPage extends StatefulWidget {

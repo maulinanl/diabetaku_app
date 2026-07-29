@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
+import '../../auth/pages/email_verification_page.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
-import '../../auth/pages/email_verification_page.dart';
-import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class RegisterCaregiverPage extends StatefulWidget {
   const RegisterCaregiverPage({super.key});
@@ -224,7 +224,9 @@ class _RegisterCaregiverPageState extends State<RegisterCaregiverPage> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: isValid && !isRegistering ? _registerCaregiver : null,
+                  onPressed: isValid && !isRegistering
+                      ? _registerCaregiver
+                      : null,
                   style: AppButtonStyles.primary,
                   child: isRegistering
                       ? const SizedBox(

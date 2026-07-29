@@ -7,7 +7,6 @@ class AppTheme {
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
 
-    // Kunci font utama aplikasi
     fontFamily: GoogleFonts.plusJakartaSans().fontFamily,
     textTheme: GoogleFonts.plusJakartaSansTextTheme(),
 

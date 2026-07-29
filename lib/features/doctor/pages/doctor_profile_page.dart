@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 import '../../auth/pages/change_password_page.dart';
+import '../../auth/pages/login_page.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/profile_badge.dart';
 import '../../../data/services/api_service.dart';
 import 'edit_doctor_profile_page.dart';
-import '../../auth/pages/login_page.dart';
-import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class DoctorProfilePage extends StatefulWidget {
   const DoctorProfilePage({super.key});
@@ -268,20 +268,20 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
   }
 
   Widget _statusBadge(String text) {
-    final isVerified = text.toLowerCase() == 'terverifikasi' ||
-        text.toLowerCase() == 'valid';
+    final isVerified =
+        text.toLowerCase() == 'terverifikasi' || text.toLowerCase() == 'valid';
     final isRejected = text.toLowerCase() == 'ditolak';
 
     final bg = isRejected
         ? AppColors.lightRed
         : isVerified
-            ? AppColors.veryLightBlue
-            : Colors.orange.shade50;
+        ? AppColors.veryLightBlue
+        : Colors.orange.shade50;
     final color = isRejected
         ? AppColors.red
         : isVerified
-            ? AppColors.primaryBlue
-            : Colors.orange.shade700;
+        ? AppColors.primaryBlue
+        : Colors.orange.shade700;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -297,8 +297,8 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
             isRejected
                 ? Icons.cancel_rounded
                 : isVerified
-                    ? Icons.verified
-                    : Icons.pending,
+                ? Icons.verified
+                : Icons.pending,
             size: 10,
             color: color,
           ),

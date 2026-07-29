@@ -21,8 +21,6 @@ String normalizeMedicationDose(dynamic value, {dynamic form}) {
     (match) => match.group(1) ?? match.group(0)!,
   );
 
-  // Backend lama pernah membentuk teks seperti "500.00 500mg Tablet".
-  // Kalau angka pertama hanya duplikasi dari angka kedua, pakai bagian kedua saja.
   final duplicated = RegExp(
     r'^(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?\s*[^\s].*)$',
     caseSensitive: false,
@@ -50,9 +48,6 @@ String normalizeMedicationDose(dynamic value, {dynamic form}) {
       caseSensitive: false,
     );
 
-    // Kalau teks sudah punya dosis + satuan obat + bentuk sediaan di belakang,
-    // pisahkan bentuknya. Contoh: "500 mg Tablet" -> "500 mg".
-    // Tapi "1 Tablet" tetap dibiarkan karena Tablet adalah satuannya.
     final withoutForm = text.replaceAll(formAtEnd, '').trim();
     final hasDrugUnit = RegExp(
       r'(^|\s)(mg|g|gram|ml|mL|mcg|µg|ug|iu|IU|unit)(\s|$)',

@@ -1,21 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-import '../../../core/theme/app_colors.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 import '../widgets/diabetes_type_badge.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 import 'doctor_connection_page.dart';
 import 'patient_detail_page.dart';
 import 'recommendation_detail_page.dart';
-import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class DoctorNotificationPage extends StatefulWidget {
   final int? initialNotificationId;
 
-  const DoctorNotificationPage({
-    super.key,
-    this.initialNotificationId,
-  });
+  const DoctorNotificationPage({super.key, this.initialNotificationId});
 
   @override
   State<DoctorNotificationPage> createState() => _DoctorNotificationPageState();
@@ -1057,7 +1053,6 @@ String _formatTime(dynamic value) {
       '${local.minute.toString().padLeft(2, '0')}';
 }
 
-
 class _HeaderInfoText extends StatelessWidget {
   final String text;
 
@@ -1074,11 +1069,7 @@ class _HeaderInfoText extends StatelessWidget {
     if (lines.isEmpty) {
       return const Text(
         '-',
-        style: TextStyle(
-          color: AppColors.dark2,
-          fontSize: 12,
-          height: 1.35,
-        ),
+        style: TextStyle(color: AppColors.dark2, fontSize: 12, height: 1.35),
       );
     }
 
@@ -1203,9 +1194,7 @@ class _NotificationDetailScaffold extends StatelessWidget {
                           child: Icon(icon, color: iconColor),
                         ),
                         const SizedBox(width: 12),
-                        Expanded(
-                          child: _HeaderInfoText(text: headerText),
-                        ),
+                        Expanded(child: _HeaderInfoText(text: headerText)),
                       ],
                     ),
                   ),

@@ -1,11 +1,10 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 import 'admin_verification_waiting_page.dart';
 import 'login_page.dart';
-import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 enum VerificationRoleType { doctor, patient, caregiver }
 
@@ -161,10 +160,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
     );
   }
 
-  ButtonStyle _buttonStyle({
-    required Color backgroundColor,
-    Color foregroundColor = Colors.white,
-  }) {
+  ButtonStyle _buttonStyle({required Color backgroundColor}) {
     return AppButtonStyles.primary;
   }
 

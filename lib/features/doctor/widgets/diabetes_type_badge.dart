@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../../../core/theme/app_colors.dart';
 
 String formatDiabetesType(dynamic value) {
@@ -14,11 +13,13 @@ String formatDiabetesType(dynamic value) {
       .replaceAll(RegExp(r'\s+'), ' ')
       .trim();
 
-  final hasTypeOne = normalized.contains('tipe 1') ||
+  final hasTypeOne =
+      normalized.contains('tipe 1') ||
       normalized.contains('type 1') ||
       RegExp(r'(^|[^0-9])1([^0-9]|$)').hasMatch(normalized);
 
-  final hasTypeTwo = normalized.contains('tipe 2') ||
+  final hasTypeTwo =
+      normalized.contains('tipe 2') ||
       normalized.contains('type 2') ||
       RegExp(r'(^|[^0-9])2([^0-9]|$)').hasMatch(normalized);
 
@@ -70,11 +71,7 @@ class DiabetesTypeBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.opacity,
-            size: dense ? 10 : 11,
-            color: color,
-          ),
+          Icon(Icons.opacity, size: dense ? 10 : 11, color: color),
           SizedBox(width: dense ? 3 : 4),
           Text(
             text,

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../../core/theme/app_colors.dart';
+import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 import '../widgets/diabetes_type_badge.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
 import 'patient_detail_page.dart';
-import 'package:diabetaku_app/core/theme/app_button_styles.dart';
 
 class DoctorConnectionPage extends StatefulWidget {
   final int initialTab;
@@ -305,7 +305,8 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
                                         );
 
                                         final relationStatus =
-                                            item['relation_status']?.toString() ??
+                                            item['relation_status']
+                                                ?.toString() ??
                                             (selectedTab == 1
                                                 ? 'Diterima'
                                                 : selectedTab == 0
@@ -313,11 +314,13 @@ class _DoctorConnectionPageState extends State<DoctorConnectionPage> {
                                                 : 'Ditolak');
 
                                         final isDisconnected =
-                                            relationStatus.toLowerCase().trim() ==
+                                            relationStatus
+                                                .toLowerCase()
+                                                .trim() ==
                                             'diputus';
 
-                                        final statusCode = selectedTab == 1 &&
-                                                isDisconnected
+                                        final statusCode =
+                                            selectedTab == 1 && isDisconnected
                                             ? 3
                                             : selectedTab;
 
@@ -1030,20 +1033,20 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
     final title = isAccepted
         ? 'Koneksi Aktif'
         : isRejected
-            ? 'Koneksi Ditolak'
-            : 'Permintaan Koneksi';
+        ? 'Koneksi Ditolak'
+        : 'Permintaan Koneksi';
 
     final description = isAccepted
         ? 'Permintaan koneksi diterima'
         : isRejected
-            ? 'Permintaan koneksi ditolak'
-            : 'Permintaan koneksi baru';
+        ? 'Permintaan koneksi ditolak'
+        : 'Permintaan koneksi baru';
 
     final icon = isAccepted
         ? Icons.check_circle_outline
         : isRejected
-            ? Icons.cancel_outlined
-            : Icons.person_add_alt_1;
+        ? Icons.cancel_outlined
+        : Icons.person_add_alt_1;
 
     final iconColor = isRejected ? AppColors.red : AppColors.primaryBlue;
     final iconBg = isRejected ? AppColors.lightRed : AppColors.lightBlue;

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
-import 'clinical_note_detail_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../../data/services/api_service.dart';
 import 'package:diabetaku_app/core/theme/app_button_styles.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../data/services/api_service.dart';
+import 'clinical_note_detail_page.dart';
 
 class DoctorHistoryPage extends StatefulWidget {
   const DoctorHistoryPage({super.key});
