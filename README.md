@@ -308,15 +308,40 @@ API configuration is located at:
 lib/data/services/api_service.dart
 ```
 
-Update the API base URL according to your backend environment.
+Configure the API base URL according to your backend environment.
 
 Example:
 
 ```dart
-baseUrl = "http://your-backend-url/api";
+baseUrl = "https://your-server-url/api";
+```
+
+Production backend server:
+
+```
+https://si.its.ac.id/labs/ikti/diabetaku/
 ```
 
 Make sure the backend server is running before launching the application.
+
+---
+
+# 🔗 Backend Integration
+
+The Flutter application communicates with the backend system using REST API.
+
+Backend services include:
+
+- Authentication
+- User management
+- Health data management
+- Patient-caregiver relationship
+- Doctor monitoring
+- Notification management
+
+Backend repository:
+
+[Diabetaku Backend](https://github.com/maulinanl/diabetaku-backend)
 
 ---
 
